@@ -1,4 +1,4 @@
-﻿// PURE file: only System / System.Collections.Generic. Compiles under net48 (C# 5) and net8.0.
+﻿// 用途：根据按键和枪械设置计算腰射瞄准点的位置与透明度，不依赖窗口。
 using System;
 using System.Collections.Generic;
 
@@ -50,6 +50,8 @@ namespace TarkovCrosshair
         public bool Jump;
         /// <summary>强化准星 key (v3.0, press edge toggles).</summary>
         public bool Boost;
+        /// <summary>本帧按住的取消开镜键，分别记录每个键的新按下事件。</summary>
+        public CancelAdsInput CancelAds;
     }
 
     /// <summary>Immutable snapshot of engine state for the status line.</summary>
@@ -86,7 +88,7 @@ namespace TarkovCrosshair
         public string HandName { get { return Switched ? "换手" : "正常手"; } }
     }
 
-    public sealed class MotionEngine
+    public sealed partial class MotionEngine
     {
         // ---- outputs ----
         public double OffsetX;   // screen px, y-down, includes the profile's StandOffset
@@ -197,6 +199,11 @@ namespace TarkovCrosshair
             i.HandSwitch = isDown(k.HandSwitch);
             i.Jump = isDown(k.Jump);
             i.Boost = isDown(k.Boost);
+            // 分别记录取消键，按住 Tab 再按 Esc 也能产生新的取消事件。
+            int[] cancelKeys = k.CancelAdsKeys;
+            if (cancelKeys != null)
+                for (int n = 0; n < cancelKeys.Length; n++)
+                    if (isDown(cancelKeys[n])) i.CancelAds.SetDown(cancelKeys[n]);
             return i;
         }
 
@@ -305,17 +312,18 @@ namespace TarkovCrosshair
             if (edge) liveBoost = !liveBoost;
         }
 
+        /// <summary>更新一帧位置和显隐；开镜同步不会重置其他运动状态。</summary>
         public void Update(double dt, InputState input, Profile p, GlobalSettings g, PreviewMode pm, double previewSpeed)
         {
             bool preview = pm != PreviewMode.Live;
             if (pm != prevPm) { previewMs = 0; prevPm = pm; jumpOn = false; jumpT = 0; }
-            // v3.0: while 只在塔科夫前台时显示 is on and the game is not in front, no live key counts as pressed.
+            // 开启前台限制时，其他窗口的输入不参与实时状态计算。
             if (!FocusGate.KeysLive(g.OnlyWhenGameFocused, GameFocused)) input = new InputState();
             bool realHandKey = input.HandSwitch;
             bool realBoostKey = input.Boost;
             bool ringOnEdge = g.Enabled && !prevEnabled;
 
-            // Preview: synthetic input, slow motion.
+            // 预览使用模拟输入，并应用预览速度。
             if (preview)
             {
                 double sp = previewSpeed;
@@ -326,7 +334,7 @@ namespace TarkovCrosshair
             }
             if (prevPreview != preview)
             {
-                // Avoid a spurious toggle/fire edge when switching between preview and live input.
+                // 切换预览和实时时接续当前输入，避免产生额外的按下事件。
                 prev = input;
                 prevPreview = preview;
             }
@@ -336,106 +344,22 @@ namespace TarkovCrosshair
             double dtMs = dt * 1000.0;
             if (preview) previewMs += dtMs;
 
-            // Lean target
-            if (g.LeanMode == "toggle")
-            {
-                if (input.LeanL && !prev.LeanL) leanTarget = (leanTarget == -1 ? 0 : -1);
-                if (input.LeanR && !prev.LeanR) leanTarget = (leanTarget == 1 ? 0 : 1);
-            }
-            else
-            {
-                if (input.LeanL && !input.LeanR) leanTarget = -1;
-                else if (input.LeanR && !input.LeanL) leanTarget = 1;
-                else leanTarget = 0;
-            }
-
-            // 换手: tracked hand, hand shown (previews use the hand being edited), smoothstep blend.
-            // 跳跃 (v2.4.3): a press edge starts the jump clock; presses during a jump are ignored (no double jump —
-            // our assumption, UNVERIFIED). The clock keeps running while hidden; switching the ring on resets it.
-            if (ringOnEdge) { jumpOn = false; jumpT = 0; }
-            JumpSettings js = p.Jump;
-            bool jumpOk = js != null && js.Enabled && js.TotalMs > 0;
-            if (!jumpOk) jumpOn = false;
-            else
-            {
-                if (input.Jump && !prev.Jump && !jumpOn) { jumpOn = true; jumpT = 0; }
-                if (jumpOn) { jumpT += dtMs; if (jumpT >= js.TotalMs) { jumpOn = false; jumpT = 0; } }
-            }
-            JumpOffset = jumpOn ? JumpPath.Offset(js, jumpT) : 0.0;
-
+            UpdateLean(input, g);
+            UpdateJump(input, p.Jump, ringOnEdge, dtMs);
             UpdateHand(realHandKey, g, ringOnEdge);
             UpdateBoost(realBoostKey, g, ringOnEdge);
             prevEnabled = g.Enabled;
             boostShown = preview ? pm == PreviewMode.BoostStand : liveBoost;
-            int edit = g.EditHand == 1 ? 1 : 0;
-            int want;
-            if (!preview) want = liveSwitched ? 1 : 0;
-            else if (pm == PreviewMode.HandFlip) want = ((previewMs % 2400.0) < 1200.0) ? edit : 1 - edit;
-            else want = edit;
-            handTarget = want;
-            if (want != blendTo) { blendFrom = blend; blendTo = want; blendT = 0; }
-            blendT += dtMs;
-            if (p.HandSwitchMs <= 0 || blendT >= p.HandSwitchMs) blend = blendTo;
-            else
-            {
-                double u = blendT / p.HandSwitchMs;
-                blend = blendFrom + (blendTo - blendFrom) * (u * u * (3 - 2 * u));
-            }
-            p.FillView(0, view0);
-            p.FillView(1, view1);
-
-            // Movement: one travel per axis along its speed curve.
-            int rawX = (input.Right ? 1 : 0) - (input.Left ? 1 : 0);
-            int rawF = (input.Fwd ? 1 : 0) - (input.Back ? 1 : 0);
-            int dir = DirFromSigns(rawF, rawX);
-            int lt = (int)leanTarget;
-            if (dir != prevDir || lt != prevLean)
-            {
-                for (int a = 0; a < 2; a++)
-                {
-                    // Only a key change that changes THIS axis's target restarts it, from where the ring is.
-                    if (AxisTarget(a, prevDir, prevLean) != AxisTarget(a, dir, lt))
-                    {
-                        from[a] = pos[a]; travelMs[a] = 0; moving[a] = true;
-                    }
-                }
-                prevDir = dir; prevLean = lt;
-            }
-            curDir = dir;
-            for (int a = 0; a < 2; a++)
-            {
-                MoveCurve c = a == 0 ? p.CurveAD : p.CurveWS;
-                double total = c == null ? 0 : c.DurationMs;
-                double target = AxisTarget(a, dir, lt);
-                if (moving[a])
-                {
-                    travelMs[a] += dtMs;
-                    if (total <= 0 || travelMs[a] >= total) { moving[a] = false; pos[a] = target; }
-                    else pos[a] = from[a] + (target - from[a]) * MotionCurve.Progress(c.Speeds, travelMs[a] / total);
-                }
-                else pos[a] = target;
-            }
-
+            UpdateHandBlend(p, g, pm, preview, dtMs);
+            UpdateMovement(input, p, dtMs);
             lean += (leanTarget - lean) * Ease(dt, p.LeanMs);
             double lx, ly;
             if (lean < 0) { lx = -lean * Mix(view0.QX, view1.QX, blend); ly = -lean * Mix(view0.QY, view1.QY, blend); }
             else { lx = lean * Mix(view0.EX, view1.EX, blend); ly = lean * Mix(view0.EY, view1.EY, blend); }
 
-            // ADS
-            bool adsActive;
-            if (g.AdsMode == "toggle")
-            {
-                if (input.Ads && !prev.Ads) adsToggled = !adsToggled;
-                adsActive = adsToggled;
-            }
-            else
-            {
-                adsActive = input.Ads;
-            }
-            if (preview) adsActive = false;
+            bool adsActive = UpdateAds(input, g, preview);
 
-            // Recoil. The click kick and the hold rise start RecoilDelayMs after the press, so at the press frame
-            // the ring still shows the residual recoil this bullet really carries.
+            // 开火延迟后再上抬，按下这一帧仍保留上次射击的残余偏移。
             bool pressEdge = input.Fire && !prev.Fire;
             if (pressEdge) { kickPending = true; sincePressMs = 0; }
             sincePressMs += dtMs;
@@ -447,7 +371,7 @@ namespace TarkovCrosshair
             }
             else
             {
-                // Part of this frame spent held AND past the delay rises; the rest falls.
+                // 超过开火延迟且仍按住的时段上抬，其他时段回落。
                 double riseMs = input.Fire ? Math.Max(0.0, Math.Min(dtMs, sincePressMs - p.RecoilDelayMs)) : 0.0;
                 double fallMs = dtMs - riseMs;
                 if (fallMs > 0) recoil -= recoil * Ease(fallMs / 1000.0, p.RecoilFallMs);
@@ -464,7 +388,7 @@ namespace TarkovCrosshair
             double rx = cap > 0 ? Mix(view0.Drift, view1.Drift, blend) * recoil / cap : 0.0;
             double ry = recoil;
 
-            // Visibility: 开镜 and (optionally) 自由视角 hide the ring; motion keeps running underneath.
+            // 开镜和自由视角按原有规则隐藏瞄准点，运动状态继续更新。
             bool freeLookHide = g.HideOnFreeLook && input.FreeLook;
             bool visible = FocusGate.Visible(g.Enabled, !preview && (adsActive || freeLookHide), g.OnlyWhenGameFocused, GameFocused, OwnForeground);
             if (visible)
@@ -478,7 +402,7 @@ namespace TarkovCrosshair
                 else Alpha = Math.Max(0.0, Alpha - dt / (g.HideFadeMs / 1000.0));
             }
 
-            // Output (UI coords -> screen y-down, in exactly one place). 分辨率换算 s scales every pixel offset.
+            // 最后统一换算分辨率，并转为屏幕向下为正的坐标。
             double rs = g.ResolutionScale;
             double uiX = rs * (pos[0] + lx + rx + Mix(view0.SX, view1.SX, blend)); // 站着偏移 (per gun, per hand)
             double sumY = pos[1] + ly + ry + Mix(view0.SY, view1.SY, blend);
@@ -488,6 +412,7 @@ namespace TarkovCrosshair
             OffsetY = -uiY;
             Debug = new MotionDebug(curDir, lean, ry * rs, uiX, uiY, handTarget == 1, jumpOn, boostShown);
 
+            // 取消后也保留本帧按键历史，长按开镜键不会被误认为再次按下。
             prev = input;
         }
     }
