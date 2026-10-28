@@ -1,4 +1,5 @@
-﻿using System;
+﻿// 用途：显示配置、预览和状态；按键设置页在 SettingsForm.Keys.cs 中维护。
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
@@ -21,7 +22,7 @@ namespace TarkovCrosshair
     /// labels are vertically centred by Anchor = Left, the top bar is one TableLayoutPanel row, tab pages
     /// scroll (AutoScroll) and the window has a minimum size that keeps the top and bottom bars on one line.
     /// </summary>
-    internal sealed class SettingsForm : Form
+    internal sealed partial class SettingsForm : Form
     {
         /// <summary>Layout scale (system DPI / 96). Settable before construction for layout tests only.</summary>
         internal static float ScaleOverride = 0f;
@@ -1170,47 +1171,6 @@ namespace TarkovCrosshair
             double r = Math.Round(v, 1);
             if (r == 0) r = 0; // no "-0"
             return r.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture);
-        }
-
-        private Control BuildKeys()
-        {
-            TableLayoutPanel g = Grid(3);
-            Row(g, "开关准星", KeyBtn(0), Blank());
-            Row(g, "开火", KeyBtn(1), Blank());
-            Row(g, "开镜", KeyBtn(2), Line(Lbl("开镜方式"), Choice(new string[] { "按住", "点一下切换" }, new string[] { "hold", "toggle" },
-                delegate { return G.AdsMode; }, delegate(string v) { G.AdsMode = v; })));
-            Row(g, "自由视角（转头）", KeyBtn(3),
-                Check("按住时隐藏准星", delegate { return G.HideOnFreeLook; }, delegate(bool v) { G.HideOnFreeLook = v; }));
-            CheckBox hsOn = Check("换手检测", delegate { return G.HandEnabled; }, delegate(bool v) { G.HandEnabled = v; });
-            Tip(hsOn, "程序只能按按键猜你用哪只手；对不上时按两下开关准星键（关再开）回到正常手");
-            Row(g, "换手", KeyBtn(4), Line(Lbl("换手方式"), Choice(new string[] { "切换", "按住" }, new string[] { "toggle", "hold" },
-                delegate { return G.HandMode; }, delegate(string v) { G.HandMode = v; }), hsOn));
-            Label hsMs = Lbl("换手过渡时间");
-            Tip(hsMs, "跟着当前配置存");
-            Row(g, hsMs, Line(Num(0, 2000, 10, 0, delegate { return Cur.HandSwitchMs; }, delegate(double v) { Cur.HandSwitchMs = v; }), Unit("ms")), Blank());
-            CheckBox boostOn = Check("启用", delegate { return G.BoostEnabled; }, delegate(bool v) { G.BoostEnabled = v; });
-            Label boostL = Lbl("强化准星");
-            Tip(boostL, "按一下变成更显眼的准星，再按一下恢复；开关准星（关再开）也会恢复");
-            Row(g, boostL, KeyBtn(12), boostOn);
-            Row(g, "左侧身", KeyBtn(5), Line(Lbl("侧身方式"), Choice(new string[] { "按住", "点一下切换" }, new string[] { "hold", "toggle" },
-                delegate { return G.LeanMode; }, delegate(string v) { G.LeanMode = v; })));
-            Row(g, "右侧身", KeyBtn(6), Blank());
-            Row(g, "前进", KeyBtn(7), Blank());
-            Row(g, "后退", KeyBtn(8), Blank());
-            Row(g, "左移", KeyBtn(9), Blank());
-            Row(g, "右移", KeyBtn(10), Blank());
-            Row(g, "跳跃", KeyBtn(11), Blank());
-            GroupBox gb = Group("按键（点按钮再按新键）", g);
-            Tip(gb, "开镜方式、侧身方式要和游戏里一样");
-            Button reset = Btn("按键恢复默认", delegate
-            {
-                if (!Ask("把这一页的按键和方式全部恢复成第一次安装时的样子？")) return;
-                G.ResetKeys();
-                RefreshValues();
-                app.UpdateTray();
-                app.Changed();
-            });
-            return Stack(gb, reset);
         }
 
         private Control BuildOther()
