@@ -1,4 +1,4 @@
-// 用途：记录取消开镜按键，处理取消优先和点一下切换开镜的状态。
+// 用途：记录取消开镜按键，排除切瞄具组合键并维护开镜状态。
 namespace TarkovCrosshair
 {
     /// <summary>用四个整数保存按键状态，避免高帧率下每帧创建数组或集合。</summary>
@@ -31,17 +31,31 @@ namespace TarkovCrosshair
 
     public sealed partial class MotionEngine
     {
-        /// <summary>点一下切换时取消优先；按住开镜及预览的显隐规则保持不变。</summary>
+        // 以 Alt/Ctrl 开始的右键按压整次忽略，防止先松组合键时补出开镜。
+        private bool adsScopeSwitchHeld;
+        // 单独保留真实开镜键历史，设置预览的模拟输入不会打断一次实际按压。
+        private bool prevPhysicalAds;
+
+        /// <summary>在替换预览输入前记录组合键，让返回实时时仍能识别整次右键按压。</summary>
+        private void UpdateAdsKey(InputState input)
+        {
+            if (!input.Ads) adsScopeSwitchHeld = false;
+            else if (!prevPhysicalAds) adsScopeSwitchHeld = input.AdsScopeSwitch;
+            prevPhysicalAds = input.Ads;
+        }
+
+        /// <summary>切瞄具不算开镜；取消键优先，普通右键仍按所选开镜方式处理。</summary>
         private bool UpdateAds(InputState input, GlobalSettings g, bool preview)
         {
             if (g.AdsMode == "toggle")
             {
                 // 只清零开镜记录，不重置换手、强化准星或运动状态。
                 if (input.CancelAds.HasNewPress(prev.CancelAds)) adsToggled = false;
-                else if (input.Ads && !prev.Ads) adsToggled = !adsToggled;
+                else if (input.Ads && !prev.Ads && !adsScopeSwitchHeld) adsToggled = !adsToggled;
                 return !preview && adsToggled;
             }
-            return !preview && input.Ads;
+            // 先普通右键开镜再按 Alt/Ctrl 时保持隐藏，松开右键后正常退出。
+            return !preview && input.Ads && !adsScopeSwitchHeld;
         }
     }
 }

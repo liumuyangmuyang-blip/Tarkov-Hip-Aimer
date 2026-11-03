@@ -15,6 +15,10 @@ public static class AdsCancellationTests
         InventoryExits();
         CancellationEdges();
         CustomBindings();
+        ScopeCombinations();
+        ScopeHoldMode();
+        ScopeOtherInputs();
+        ScopePreview();
         HoldMode();
         FocusAndPreview();
         OtherStates();
@@ -92,6 +96,116 @@ public static class AdsCancellationTests
         h.Press(9);
         h.Press(27);
         h.Visible(false, "清空列表后取消键禁用");
+    }
+
+    /// <summary>切倍率和切瞄具不能翻转显隐，先松组合键也不能补出一次开镜。</summary>
+    private static void ScopeCombinations()
+    {
+        // 同时覆盖 Windows 通用键码及左右两侧实际按键。
+        foreach (int modifier in new int[] { 18, 164, 165, 17, 162, 163 })
+        {
+            foreach (bool aiming in new bool[] { false, true })
+            {
+                Harness h = new Harness();
+                if (aiming) h.Press(2);
+                h.Step(modifier);
+                h.Step(modifier, 2);
+                h.Visible(!aiming, "切换瞄具保持原显隐：" + modifier + "/" + aiming);
+                h.Step(modifier, 2);
+                h.Visible(!aiming, "长按切换瞄具不翻转显隐");
+                h.Step(2);
+                h.Visible(!aiming, "先松组合键不触发开镜");
+                h.Step(modifier, 2);
+                h.Visible(!aiming, "右键未松时重新按组合键不翻转显隐");
+                h.Step(modifier);
+                h.Visible(!aiming, "先松右键保持原显隐");
+                h.Step(modifier, 2);
+                h.Visible(!aiming, "重复切换瞄具保持原显隐");
+                h.Step();
+                h.Press(2);
+                h.Visible(aiming, "组合键结束后的普通右键仍正常切换");
+            }
+
+            Harness cancelled = new Harness();
+            cancelled.Press(2);
+            cancelled.Step(modifier, 2, 9);
+            cancelled.Visible(true, "切换瞄具时取消开镜仍优先");
+            cancelled.Step(2);
+            cancelled.Visible(true, "取消后仍按住右键不会重新开镜");
+        }
+    }
+
+    /// <summary>按住模式忽略以组合键开始的右键，开镜后按组合键则保持开镜。</summary>
+    private static void ScopeHoldMode()
+    {
+        foreach (int modifier in new int[] { 18, 17 })
+        {
+            Harness h = new Harness();
+            h.Config.AdsMode = "hold";
+            h.Step(modifier, 2);
+            h.Visible(true, "按住模式切换瞄具不隐藏");
+            h.Step(2);
+            h.Visible(true, "按住模式先松组合键不会补开镜");
+            h.Step();
+            h.Step(2);
+            h.Visible(false, "按住模式普通右键仍隐藏");
+            h.Step(modifier, 2);
+            h.Visible(false, "按住开镜后按组合键不提前显示");
+            h.Step(2);
+            h.Visible(false, "开镜时松组合键不改变显隐");
+            h.Step(modifier);
+            h.Visible(true, "按住开镜后松右键正常显示");
+        }
+    }
+
+    /// <summary>仅过滤默认右键组合；自定义开镜键、Shift 和其他操作仍然生效。</summary>
+    private static void ScopeOtherInputs()
+    {
+        foreach (string mode in new string[] { "toggle", "hold" })
+        {
+            Harness h = new Harness();
+            h.Config.AdsMode = mode;
+            h.Config.Keys.Ads = 70;
+            h.Step(18, 70);
+            h.Visible(false, "Alt 不屏蔽自定义开镜键：" + mode);
+            h = new Harness();
+            h.Config.AdsMode = mode;
+            h.Step(16, 2);
+            h.Visible(false, "Shift 加右键照常开镜：" + mode);
+        }
+
+        Harness live = new Harness();
+        live.Step(18, 2, 5, 6, 65, 81, 32);
+        live.Visible(true, "切换瞄具时保持腰射显示");
+        Check(live.Engine.LiveSwitched && live.Engine.Boosted, "组合键不屏蔽换手和强化准星");
+        Check(live.Engine.CurrentDir == 2 && live.Engine.LeanTarget == -1 && live.Engine.Jumping,
+            "组合键不屏蔽移动、侧身和跳跃");
+        live.Step(18, 2, 4);
+        live.Visible(false, "切换瞄具时仍受自由视角显隐控制");
+        live.Step(18, 2);
+        live.Visible(true, "松开自由视角后恢复显示");
+    }
+
+    /// <summary>预览前后继续区分普通开镜和切瞄具，不能把仍按住的组合键认成开镜。</summary>
+    private static void ScopePreview()
+    {
+        foreach (string mode in new string[] { "toggle", "hold" })
+        {
+            foreach (bool aiming in new bool[] { false, true })
+            {
+                Harness h = new Harness();
+                h.Config.AdsMode = mode;
+                if (aiming) h.Step(2);
+                h.Preview = PreviewMode.Static;
+                h.Step(18, 2);
+                h.Visible(true, "预览中显示瞄准点");
+                h.Preview = PreviewMode.Live;
+                h.Step(18, 2);
+                h.Visible(!aiming, "退出预览保留组合键前的显隐：" + mode + "/" + aiming);
+                h.Step(2);
+                h.Visible(!aiming, "退出预览后先松 Alt 不补开镜");
+            }
+        }
     }
 
     /// <summary>按住开镜的显隐由开镜键本身决定，取消键不改变其行为。</summary>
@@ -205,9 +319,17 @@ public static class AdsCancellationTests
             pressed.Clear();
             foreach (int key in keys) pressed.Add(key);
             InputState raw = FocusGate.KeysLive(Config.OnlyWhenGameFocused, Engine.GameFocused)
-                ? MotionEngine.ReadInput(Config.Keys, pressed.Contains) : new InputState();
+                ? MotionEngine.ReadInput(Config.Keys, IsDown) : new InputState();
             Engine.Update(0.016, filter.Next(raw, Config.Enabled, Preview == PreviewMode.Live),
                 Profile, Config, Preview, 1.0);
+        }
+
+        /// <summary>模拟 GetAsyncKeyState：通用 Alt/Ctrl 查询同时包含左右两侧按键。</summary>
+        private bool IsDown(int key)
+        {
+            if (key == 18) return pressed.Contains(18) || pressed.Contains(164) || pressed.Contains(165);
+            if (key == 17) return pressed.Contains(17) || pressed.Contains(162) || pressed.Contains(163);
+            return pressed.Contains(key);
         }
 
         /// <summary>一次完整点击，包括松开，便于组合真实操作序列。</summary>

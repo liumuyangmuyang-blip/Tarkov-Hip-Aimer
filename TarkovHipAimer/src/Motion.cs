@@ -42,6 +42,8 @@ namespace TarkovCrosshair
     public struct InputState
     {
         public bool Fwd, Back, Left, Right, LeanL, LeanR, Fire, Ads;
+        /// <summary>右键同时按住 Alt/Ctrl，表示切倍率或切瞄具，不作为新的开镜操作。</summary>
+        public bool AdsScopeSwitch;
         /// <summary>自由视角 (hide while held).</summary>
         public bool FreeLook;
         /// <summary>换手 key (v2.4).</summary>
@@ -146,6 +148,8 @@ namespace TarkovCrosshair
             prevDir = -1; prevLean = 0; curDir = -1;
             lean = leanTarget = 0;
             adsToggled = false;
+            adsScopeSwitchHeld = false;
+            prevPhysicalAds = false;
             recoil = 0;
             prev = new InputState();
             prevPreview = false;
@@ -189,13 +193,15 @@ namespace TarkovCrosshair
         public bool LiveBoost { get { return liveBoost; } }
         public bool Boosted { get { return boostShown; } }
 
-        /// <summary>Reads every binding through isDown (GetAsyncKeyState in the app, a fake in tests).</summary>
+        /// <summary>读取当前按键；程序使用 GetAsyncKeyState，测试可替换物理按键查询。</summary>
         public static InputState ReadInput(KeyBindings k, Func<int, bool> isDown)
         {
             InputState i = new InputState();
             i.Fwd = isDown(k.Forward); i.Back = isDown(k.Back); i.Left = isDown(k.Left); i.Right = isDown(k.Right);
             i.LeanL = isDown(k.LeanLeft); i.LeanR = isDown(k.LeanRight);
             i.Fire = isDown(k.Fire); i.Ads = isDown(k.Ads); i.FreeLook = isDown(k.FreeLook);
+            // 通用 Alt/Ctrl 键码包含左右两侧；仅右键开镜需要排除默认瞄具组合键。
+            i.AdsScopeSwitch = k.Ads == 2 && i.Ads && (isDown(0x12) || isDown(0x11));
             i.HandSwitch = isDown(k.HandSwitch);
             i.Jump = isDown(k.Jump);
             i.Boost = isDown(k.Boost);
@@ -319,6 +325,8 @@ namespace TarkovCrosshair
             if (pm != prevPm) { previewMs = 0; prevPm = pm; jumpOn = false; jumpT = 0; }
             // 开启前台限制时，其他窗口的输入不参与实时状态计算。
             if (!FocusGate.KeysLive(g.OnlyWhenGameFocused, GameFocused)) input = new InputState();
+            // 组合键按真实输入记录，预览只替换后续的位置和显隐演示输入。
+            UpdateAdsKey(input);
             bool realHandKey = input.HandSwitch;
             bool realBoostKey = input.Boost;
             bool ringOnEdge = g.Enabled && !prevEnabled;
