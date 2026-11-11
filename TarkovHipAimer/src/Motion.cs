@@ -50,6 +50,10 @@ namespace TarkovCrosshair
         public bool Jump;
         /// <summary>强化准星 key (v3.0, press edge toggles).</summary>
         public bool Boost;
+        /// <summary>v3.2: Tab or Esc down (取消开镜 in 点一下切换 mode).</summary>
+        public bool Cancel;
+        /// <summary>v3.2: Alt or Ctrl down (Alt/Ctrl+右键 = 切倍率/切瞄具, not 开镜).</summary>
+        public bool Mod;
     }
 
     /// <summary>Immutable snapshot of engine state for the status line.</summary>
@@ -105,6 +109,7 @@ namespace TarkovCrosshair
 
         private double lean, leanTarget;
         private bool adsToggled;
+        private bool adsPressBlocked; // v3.2: this 开镜 press started with Alt/Ctrl held
         private double recoil;
         private InputState prev;
         private bool prevPreview;
@@ -143,7 +148,7 @@ namespace TarkovCrosshair
             for (int a = 0; a < 2; a++) { pos[a] = 0; from[a] = 0; travelMs[a] = 0; moving[a] = false; }
             prevDir = -1; prevLean = 0; curDir = -1;
             lean = leanTarget = 0;
-            adsToggled = false;
+            adsToggled = false; adsPressBlocked = false;
             recoil = 0;
             prev = new InputState();
             prevPreview = false;
@@ -187,6 +192,8 @@ namespace TarkovCrosshair
         public bool LiveBoost { get { return liveBoost; } }
         public bool Boosted { get { return boostShown; } }
 
+        public const int VkTab = 0x09, VkEscape = 0x1B, VkControl = 0x11, VkMenu = 0x12, VkRButton = 0x02;
+
         /// <summary>Reads every binding through isDown (GetAsyncKeyState in the app, a fake in tests).</summary>
         public static InputState ReadInput(KeyBindings k, Func<int, bool> isDown)
         {
@@ -197,6 +204,8 @@ namespace TarkovCrosshair
             i.HandSwitch = isDown(k.HandSwitch);
             i.Jump = isDown(k.Jump);
             i.Boost = isDown(k.Boost);
+            i.Cancel = isDown(VkTab) || isDown(VkEscape);
+            i.Mod = isDown(VkMenu) || isDown(VkControl);
             return i;
         }
 
@@ -422,15 +431,23 @@ namespace TarkovCrosshair
             else { lx = lean * Mix(view0.EX, view1.EX, blend); ly = lean * Mix(view0.EY, view1.EY, blend); }
 
             // ADS
+            // v3.2: (1) 开镜键是右键 and Alt/Ctrl is held at the press -> 切倍率/切瞄具, not 开镜 (the whole press is
+            // ignored, also if Alt/Ctrl is let go first). (2) 点一下切换: Tab/Esc (背包/菜单) clears the 开镜 latch.
+            // (3) Switching the ring on (F12) clears it too. Game behaviour behind (1)/(2) is from a bug report, UNVERIFIED.
+            if (ringOnEdge) adsToggled = false;
+            bool adsEdge = input.Ads && !prev.Ads;
+            if (adsEdge) adsPressBlocked = g.AdsIgnoreAltCtrl && g.Keys != null && g.Keys.Ads == VkRButton && input.Mod;
+            if (!input.Ads) adsPressBlocked = false;
             bool adsActive;
             if (g.AdsMode == "toggle")
             {
-                if (input.Ads && !prev.Ads) adsToggled = !adsToggled;
+                if (adsEdge && !adsPressBlocked) adsToggled = !adsToggled;
+                if (g.AdsCancelTabEsc && input.Cancel && !prev.Cancel) adsToggled = false;
                 adsActive = adsToggled;
             }
             else
             {
-                adsActive = input.Ads;
+                adsActive = input.Ads && !adsPressBlocked;
             }
             if (preview) adsActive = false;
 

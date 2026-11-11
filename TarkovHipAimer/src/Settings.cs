@@ -1017,6 +1017,11 @@ namespace TarkovCrosshair
         [DataMember(Name = "SplashOnStart")] public bool SplashOnStart;
         /// <summary>☑ 启用 强化准星 (default on), like 换手检测.</summary>
         [DataMember(Name = "BoostEnabled")] public bool BoostEnabled;
+        // ---- v3.2 ----
+        /// <summary>点一下切换开镜: Tab / Esc 取消开镜 (default on).</summary>
+        [DataMember(Name = "AdsCancelTabEsc")] public bool AdsCancelTabEsc;
+        /// <summary>开镜键是右键时，Alt/Ctrl+右键 不算开镜 (default on).</summary>
+        [DataMember(Name = "AdsIgnoreAltCtrl")] public bool AdsIgnoreAltCtrl;
 
         /// <summary>s = 游戏高度 / 调参高度 (1 when equal).</summary>
         public double ResolutionScale { get { return (ResBaseH > 0 && ResGameH > 0) ? ResGameH / ResBaseH : 1.0; } }
@@ -1045,6 +1050,7 @@ namespace TarkovCrosshair
             ResBaseW = 2160; ResBaseH = 1440; ResGameW = 2160; ResGameH = 1440;
             OnlyWhenGameFocused = true; GameWindowTitle = DefaultGameWindowTitle;
             Autostart = false; SplashOnStart = true; BoostEnabled = true;
+            AdsCancelTabEsc = true; AdsIgnoreAltCtrl = true;
             Profiles = new List<Profile>();
             PreviewMode = PreviewMode.Live; PreviewSpeed = 1.0; EditHand = 0;
         }
@@ -1077,6 +1083,7 @@ namespace TarkovCrosshair
             Keys = d.Keys.Clone();
             AdsMode = d.AdsMode; LeanMode = d.LeanMode; HideOnFreeLook = d.HideOnFreeLook;
             HandMode = d.HandMode; HandEnabled = d.HandEnabled; BoostEnabled = d.BoostEnabled;
+            AdsCancelTabEsc = d.AdsCancelTabEsc; AdsIgnoreAltCtrl = d.AdsIgnoreAltCtrl;
         }
 
         /// <summary>Copy of the global fields (Keys cloned). Profiles are deep-cloned only if withProfiles.</summary>

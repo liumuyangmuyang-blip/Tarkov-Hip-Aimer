@@ -1179,6 +1179,8 @@ namespace TarkovCrosshair
             Row(g, "开火", KeyBtn(1), Blank());
             Row(g, "开镜", KeyBtn(2), Line(Lbl("开镜方式"), Choice(new string[] { "按住", "点一下切换" }, new string[] { "hold", "toggle" },
                 delegate { return G.AdsMode; }, delegate(string v) { G.AdsMode = v; })));
+            Row(g, Blank(), Line(Check("Tab/Esc 取消开镜", delegate { return G.AdsCancelTabEsc; }, delegate(bool v) { G.AdsCancelTabEsc = v; }),
+                Check("Alt/Ctrl+右键不算开镜", delegate { return G.AdsIgnoreAltCtrl; }, delegate(bool v) { G.AdsIgnoreAltCtrl = v; })), Blank());
             Row(g, "自由视角（转头）", KeyBtn(3),
                 Check("按住时隐藏准星", delegate { return G.HideOnFreeLook; }, delegate(bool v) { G.HideOnFreeLook = v; }));
             CheckBox hsOn = Check("换手检测", delegate { return G.HandEnabled; }, delegate(bool v) { G.HandEnabled = v; });

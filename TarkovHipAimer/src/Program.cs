@@ -14,7 +14,7 @@ namespace TarkovCrosshair
     {
         public const string ProductName = "Tarkov Hip Aimer — by Leo";
         public const string ShortName = "Tarkov Hip Aimer";
-        public const string Version = "v3.1";
+        public const string Version = "v3.2";
         public const string MutexName = @"Local\TarkovHipAimer_Leo";
         public const string ShowEventName = @"Local\TarkovHipAimer_Leo_Show";
         private static readonly object logLock = new object();

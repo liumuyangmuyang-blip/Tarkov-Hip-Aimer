@@ -22,7 +22,7 @@ if not exist "%CSC%" (
 set "ICON="
 if exist "app.ico" set "ICON=/win32icon:app.ico"
 
-echo Building TarkovHipAimer.exe (Tarkov Hip Aimer - by Leo, v3.1) ...
+echo Building TarkovHipAimer.exe (Tarkov Hip Aimer - by Leo, v3.2) ...
 "%CSC%" /nologo /codepage:65001 /target:winexe /platform:x64 /optimize+ /win32manifest:app.manifest %ICON% /out:TarkovHipAimer.exe /r:System.dll /r:System.Core.dll /r:System.Drawing.dll /r:System.Windows.Forms.dll /r:System.Runtime.Serialization.dll /r:System.Xml.dll src\*.cs > build.log 2>&1
 if errorlevel 1 (
   type build.log
