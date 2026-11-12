@@ -42,6 +42,8 @@ namespace TarkovCrosshair
     public struct InputState
     {
         public bool Fwd, Back, Left, Right, LeanL, LeanR, Fire, Ads;
+        /// <summary>当前按住 Shift，结合有效前进输入判断奔跑开始。</summary>
+        public bool ShiftHeld;
         /// <summary>自由视角 (hide while held).</summary>
         public bool FreeLook;
         /// <summary>换手 key (v2.4).</summary>
@@ -90,7 +92,7 @@ namespace TarkovCrosshair
         public string HandName { get { return Switched ? "换手" : "正常手"; } }
     }
 
-    public sealed class MotionEngine
+    public sealed partial class MotionEngine
     {
         // ---- outputs ----
         public double OffsetX;   // screen px, y-down, includes the profile's StandOffset
@@ -201,6 +203,8 @@ namespace TarkovCrosshair
             i.Fwd = isDown(k.Forward); i.Back = isDown(k.Back); i.Left = isDown(k.Left); i.Right = isDown(k.Right);
             i.LeanL = isDown(k.LeanLeft); i.LeanR = isDown(k.LeanRight);
             i.Fire = isDown(k.Fire); i.Ads = isDown(k.Ads); i.FreeLook = isDown(k.FreeLook);
+            // 通用 Shift 键码包含左右两侧；单独按 Shift 不代表奔跑。
+            i.ShiftHeld = isDown(0x10);
             i.HandSwitch = isDown(k.HandSwitch);
             i.Jump = isDown(k.Jump);
             i.Boost = isDown(k.Boost);
@@ -314,6 +318,7 @@ namespace TarkovCrosshair
             if (edge) liveBoost = !liveBoost;
         }
 
+        /// <summary>更新一帧运动与显隐；强制关镜只修改开镜记录，其他状态继续推进。</summary>
         public void Update(double dt, InputState input, Profile p, GlobalSettings g, PreviewMode pm, double previewSpeed)
         {
             bool preview = pm != PreviewMode.Live;
@@ -345,111 +350,20 @@ namespace TarkovCrosshair
             double dtMs = dt * 1000.0;
             if (preview) previewMs += dtMs;
 
-            // Lean target
-            if (g.LeanMode == "toggle")
-            {
-                if (input.LeanL && !prev.LeanL) leanTarget = (leanTarget == -1 ? 0 : -1);
-                if (input.LeanR && !prev.LeanR) leanTarget = (leanTarget == 1 ? 0 : 1);
-            }
-            else
-            {
-                if (input.LeanL && !input.LeanR) leanTarget = -1;
-                else if (input.LeanR && !input.LeanL) leanTarget = 1;
-                else leanTarget = 0;
-            }
-
-            // 换手: tracked hand, hand shown (previews use the hand being edited), smoothstep blend.
-            // 跳跃 (v2.4.3): a press edge starts the jump clock; presses during a jump are ignored (no double jump —
-            // our assumption, UNVERIFIED). The clock keeps running while hidden; switching the ring on resets it.
-            if (ringOnEdge) { jumpOn = false; jumpT = 0; }
-            JumpSettings js = p.Jump;
-            bool jumpOk = js != null && js.Enabled && js.TotalMs > 0;
-            if (!jumpOk) jumpOn = false;
-            else
-            {
-                if (input.Jump && !prev.Jump && !jumpOn) { jumpOn = true; jumpT = 0; }
-                if (jumpOn) { jumpT += dtMs; if (jumpT >= js.TotalMs) { jumpOn = false; jumpT = 0; } }
-            }
-            JumpOffset = jumpOn ? JumpPath.Offset(js, jumpT) : 0.0;
-
+            UpdateLean(input, g);
+            UpdateJump(input, p.Jump, ringOnEdge, dtMs);
             UpdateHand(realHandKey, g, ringOnEdge);
             UpdateBoost(realBoostKey, g, ringOnEdge);
             prevEnabled = g.Enabled;
             boostShown = preview ? pm == PreviewMode.BoostStand : liveBoost;
-            int edit = g.EditHand == 1 ? 1 : 0;
-            int want;
-            if (!preview) want = liveSwitched ? 1 : 0;
-            else if (pm == PreviewMode.HandFlip) want = ((previewMs % 2400.0) < 1200.0) ? edit : 1 - edit;
-            else want = edit;
-            handTarget = want;
-            if (want != blendTo) { blendFrom = blend; blendTo = want; blendT = 0; }
-            blendT += dtMs;
-            if (p.HandSwitchMs <= 0 || blendT >= p.HandSwitchMs) blend = blendTo;
-            else
-            {
-                double u = blendT / p.HandSwitchMs;
-                blend = blendFrom + (blendTo - blendFrom) * (u * u * (3 - 2 * u));
-            }
-            p.FillView(0, view0);
-            p.FillView(1, view1);
-
-            // Movement: one travel per axis along its speed curve.
-            int rawX = (input.Right ? 1 : 0) - (input.Left ? 1 : 0);
-            int rawF = (input.Fwd ? 1 : 0) - (input.Back ? 1 : 0);
-            int dir = DirFromSigns(rawF, rawX);
-            int lt = (int)leanTarget;
-            if (dir != prevDir || lt != prevLean)
-            {
-                for (int a = 0; a < 2; a++)
-                {
-                    // Only a key change that changes THIS axis's target restarts it, from where the ring is.
-                    if (AxisTarget(a, prevDir, prevLean) != AxisTarget(a, dir, lt))
-                    {
-                        from[a] = pos[a]; travelMs[a] = 0; moving[a] = true;
-                    }
-                }
-                prevDir = dir; prevLean = lt;
-            }
-            curDir = dir;
-            for (int a = 0; a < 2; a++)
-            {
-                MoveCurve c = a == 0 ? p.CurveAD : p.CurveWS;
-                double total = c == null ? 0 : c.DurationMs;
-                double target = AxisTarget(a, dir, lt);
-                if (moving[a])
-                {
-                    travelMs[a] += dtMs;
-                    if (total <= 0 || travelMs[a] >= total) { moving[a] = false; pos[a] = target; }
-                    else pos[a] = from[a] + (target - from[a]) * MotionCurve.Progress(c.Speeds, travelMs[a] / total);
-                }
-                else pos[a] = target;
-            }
-
+            UpdateHandBlend(p, g, pm, preview, dtMs);
+            UpdateMovement(input, p, dtMs);
             lean += (leanTarget - lean) * Ease(dt, p.LeanMs);
             double lx, ly;
             if (lean < 0) { lx = -lean * Mix(view0.QX, view1.QX, blend); ly = -lean * Mix(view0.QY, view1.QY, blend); }
             else { lx = lean * Mix(view0.EX, view1.EX, blend); ly = lean * Mix(view0.EY, view1.EY, blend); }
 
-            // ADS
-            // v3.2: (1) 开镜键是右键 and Alt/Ctrl is held at the press -> 切倍率/切瞄具, not 开镜 (the whole press is
-            // ignored, also if Alt/Ctrl is let go first). (2) 点一下切换: Tab/Esc (背包/菜单) clears the 开镜 latch.
-            // (3) Switching the ring on (F12) clears it too. Game behaviour behind (1)/(2) is from a bug report, UNVERIFIED.
-            if (ringOnEdge) adsToggled = false;
-            bool adsEdge = input.Ads && !prev.Ads;
-            if (adsEdge) adsPressBlocked = g.AdsIgnoreAltCtrl && g.Keys != null && g.Keys.Ads == VkRButton && input.Mod;
-            if (!input.Ads) adsPressBlocked = false;
-            bool adsActive;
-            if (g.AdsMode == "toggle")
-            {
-                if (adsEdge && !adsPressBlocked) adsToggled = !adsToggled;
-                if (g.AdsCancelTabEsc && input.Cancel && !prev.Cancel) adsToggled = false;
-                adsActive = adsToggled;
-            }
-            else
-            {
-                adsActive = input.Ads && !adsPressBlocked;
-            }
-            if (preview) adsActive = false;
+            bool adsActive = UpdateAds(input, g, preview, ringOnEdge);
 
             // Recoil. The click kick and the hold rise start RecoilDelayMs after the press, so at the press frame
             // the ring still shows the residual recoil this bullet really carries.
