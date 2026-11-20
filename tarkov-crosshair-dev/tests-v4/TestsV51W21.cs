@@ -392,11 +392,11 @@ namespace TarkovCrosshair.Tests
             // W21-18 R4 ReturnTimePct: a 150 ms press comes back in 150 ms x pct; A->D first leg scales the same way
             foreach (double pct in new double[] { 50, 100, 200 })
             {
-                Sim s = W21Sim(240); s.E.ReturnTimePct = pct;
+                Sim s = W21Sim(240); s.G.ReturnTimePct = pct;
                 s.Run(0.15, In("A"));
                 double held = s.Frames(0.15) * 1000.0 / 240, back = 0;
                 do { s.Step(In("")); back += 1000.0 / 240; } while (s.E.Traveling(0) && back < 3000);
-                Sim r = W21Sim(240); r.E.ReturnTimePct = pct;
+                Sim r = W21Sim(240); r.G.ReturnTimePct = pct;
                 r.Run(0.15, In("A"));
                 double t = 0, tZero = -1;
                 for (int k = 0; k < 480 && tZero < 0; k++) { r.Step(In("D")); t += 1000.0 / 240; if (r.E.MoveX >= 0) tZero = t; }
@@ -408,7 +408,7 @@ namespace TarkovCrosshair.Tests
             // W21-19 R4 ReversePauseMs: rests exactly at 0 for the pause, then out over 总时长; 0 = no rest
             foreach (double pause in new double[] { 0, 80, 200 })
             {
-                Sim s = W21Sim(240); s.E.ReversePauseMs = pause;
+                Sim s = W21Sim(240); s.G.ReversePauseMs = pause;
                 s.Run(1.0, In("A"));
                 double t = 0, firstZero = -1, lastZero = -1, tFull = -1; bool exactZero = true;
                 for (int k = 0; k < 600 && tFull < 0; k++)
@@ -432,13 +432,14 @@ namespace TarkovCrosshair.Tests
                 Sim t = W21Sim(144); t.G.TapThresholdMs = 120;
                 t.Run(0.2, In("D")); t.Step(In(""));
                 bool notTap120 = !t.E.LastTap;
-                Sim n = W21Sim(144); n.G.ReverseMinMs = double.NaN; n.E.ReturnTimePct = 1e9; n.E.ReversePauseMs = -5; n.G.TapThresholdMs = double.NaN;
+                Sim n = W21Sim(144); n.G.ReverseMinMs = double.NaN; n.G.ReturnTimePct = 1e9; n.G.ReversePauseMs = -5; n.G.TapThresholdMs = double.NaN;
                 bool fin = true;
                 for (int k = 0; k < 600; k++) { n.Step(In(k % 50 < 25 ? "A" : "D")); if (double.IsNaN(n.E.MoveX)) fin = false; }
                 n.Run(5.0, In(""));
                 bool settled = n.E.MoveX == 0 && !n.E.Traveling(0);
                 bool defs = GlobalSettings.CreateDefault().TapThresholdMs == 120 && GlobalSettings.CreateDefault().ReverseMinMs == 150
-                    && new MotionEngine().ReturnTimePct == 100 && new MotionEngine().ReversePauseMs == 0
+                    && double.IsNaN(new MotionEngine().ReturnTimePct) && double.IsNaN(new MotionEngine().ReversePauseMs)
+                    && GlobalSettings.CreateDefault().ReturnTimePct == 100 && GlobalSettings.CreateDefault().ReversePauseMs == 0
                     && GlobalSettings.CreateDefault().AmmoReloadMs == 2400 && GlobalSettings.CreateDefault().AmmoQuickReloadMs == 900;
                 Check("W21-20 TapThresholdMs 250: 200 ms press = 短按, 120: not; bad tunables clamped, path finite and settles; defaults 120/150/100/0, reload 2400/900",
                     tap250 && notTap120 && fin && settled && defs, "tap250 " + tap250 + " notTap120 " + notTap120 + " finite " + fin + " settled " + settled + " defs " + defs);

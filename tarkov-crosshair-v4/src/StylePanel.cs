@@ -153,6 +153,7 @@ namespace TarkovCrosshair
             BuildHeader();
             BuildTiles();
             BuildRight();
+            BuildSubPages();
             ApplySizes();
             ResumeLayout(false);
             RefreshValues();
@@ -320,6 +321,18 @@ namespace TarkovCrosshair
                 int rightW = twoCol ? Math.Max(S(280), Math.Min(S(640), (int)(inner * 0.44))) : inner;
                 int leftW = twoCol ? inner - rightW - gap : inner;
                 int x0 = padL, y = S(2);
+                if (subTabs != null)
+                {
+                    subTabs.Bounds = new Rectangle(x0, y, Math.Min(inner, 3 * (subTabs.TabW + S(4))), subTabs.PreferredH);
+                    y = subTabs.Bottom + U(10);
+                    if (subTab != 0)
+                    {
+                        int bot = LayoutSub(subTab == 1 ? subAnim : subAmmo, x0, y, inner);
+                        int ph = bot + S(12);
+                        if (page.Height != ph) page.Height = ph;
+                        return;
+                    }
+                }
 
                 // header across the whole width
                 lblHead.Location = new Point(x0, y);
@@ -728,11 +741,85 @@ namespace TarkovCrosshair
                 hand,
                 new Section(this, "强化准星（按强化键后）", BuildBoost(), false) };
             foreach (Control c in adv) { c.Visible = advanced; advSections.Add(c); stack.Controls.Add(c); }
-            // v5.1 (W22, decisions 1 / 6): always shown (not 高级设置 only), folded
-            stack.Controls.Add(new Section(this, "准星动态（CS 风格）", BuildAnim(), false));
-            stack.Controls.Add(new Section(this, "弹药提示", BuildAmmo(), false));
+            // v5.1.1 (X3, Leo B1): 准星动态 and 弹药提示 are their own sub-pages of 外观 (SubTabs at the top), not sections here
             stack.Layout += delegate { if (!inLayout) Relayout(); };
             page.Controls.Add(stack);
+        }
+
+        // ---- v5.1.1 (X3, Leo B1): 外观 sub-pages ----
+        private SubTabs subTabs;
+        private TableLayoutPanel subAnim, subAmmo;
+        private int subTab;
+        private readonly List<Control> mainHidden = new List<Control>();
+
+        /// <summary>The open sub-page: 0 准星样式, 1 准星动态, 2 弹药提示.</summary>
+        public int SubPage { get { return subTab; } set { if (subTabs != null) subTabs.Pick(value); } }
+
+        private void BuildSubPages()
+        {
+            subTabs = new SubTabs(this);
+            subTabs.Picked += SetSubTab;
+            page.Controls.Add(subTabs);
+            subAnim = (TableLayoutPanel)BuildAnim();
+            subAmmo = (TableLayoutPanel)BuildAmmo();
+            foreach (TableLayoutPanel sp in new TableLayoutPanel[] { subAnim, subAmmo })
+            {
+                sp.Dock = DockStyle.None;
+                sp.AutoSize = false;
+                sp.Visible = false;
+                sp.Layout += delegate { if (!inLayout) Relayout(); };
+                page.Controls.Add(sp);
+            }
+        }
+
+        private void SetSubTab(int i)
+        {
+            if (i == subTab || disposedAll) return;
+            bool wasMain = subTab == 0;
+            subTab = i;
+            SuspendLayout();
+            try
+            {
+                if (wasMain)
+                {
+                    mainHidden.Clear();
+                    foreach (Control c in page.Controls)
+                    {
+                        if (c == subTabs || c == subAnim || c == subAmmo) continue;
+                        if (!c.Visible) mainHidden.Add(c);
+                        c.Visible = false;
+                    }
+                }
+                else if (i == 0)
+                {
+                    foreach (Control c in page.Controls)
+                        if (c != subTabs && c != subAnim && c != subAmmo) c.Visible = !mainHidden.Contains(c);
+                }
+                subAnim.Visible = i == 1;
+                subAmmo.Visible = i == 2;
+            }
+            finally { ResumeLayout(false); }
+            AutoScrollPosition = new Point(0, 0);
+            RefreshValues();
+            Relayout();
+        }
+
+        /// <summary>Places one sub-page at (x, y), inner wide; returns its bottom.</summary>
+        private int LayoutSub(TableLayoutPanel sp, int x, int y, int w)
+        {
+            Size wrap = new Size(Math.Max(S(160), w - S(16)), 0);
+            wraps.RemoveAll(delegate(Label l) { return l.IsDisposed; });
+            foreach (Label l in wraps) l.MaximumSize = wrap;
+            sp.Location = new Point(x, y);
+            sp.Width = w;
+            int hp = sp.GetPreferredSize(new Size(w, 0)).Height;
+            sp.Size = new Size(w, Math.Max(S(20), hp));
+            sp.PerformLayout();
+            int bottom = 0;
+            foreach (Control c in sp.Controls) if (c.Visible) bottom = Math.Max(bottom, c.Bottom + c.Margin.Bottom);
+            int h = Math.Max(hp, bottom + sp.Padding.Bottom);
+            if (sp.Height != h) sp.Height = h;
+            return sp.Bottom;
         }
 
         private void ParamColumns(TableLayoutPanel t)
@@ -967,29 +1054,98 @@ namespace TarkovCrosshair
             return t;
         }
 
-        /// <summary>v5.0.2 (Leo, decision 4): the 强化准星 section. The look itself is edited with the page's own controls
-        /// (「改强化准星的样子」 switches the whole page to it, SetEditBoost); here: the switch, 「和正常准星一样」 and
-        /// 「跟随当前手的颜色」.</summary>
-        // ---------------- v5.1 (W22): 准星动态 (decision 6) and 弹药提示 (decision 1) ----------------
+        // ---------------- v5.1.1 (X3, Leo round B): 准星动态 and 弹药提示, each on its own sub-page of 外观 ----------------
+
+        private AmmoBarSettings Bar { get { if (g.AmmoBar == null) g.AmmoBar = AmmoBarSettings.Defaults(); return g.AmmoBar; } }
+        private AnimFxSettings Fx { get { if (g.AnimFx == null) g.AnimFx = AnimFxSettings.Defaults(); return g.AnimFx; } }
+
+        /// <summary>A group title inside a sub-page.</summary>
+        private void Head(TableLayoutPanel t, string text)
+        {
+            Label l = Lbl(text, RBody, Theme.ColAccent2);
+            l.Margin = P(2, 12, 2, 4);
+            AddWide(t, l);
+        }
+
+        private Label Note(TableLayoutPanel t, string text)
+        {
+            Label n = Lbl(text, RSmall, Theme.ColMuted);
+            n.Margin = P(4, 2, 4, 4);
+            wraps.Add(n);
+            AddWide(t, n);
+            return n;
+        }
+
+        /// <summary>label | drop-down (spans the rest), bound to an index.</summary>
+        private Control[] AddCombo(TableLayoutPanel t, List<Action> refs, string label, string[] names, Func<int> get, Action<int> set, string tip)
+        {
+            Label l = Lbl(label, -1, Theme.ColText);
+            gridLabels.Add(l);
+            ComboBox c = new ComboBox();
+            c.DropDownStyle = ComboBoxStyle.DropDownList;
+            c.Items.AddRange(names);
+            c.Margin = P(4, 3, 4, 3);
+            c.Anchor = AnchorStyles.Left | AnchorStyles.Right;
+            WheelScrollsPage(c);
+            c.SelectedIndexChanged += delegate { if (loading || c.SelectedIndex < 0) return; set(c.SelectedIndex); RefreshValues(); Changed(); };
+            refs.Add(delegate { int i = get(); c.SelectedIndex = i < 0 || i >= names.Length ? 0 : i; });
+            if (!string.IsNullOrEmpty(tip)) { tips.SetToolTip(l, tip); tips.SetToolTip(c, tip); }
+            Put(t, l, c);
+            return new Control[] { l, c };
+        }
+
+        private static Control[] Join(params Control[][] rows)
+        {
+            List<Control> l = new List<Control>();
+            foreach (Control[] r in rows) if (r != null) l.AddRange(r);
+            return l.ToArray();
+        }
+
+        private FlowLayoutPanel ButtonRow()
+        {
+            FlowLayoutPanel f = new FlowLayoutPanel();
+            f.AutoSize = true;
+            f.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+            f.WrapContents = true;
+            f.Margin = P(2, 2, 2, 6);
+            f.BackColor = Color.Transparent;
+            return f;
+        }
+
+        private Button SmallButton(string text, EventHandler click)
+        {
+            Button b = new Button();
+            b.Text = text;
+            b.AutoSize = true;
+            b.Margin = P(2, 2, 6, 2);
+            b.Click += click;
+            return b;
+        }
+
+        // ---- 准星动态 ----
 
         private Control BuildAnim()
         {
             TableLayoutPanel t = Grid(4);
             ParamColumns(t);
-            Label note = Lbl("准星跟着你的动作变化：移动时张开、开火时跳一下。不增加延迟，中心始终留空，开镜时照样完全隐藏。", RSmall, Theme.ColMuted);
-            note.Margin = P(4, 2, 4, 4);
-            wraps.Add(note);
-            AddWide(t, note);
-            FlowLayoutPanel line = new FlowLayoutPanel();
-            line.AutoSize = true;
-            line.AutoSizeMode = AutoSizeMode.GrowAndShrink;
-            line.WrapContents = true;
-            line.Margin = P(2, 2, 2, 2);
-            line.BackColor = Color.Transparent;
+            Head(t, "准星动态");
+            Note(t, "准星跟着你的动作变化：移动时张开、开火时张开，还可以加开火波纹和开火渐变色。不增加延迟，中心始终留空，开镜、丢雷时照样完全看不到。下面的预览会循环演示：静止 → 开火 → 移动 → 边走边开火。");
+            FxLivePreview live = new FxLivePreview(this, false);
+            live.Margin = P(2, 2, 2, 4);
+            live.Anchor = AnchorStyles.Left | AnchorStyles.Right;
+            AddWide(t, live);
+            FlowLayoutPanel pb = ButtonRow();
+            pb.Controls.Add(SmallButton("预览开火（3 发）", delegate { live.Burst(3); }));
+            pb.Controls.Add(SmallButton("预览连续开火", delegate { live.Burst(12); }));
+            AddWide(t, pb);
+            refreshers.Add(delegate { live.Invalidate(); });
+
+            FlowLayoutPanel line = ButtonRow();
             string[] tipsP = new string[] {
                 "准星永远不动（职业选手常用）",
-                "移动时张开，开火时每一发跳一下，停下后收回",
-                "移动时不变，只在开火时跳一下" };
+                "移动时张开，开火时每一发张开一下，停下后收回",
+                "移动时不变，只在开火时张开一下",
+                "开火时张开，同时出现波纹和渐变色" };
             List<RadioButton> radios = new List<RadioButton>();
             for (int i = 0; i < CrosshairAnim.Presets.Length; i++)
             {
@@ -1013,6 +1169,7 @@ namespace TarkovCrosshair
             custom.Margin = P(4, 6, 4, 4);
             line.Controls.Add(custom);
             try { line.Controls.Add(HelpMark.For("anim", SmallFont, delegate { return g; })); } catch (Exception) { }
+            Head(t, "预设");
             AddWide(t, line);
             refreshers.Add(delegate
             {
@@ -1020,58 +1177,344 @@ namespace TarkovCrosshair
                 for (int i = 0; i < radios.Count; i++) radios[i].Checked = CrosshairAnim.Presets[i] == now;
                 custom.Visible = now == null;
             });
+
+            Head(t, "移动");
             AddCheck(t, refreshers, "移动时准星张开", delegate { return g.AnimDynGap; }, delegate(bool v) { g.AnimDynGap = v; AnimPresetFollow(); },
                 "走得越快张得越开，跳起来再张开一点；停下后跟着移动的手感收回");
-            AddCheck(t, refreshers, "开火时每一发跳一下", delegate { return g.AnimFirePulse; }, delegate(bool v) { g.AnimFirePulse = v; AnimPresetFollow(); },
-                "按住左键时按射速每发张开一点，松开后约 0.2 秒收回");
-            AddCheck(t, refreshers, "侧身时跟着倾斜", delegate { return g.AnimLeanRotate; }, delegate(bool v) { g.AnimLeanRotate = v; AnimPresetFollow(); },
-                "按 Q / E 侧身时准星最多转 " + CrosshairAnim.LeanDeg.ToString("0") + " 度");
-            AddCheck(t, refreshers, "移动 / 开火时变亮", delegate { return g.AnimStateColour; }, delegate(bool v) { g.AnimStateColour = v; AnimPresetFollow(); },
-                "颜色向白色靠一点；换手颜色照常");
-            AddCheck(t, refreshers, "开火时轻微抖动", delegate { return g.AnimShake; }, delegate(bool v) { g.AnimShake = v; AnimPresetFollow(); },
-                "开火时准星随机抖动最多 " + CrosshairAnim.ShakePx.ToString("0.#") + " 像素");
+            Control[] mv = AddValue(t, refreshers, "张开幅度", "%", 0, 300, 5, 0, delegate { return Fx.MoveGapPct; }, delegate(double v) { Fx.MoveGapPct = (int)Math.Round(v); }, "100%＝默认");
+            refreshers.Add(delegate { Show(mv, g.AnimDynGap); });
+
+            Head(t, "开火张开");
+            AddCheck(t, refreshers, "开火时每一发张开一下", delegate { return g.AnimFirePulse; }, delegate(bool v) { g.AnimFirePulse = v; AnimPresetFollow(); },
+                "按住左键时按射速每发张开一点，松开后收回");
+            Control[] fg = Join(
+                AddValue(t, refreshers, "张开幅度", "%", 0, 300, 5, 0, delegate { return Fx.FireGapPct; }, delegate(double v) { Fx.FireGapPct = (int)Math.Round(v); }, "每一发张开多少，100%＝默认"),
+                AddValue(t, refreshers, "张开速度", "ms", 0, 200, 5, 0, delegate { return Fx.FireOpenMs; }, delegate(double v) { Fx.FireOpenMs = (int)Math.Round(v); }, "0＝开枪的同一帧立刻张开"),
+                AddValue(t, refreshers, "恢复时间", "ms", 50, 1000, 10, 0, delegate { return Fx.FireRecoverMs; }, delegate(double v) { Fx.FireRecoverMs = (int)Math.Round(v); }, "停火后多久收回原样"));
+            refreshers.Add(delegate { Show(fg, g.AnimFirePulse); });
+
+            Head(t, "开火波纹");
+            AddCheck(t, refreshers, "开火时出现波纹", delegate { return Fx.Ripple; }, delegate(bool v) { Fx.Ripple = v; AnimPresetFollow(); },
+                "每开一枪，一圈细线从准星外沿向外扩散，一看就知道在开火");
+            Control[] rp = Join(
+                AddSwatch(t, refreshers, "波纹颜色", delegate { return Fx.RippleColour; }, delegate(string v) { Fx.RippleColour = v; }, null),
+                AddValue(t, refreshers, "扩散速度", "px/s", 50, 2000, 10, 0, delegate { return Fx.RippleSpeed; }, delegate(double v) { Fx.RippleSpeed = (int)Math.Round(v); }, null),
+                AddValue(t, refreshers, "波纹宽度", "px", 0.5, 8, 0.1, 1, delegate { return Fx.RippleWidth; }, delegate(double v) { Fx.RippleWidth = v; }, null),
+                AddValue(t, refreshers, "扩散距离", "px", 4, 80, 1, 0, delegate { return Fx.RippleRange; }, delegate(double v) { Fx.RippleRange = (int)Math.Round(v); }, "波纹最远跑出准星多少像素"),
+                AddValue(t, refreshers, "褪色时间", "ms", 80, 1500, 10, 0, delegate { return Fx.RippleFadeMs; }, delegate(double v) { Fx.RippleFadeMs = (int)Math.Round(v); }, null));
+            refreshers.Add(delegate { Show(rp, Fx.Ripple); });
+
+            Head(t, "开火渐变色");
+            AddCheck(t, refreshers, "开火时准星从中心向外变色", delegate { return Fx.Grad; }, delegate(bool v) { Fx.Grad = v; AnimPresetFollow(); },
+                "开火时，一层渐变色从中心向外铺满准星，停火后慢慢褪掉");
+            Control[] gr = Join(
+                AddSwatch(t, refreshers, "中心颜色", delegate { return Fx.GradFrom; }, delegate(string v) { Fx.GradFrom = v; }, null),
+                AddSwatch(t, refreshers, "外圈颜色", delegate { return Fx.GradTo; }, delegate(string v) { Fx.GradTo = v; }, null),
+                AddValue(t, refreshers, "扩散时间", "ms", 10, 600, 5, 0, delegate { return Fx.GradSpreadMs; }, delegate(double v) { Fx.GradSpreadMs = (int)Math.Round(v); }, "从中心铺到外圈要多久"),
+                AddValue(t, refreshers, "褪色时间", "ms", 50, 1500, 10, 0, delegate { return Fx.GradFadeMs; }, delegate(double v) { Fx.GradFadeMs = (int)Math.Round(v); }, "停火后多久褪回原色"));
+            refreshers.Add(delegate { Show(gr, Fx.Grad); });
+
+            Head(t, "其他");
+            AddCheck(t, refreshers, "按状态变色", delegate { return g.AnimStateColour; }, delegate(bool v) { g.AnimStateColour = v; AnimPresetFollow(); },
+                "移动、跳跃、开火时准星颜色向白色靠一点；换手颜色照常");
+            AddValue(t, refreshers, "开火效果强度", "%", 10, 200, 5, 0, delegate { return Fx.IntensityPct; }, delegate(double v) { Fx.IntensityPct = (int)Math.Round(v); },
+                "同时调大或调小开火张开、波纹和渐变色");
             return t;
         }
 
-        /// <summary>An option ticked by hand: AnimPreset follows when the options equal a preset (else it keeps the last one).</summary>
+        /// <summary>An option ticked by hand: AnimPreset follows when the switches equal a preset (else it keeps the last one).</summary>
         private void AnimPresetFollow()
         {
             string p = CrosshairAnim.PresetOf(CrosshairAnim.From(g));
             if (p != null) g.AnimPreset = p;
         }
 
+        // ---- 弹药提示 ----
+
         private Control BuildAmmo()
         {
             TableLayoutPanel t = Grid(4);
             ParamColumns(t);
-            Label note = Lbl("在准星旁边显示主武器还剩多少子弹（只显示范围）：满 / 大半 / 一半 / 少 / 快空，不显示具体数字。按 R 换弹时慢慢填满，双击 R 快速换弹时先清空再快速填满。切到其他武器时不显示，开镜、丢雷时和准星一起隐藏。", RSmall, Theme.ColMuted);
-            note.Margin = P(4, 2, 4, 4);
-            wraps.Add(note);
-            AddWide(t, note);
+            Head(t, "弹药提示");
+            Note(t, "在准星下方显示主武器还剩多少子弹（只显示范围）：满 / 大半 / 一半 / 少 / 快空，不显示具体数字。按 R 换弹、双击 R 快速换弹时换上一个新的满弹匣。中心始终留空，开镜、丢雷时和准星一起完全隐藏。");
+            FxLivePreview live = new FxLivePreview(this, true);
+            live.Margin = P(2, 2, 2, 4);
+            live.Anchor = AnchorStyles.Left | AnchorStyles.Right;
+            AddWide(t, live);
+            FlowLayoutPanel pb = ButtonRow();
+            pb.Controls.Add(SmallButton("预览普通换弹", delegate { live.Reload(1); }));
+            pb.Controls.Add(SmallButton("预览快速换弹", delegate { live.Reload(2); }));
+            pb.Controls.Add(SmallButton("预览低弹警告", delegate { live.Warn(1); }));
+            pb.Controls.Add(SmallButton("预览紧急警告", delegate { live.Warn(2); }));
+            AddWide(t, pb);
+            refreshers.Add(delegate { live.Invalidate(); });
             AddCheck(t, refreshers, "显示弹药提示", delegate { return g.AmmoOn; }, delegate(bool v) { g.AmmoOn = v; },
-                "默认关。弹匣容量、射速和换弹键在设置里填");
-            string[] labels = new string[] { "两侧括号 + 填充条", "底部细条", "按剩余变色（绿 → 黄 → 红）", "越少越淡", "快空时闪烁" };
-            string[] tipsA = new string[] {
-                "准星左右各一个括号，里面的条按剩余多少填充",
-                "准星下方一条细线，按剩余多少从左往右填充",
-                "满是绿色，一半是黄色，快空是红色（准星本身的颜色不变）",
-                "子弹越少，提示越淡",
-                "快空时提示一闪一闪" };
-            int[] flags = new int[] { AmmoDisplay.Brackets, AmmoDisplay.BottomBar, AmmoDisplay.Colour, AmmoDisplay.Fade, AmmoDisplay.Flash };
-            for (int i = 0; i < flags.Length; i++)
+                "默认关。弹匣容量、射速、换弹键和换弹时间在设置里填");
+
+            Head(t, "样式预设");
+            AmmoPresetPicker picker = new AmmoPresetPicker(this);
+            picker.Margin = P(2, 2, 2, 4);
+            picker.Anchor = AnchorStyles.Left | AnchorStyles.Right;
+            picker.Picked += delegate(int i) { AmmoBarSettings.ApplyPreset(Bar, AmmoBarSettings.Presets[i]); RefreshValues(); Changed(); };
+            AddWide(t, picker);
+            Label custom = Note(t, "");
+            refreshers.Add(delegate
             {
-                int f = flags[i];
-                AddCheck(t, refreshers, labels[i], delegate { return (AmmoDisplay.ParseStyle(g.AmmoStyle) & f) != 0; },
-                    delegate(bool v)
-                    {
-                        int cur = AmmoDisplay.ParseStyle(g.AmmoStyle);
-                        cur = v ? cur | f : cur & ~f;
-                        g.AmmoStyle = AmmoDisplay.FormatStyle(cur); // at least one of 括号 / 细条 stays on
-                    }, tipsA[i]);
+                picker.Invalidate();
+                string p = Bar.PresetOf();
+                if (p != null) Bar.Preset = p;
+                custom.Text = p == null ? "（已自定义：下面的数值和预设不一样）" : "预设只改条的样子；位置、颜色、警告和换弹动画保持你的设置";
+            });
+
+            Head(t, "条的样子");
+            AddCombo(t, refreshers, "位置", AmmoBarSettings.PositionNames, delegate { return Array.IndexOf(AmmoBarSettings.Positions, Bar.Pos); },
+                delegate(int i) { Bar.Pos = AmmoBarSettings.Positions[i]; }, "默认在准星下方");
+            AddValue(t, refreshers, "长度", "px", 6, 160, 1, 0, delegate { return Bar.LenPx; }, delegate(double v) { Bar.LenPx = v; }, null);
+            AddValue(t, refreshers, "粗细", "px", 1, 12, 0.5, 1, delegate { return Bar.ThickPx; }, delegate(double v) { Bar.ThickPx = v; }, null);
+            AddValue(t, refreshers, "离准星距离", "px", 0, 60, 1, 0, delegate { return Bar.GapPx; }, delegate(double v) { Bar.GapPx = v; }, "0＝紧贴准星外沿（中心一直留空）");
+            AddValue(t, refreshers, "分段数", "段", 0, 20, 1, 0, delegate { return Bar.Segments; },
+                delegate(double v) { int n = (int)Math.Round(v); Bar.Segments = n == 1 ? 2 : n; }, "0＝一整条；2 段以上＝一格一格（CF 风格是 10 格）");
+            Control[] seg = AddValue(t, refreshers, "格子间隔", "px", 0.5, 6, 0.5, 1, delegate { return Bar.SegGapPx; }, delegate(double v) { Bar.SegGapPx = v; }, null);
+            refreshers.Add(delegate { Show(seg, Bar.Segments >= 2); });
+            AddCheck(t, refreshers, "圆角", delegate { return Bar.Round; }, delegate(bool v) { Bar.Round = v; }, "条和格子的两头变圆");
+            AddCheck(t, refreshers, "发光", delegate { return Bar.Glow; }, delegate(bool v) { Bar.Glow = v; }, "亮着的部分外面一圈柔光");
+            Control[] gl = AddValue(t, refreshers, "发光大小", "px", 1, 10, 0.5, 1, delegate { return Bar.GlowPx; }, delegate(double v) { Bar.GlowPx = v; }, null);
+            refreshers.Add(delegate { Show(gl, Bar.Glow); });
+            AddCheck(t, refreshers, "显示背景槽", delegate { return Bar.Track; }, delegate(bool v) { Bar.Track = v; }, "空的部分也淡淡显示出来，一眼看出还剩多少");
+            Control[] tr = AddValue(t, refreshers, "背景槽浓度", "%", 0, 100, 1, 0, delegate { return Bar.TrackPct; }, delegate(double v) { Bar.TrackPct = (int)Math.Round(v); }, null);
+            refreshers.Add(delegate { Show(tr, Bar.Track); });
+            AddCheck(t, refreshers, "外框", delegate { return Bar.Frame; }, delegate(bool v) { Bar.Frame = v; }, "条的外面加一圈细框（CF 风格）");
+            AddCheck(t, refreshers, "斜切格子", delegate { return Bar.Slant; }, delegate(bool v) { Bar.Slant = v; }, "格子斜着切，看起来更快更锐利（竞速）");
+            Control[] sl = AddValue(t, refreshers, "斜切角度", "°", 0, 60, 1, 0, delegate { return Bar.SlantDeg; }, delegate(double v) { Bar.SlantDeg = v; }, null);
+            refreshers.Add(delegate { Show(sl, Bar.Slant); });
+            AddCheck(t, refreshers, "按位置上色（换挡灯）", delegate { return Bar.Led; }, delegate(bool v) { Bar.Led = v; }, "像换挡灯一样，前段、中段、后段各一种颜色；警告时用警告色");
+            string[] ledNames = { "前段颜色", "中段颜色", "后段颜色" };
+            List<Control[]> ledRows = new List<Control[]>();
+            for (int i = 0; i < 3; i++)
+            {
+                int k = i;
+                ledRows.Add(AddSwatch(t, refreshers, ledNames[i], delegate { return Bar.LedColours[k]; }, delegate(string v) { Bar.LedColours[k] = v; }, null));
             }
+            refreshers.Add(delegate { foreach (Control[] r in ledRows) Show(r, Bar.Led); });
+            AddCheck(t, refreshers, "黑色底板", delegate { return Bar.Backing; }, delegate(bool v) { Bar.Backing = v; }, "条后面垫一块黑色底板，任何背景都看得清");
+            AddCheck(t, refreshers, "速度条纹", delegate { return Bar.Stripes; }, delegate(bool v) { Bar.Stripes = v; }, "条的尾部加三道条纹");
+            Control[] ac = AddSwatch(t, refreshers, "条纹颜色", delegate { return Bar.AccentColour; }, delegate(string v) { Bar.AccentColour = v; }, null);
+            refreshers.Add(delegate { Show(ac, Bar.Stripes); });
+            AddValue(t, refreshers, "不透明度", "%", 10, 100, 1, 0, delegate { return Bar.OpacityPct; }, delegate(double v) { Bar.OpacityPct = (int)Math.Round(v); }, null);
+
+            Head(t, "颜色");
+            AddCheck(t, refreshers, "按剩余变色", delegate { return (AmmoDisplay.ParseStyle(g.AmmoStyle) & AmmoDisplay.Colour) != 0; },
+                delegate(bool v) { int c = AmmoDisplay.ParseStyle(g.AmmoStyle); g.AmmoStyle = AmmoDisplay.FormatStyle(v ? c | AmmoDisplay.Colour : c & ~AmmoDisplay.Colour); },
+                "每一档用自己的颜色（准星本身的颜色不变）");
+            List<Control[]> bandRows = new List<Control[]>();
+            string[] bandLabels = { "满", "大半", "一半", "少", "快空" };
+            for (int i = 0; i < AmmoBarSettings.BandCount; i++)
+            {
+                int k = i;
+                bandRows.Add(AddSwatch(t, refreshers, bandLabels[i] + "的颜色", delegate { return Bar.BandColours[k]; }, delegate(string v) { Bar.BandColours[k] = v; }, null));
+            }
+            Control[] single = AddSwatch(t, refreshers, "颜色", delegate { return Bar.Colour; }, delegate(string v) { Bar.Colour = v; }, null);
+            refreshers.Add(delegate
+            {
+                bool band = (AmmoDisplay.ParseStyle(g.AmmoStyle) & AmmoDisplay.Colour) != 0;
+                foreach (Control[] r in bandRows) Show(r, band);
+                Show(single, !band);
+            });
+            AddCheck(t, refreshers, "越少越淡", delegate { return (AmmoDisplay.ParseStyle(g.AmmoStyle) & AmmoDisplay.Fade) != 0; },
+                delegate(bool v) { int c = AmmoDisplay.ParseStyle(g.AmmoStyle); g.AmmoStyle = AmmoDisplay.FormatStyle(v ? c | AmmoDisplay.Fade : c & ~AmmoDisplay.Fade); }, "子弹越少，条越淡");
+
+            Head(t, "什么时候显示");
+            AddCheck(t, refreshers, "只在剩余少于下面的值时显示", delegate { return Bar.ShowBelowOn; }, delegate(bool v) { Bar.ShowBelowOn = v; },
+                "平时不显示，子弹快用完了才出现；换弹时一直显示");
+            Control[] sb = AddValue(t, refreshers, "剩余少于", "%", 5, 100, 1, 0, delegate { return Bar.ShowBelowPct; }, delegate(double v) { Bar.ShowBelowPct = (int)Math.Round(v); }, null);
+            refreshers.Add(delegate { Show(sb, Bar.ShowBelowOn); });
+            AddValue(t, refreshers, "出现 / 消失淡入", "ms", 0, 1000, 10, 0, delegate { return Bar.FadeInMs; }, delegate(double v) { Bar.FadeInMs = (int)Math.Round(v); }, "0＝立刻出现");
+
+            BuildWarn(t, "低弹警告", delegate { return Bar.Warn1; }, "子弹少于这个比例时，条用下面的方式提醒你");
+            BuildWarn(t, "紧急警告（快打空时）", delegate { return Bar.Warn2; }, "更少时换成更急的提醒（会盖过上面的低弹警告）");
+
+            Head(t, "换弹动画");
+            Note(t, "普通换弹（按 R）和快速换弹（双击 R）各自设置。动画的总长度就是设置里的换弹时间。");
+            FlowLayoutPanel rp = ButtonRow();
+            Label rl = Lbl("预设：", RSmall, Theme.ColMuted);
+            rl.Margin = P(4, 8, 2, 2);
+            rp.Controls.Add(rl);
+            rp.Controls.Add(SmallButton("默认", delegate { Bar.ReloadNormal = ReloadAnimSettings.Normal(); Bar.ReloadQuick = ReloadAnimSettings.Quick(); RefreshValues(); Changed(); }));
+            rp.Controls.Add(SmallButton("竞速", delegate { ReloadAnimSettings.ApplyRace(Bar.ReloadNormal, false); ReloadAnimSettings.ApplyRace(Bar.ReloadQuick, true); RefreshValues(); Changed(); }));
+            AddWide(t, rp);
+            AddWide(t, BuildReloadGrid());
             return t;
         }
 
+        private void BuildWarn(TableLayoutPanel t, string title, Func<AmmoWarnSettings> w, string tip)
+        {
+            Head(t, title);
+            AddCheck(t, refreshers, "开启" + title.Split('（')[0], delegate { return w().On; }, delegate(bool v) { w().On = v; }, tip);
+            bool urgent = title.StartsWith("紧急");
+            FlowLayoutPanel pr = ButtonRow();
+            Label pl = Lbl("预设：", RSmall, Theme.ColMuted);
+            pl.Margin = P(4, 8, 2, 2);
+            pr.Controls.Add(pl);
+            for (int i = 0; i < AmmoWarnSettings.PresetIds.Length; i++)
+            {
+                string id = AmmoWarnSettings.PresetIds[i];
+                pr.Controls.Add(SmallButton(AmmoWarnSettings.PresetNames[i], delegate { AmmoWarnSettings.ApplyPreset(w(), id, urgent); RefreshValues(); Changed(); }));
+            }
+            AddWide(t, pr);
+            Control[] rows = Join(
+                AddValue(t, refreshers, "剩余少于", "%", 1, 100, 1, 0, delegate { return w().Pct; }, delegate(double v) { w().Pct = (int)Math.Round(v); }, null),
+                AddCombo(t, refreshers, "提醒方式", AmmoWarnSettings.StyleNames, delegate { return Array.IndexOf(AmmoWarnSettings.Styles, w().Style); },
+                    delegate(int i) { w().Style = AmmoWarnSettings.Styles[i]; }, "闪烁＝一亮一暗；呼吸＝慢慢变亮变暗；变色＝在条的颜色和警告色之间来回；发光＝外面一圈光一闪一闪"),
+                AddValue(t, refreshers, "速度（一次）", "ms", 80, 2000, 10, 0, delegate { return w().PeriodMs; }, delegate(double v) { w().PeriodMs = (int)Math.Round(v); }, "数字越小闪得越快"),
+                AddSwatch(t, refreshers, "警告颜色", delegate { return w().Colour; }, delegate(string v) { w().Colour = v; }, null),
+                AddValue(t, refreshers, "强度", "%", 10, 100, 1, 0, delegate { return w().IntensityPct; }, delegate(double v) { w().IntensityPct = (int)Math.Round(v); }, null));
+            Control[] blinks = AddValue(t, refreshers, "闪几下", "次", 1, 10, 1, 0, delegate { return w().Blinks; }, delegate(double v) { w().Blinks = (int)Math.Round(v); }, null);
+            refreshers.Add(delegate { Show(rows, w().On); Show(blinks, w().On && w().Style == "blink"); pr.Visible = w().On; });
+        }
+
+        /// <summary>换弹动画: label | 普通换弹 | 快速换弹.</summary>
+        private Control BuildReloadGrid()
+        {
+            TableLayoutPanel rg = new TableLayoutPanel();
+            rg.ColumnCount = 3;
+            rg.AutoSize = true;
+            rg.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+            rg.Dock = DockStyle.Top;
+            rg.Margin = new Padding(0);
+            rg.Padding = P(2, 2, 2, 2);
+            rg.BackColor = Color.Transparent;
+            rg.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            rg.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+            rg.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+            Func<ReloadAnimSettings>[] col = new Func<ReloadAnimSettings>[] {
+                delegate { return Bar.ReloadNormal; }, delegate { return Bar.ReloadQuick; } };
+            Label h0 = Lbl("", -1, Theme.ColText), h1 = Lbl("普通换弹（R）", RBody, Theme.ColAccent), h2 = Lbl("快速换弹（R R）", RBody, Theme.ColAccent);
+            ReloadRow(rg, h0, h1, h2);
+            Func<ReloadAnimSettings, int> gT = delegate(ReloadAnimSettings r) { return Array.IndexOf(ReloadAnimSettings.Types, r.Type); };
+            ReloadCombo(rg, col, "动画", ReloadAnimSettings.TypeNames, gT, delegate(ReloadAnimSettings r, int i) { r.Type = ReloadAnimSettings.Types[i]; });
+            ReloadCombo(rg, col, "方向", new string[] { "正向（从起点填满）", "反向（从末端填满）" }, delegate(ReloadAnimSettings r) { return r.Reverse ? 1 : 0; },
+                delegate(ReloadAnimSettings r, int i) { r.Reverse = i == 1; });
+            ReloadNum(rg, col, "旧弹匣离开用时 %", 5, 90, delegate(ReloadAnimSettings r) { return r.OutPct; }, delegate(ReloadAnimSettings r, int v) { r.OutPct = v; });
+            ReloadNum(rg, col, "新弹匣装入用时 %", 5, 90, delegate(ReloadAnimSettings r) { return r.InPct; }, delegate(ReloadAnimSettings r, int v) { r.InPct = v; });
+            ReloadCombo(rg, col, "快慢曲线", ReloadAnimSettings.EaseNames, delegate(ReloadAnimSettings r) { return Array.IndexOf(ReloadAnimSettings.Eases, r.Ease); },
+                delegate(ReloadAnimSettings r, int i) { r.Ease = ReloadAnimSettings.Eases[i]; });
+            ReloadCombo(rg, col, "换弹标记", ReloadAnimSettings.MarkerNames, delegate(ReloadAnimSettings r) { return Array.IndexOf(ReloadAnimSettings.Markers, r.Marker); },
+                delegate(ReloadAnimSettings r, int i) { r.Marker = ReloadAnimSettings.Markers[i]; });
+            ReloadCheck(rg, col, "旧弹匣掉落", delegate(ReloadAnimSettings r) { return r.Drop; }, delegate(ReloadAnimSettings r, bool v) { r.Drop = v; });
+            ReloadColour(rg, col);
+            return rg;
+        }
+
+        private void ReloadRow(TableLayoutPanel rg, Control a, Control b, Control c)
+        {
+            int r = GridRows.Next(rg);
+            rg.Controls.Add(a, 0, r); rg.Controls.Add(b, 1, r); rg.Controls.Add(c, 2, r);
+        }
+
+        private Label ReloadLabel(string text)
+        {
+            Label l = Lbl(text, -1, Theme.ColText);
+            return l;
+        }
+
+        private void ReloadCombo(TableLayoutPanel rg, Func<ReloadAnimSettings>[] col, string label, string[] names, Func<ReloadAnimSettings, int> get, Action<ReloadAnimSettings, int> set)
+        {
+            Control[] cells = new Control[2];
+            for (int k = 0; k < 2; k++)
+            {
+                Func<ReloadAnimSettings> f = col[k];
+                ComboBox c = new ComboBox();
+                c.DropDownStyle = ComboBoxStyle.DropDownList;
+                c.Items.AddRange(names);
+                c.Margin = P(4, 3, 4, 3);
+                c.Anchor = AnchorStyles.Left | AnchorStyles.Right;
+                WheelScrollsPage(c);
+                c.SelectedIndexChanged += delegate { if (loading || c.SelectedIndex < 0) return; set(f(), c.SelectedIndex); RefreshValues(); Changed(); };
+                refreshers.Add(delegate { int i = get(f()); c.SelectedIndex = i < 0 || i >= names.Length ? 0 : i; });
+                cells[k] = c;
+            }
+            ReloadRow(rg, ReloadLabel(label), cells[0], cells[1]);
+        }
+
+        private void ReloadNum(TableLayoutPanel rg, Func<ReloadAnimSettings>[] col, string label, int min, int max, Func<ReloadAnimSettings, int> get, Action<ReloadAnimSettings, int> set)
+        {
+            Control[] cells = new Control[2];
+            for (int k = 0; k < 2; k++)
+            {
+                Func<ReloadAnimSettings> f = col[k];
+                NumericUpDown n = new NumericUpDown();
+                n.Minimum = min; n.Maximum = max; n.Increment = 5; n.DecimalPlaces = 0;
+                n.TextAlign = HorizontalAlignment.Left;
+                UseFont(n, RMono);
+                n.Margin = P(4, 3, 4, 3);
+                n.Anchor = AnchorStyles.Left;
+                nums.Add(new KeyValuePair<NumericUpDown, string>(n, WideNum(min, max, 0)));
+                WheelScrollsPage(n);
+                n.ValueChanged += delegate { if (loading) return; set(f(), (int)n.Value); Changed(); };
+                refreshers.Add(delegate { n.Value = Math.Max(n.Minimum, Math.Min(n.Maximum, get(f()))); });
+                cells[k] = n;
+            }
+            ReloadRow(rg, ReloadLabel(label), cells[0], cells[1]);
+        }
+
+        private void ReloadCheck(TableLayoutPanel rg, Func<ReloadAnimSettings>[] col, string label, Func<ReloadAnimSettings, bool> get, Action<ReloadAnimSettings, bool> set)
+        {
+            Control[] cells = new Control[2];
+            for (int k = 0; k < 2; k++)
+            {
+                Func<ReloadAnimSettings> f = col[k];
+                CheckBox c = new CheckBox();
+                c.Text = "开";
+                c.AutoSize = true;
+                c.Margin = P(4, 4, 4, 4);
+                c.Anchor = AnchorStyles.Left;
+                c.CheckedChanged += delegate { if (loading) return; set(f(), c.Checked); RefreshValues(); Changed(); };
+                refreshers.Add(delegate { c.Checked = get(f()); });
+                cells[k] = c;
+            }
+            ReloadRow(rg, ReloadLabel(label), cells[0], cells[1]);
+        }
+
+        private void ReloadColour(TableLayoutPanel rg, Func<ReloadAnimSettings>[] col)
+        {
+            Control[] cells = new Control[2];
+            for (int k = 0; k < 2; k++)
+            {
+                Func<ReloadAnimSettings> f = col[k];
+                FlowLayoutPanel cell = new FlowLayoutPanel();
+                cell.AutoSize = true; cell.AutoSizeMode = AutoSizeMode.GrowAndShrink; cell.WrapContents = true; cell.Margin = new Padding(0); cell.BackColor = Color.Transparent;
+                CheckBox c = new CheckBox();
+                c.Text = "开";
+                c.AutoSize = true;
+                c.Margin = P(4, 4, 4, 4);
+                c.CheckedChanged += delegate { if (loading) return; f().ColourOn = c.Checked; RefreshValues(); Changed(); };
+                Swatch sw = new Swatch(this);
+                sw.Margin = P(4, 3, 4, 3);
+                sw.Get = delegate { return f().Colour; };
+                swatches.Add(sw);
+                sw.Click += delegate
+                {
+                    using (ColorDialog dlg = new ColorDialog())
+                    {
+                        int r, gg, b;
+                        dlg.FullOpen = true;
+                        if (ColorUtil.TryParse(f().Colour, out r, out gg, out b)) dlg.Color = Color.FromArgb(r, gg, b);
+                        if (dlg.ShowDialog(FindForm()) != DialogResult.OK) return;
+                        f().Colour = ColorUtil.Format(dlg.Color.R, dlg.Color.G, dlg.Color.B);
+                    }
+                    sw.Invalidate();
+                    Changed();
+                };
+                refreshers.Add(delegate { c.Checked = f().ColourOn; sw.Visible = f().ColourOn; sw.Invalidate(); });
+                cell.Controls.Add(c); cell.Controls.Add(sw);
+                cells[k] = cell;
+            }
+            ReloadRow(rg, ReloadLabel("换弹时用这个颜色"), cells[0], cells[1]);
+        }
+
+        /// <summary>v5.0.2 (Leo, decision 4): the 强化准星 section. The look itself is edited with the page's own controls
+        /// (「改强化准星的样子」 switches the whole page to it, SetEditBoost); here: the switch, 「和正常准星一样」 and
+        /// 「跟随当前手的颜色」.</summary>
         private Control BuildBoost()
         {
             TableLayoutPanel t = Grid(4);
@@ -1280,6 +1723,7 @@ namespace TarkovCrosshair
                         double min = 30, max = 170; string label = "张开角度", tip = "两条边之间的角度，越大越平";
                         if (id == "arcs") { min = 10; max = 170; label = "每段弧度"; tip = "每一段圆弧有多长（段数多时会自动缩短）"; }
                         if (id == "smile") { min = 30; max = 330; label = "弧度"; tip = "弧线有多长"; }
+                        if (id == "race") { min = 0; max = 60; label = "斜切角度"; tip = "格子斜多少度，0＝竖直"; }
                         AddValue(paramGrid, R, label, "°", min, max, 1, 0, delegate { return StyleShapes.Of(Cur).Spread; },
                             delegate(double v) { StyleShapes.Of(Cur).Spread = v; }, tip);
                         break;
@@ -1287,7 +1731,7 @@ namespace TarkovCrosshair
                 case StyleShapes.ParamCount:
                     {
                         bool dots = id == "dotring";
-                        AddValue(paramGrid, R, dots ? "点数" : "段数", dots ? "个" : "段", dots ? 3 : 2, dots ? 24 : 8, 1, 0,
+                        AddValue(paramGrid, R, dots ? "点数" : (id == "race" ? "每边格数" : "段数"), dots ? "个" : "段", dots ? 3 : 2, dots ? 24 : 8, 1, 0,
                             delegate { return StyleShapes.Of(Cur).Count; }, delegate(double v) { StyleShapes.Of(Cur).Count = (int)Math.Round(v); }, null);
                         break;
                     }
@@ -1813,7 +2257,7 @@ namespace TarkovCrosshair
                         if (ammo)
                         {
                             AmmoView av = new AmmoView(); av.Active = true; av.Band = 3; av.Progress = double.NaN;
-                            previewExtras.Frame(st, new AnimOptions(), new AnimInput(), true, av, owner.g.AmmoStyle, 0, 0);
+                            previewExtras.Frame(st, new AnimOptions(), new AnimInput(), true, av, owner.g.AmmoStyle, previewExtras.BarFrom(owner.g), 0, 0);
                             n = previewExtras.Canvas;
                         }
                         string key = st.Key() + "|" + n + (ammo ? "|a" + previewExtras.Ammo.Key + "|" + st.OpacityPct.ToString(CultureInfo.InvariantCulture) : "");
@@ -2070,6 +2514,408 @@ namespace TarkovCrosshair
         }
 
         /// <summary>Colour button: swatch + hex.</summary>
+        /// <summary>v5.1.1 (X3, Leo B1): the 外观 sub-page bar: 准星样式 / 准星动态 / 弹药提示.</summary>
+        internal sealed class SubTabs : Control
+        {
+            private readonly StylePanel owner;
+            public static readonly string[] Names = { "准星样式", "准星动态", "弹药提示" };
+            public event Action<int> Picked;
+            public int Selected;
+            private int hover = -1;
+
+            public SubTabs(StylePanel owner)
+            {
+                this.owner = owner;
+                Tag = "theme:keep";
+                SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.UserPaint
+                    | ControlStyles.ResizeRedraw | ControlStyles.Selectable, true);
+                TabStop = true;
+                Cursor = Cursors.Hand;
+            }
+
+            /// <summary>Width of one tab from the real font metrics (+ margin), so no text is clipped.</summary>
+            public int TabW
+            {
+                get
+                {
+                    int w = 0;
+                    foreach (string n in Names) w = Math.Max(w, TextRenderer.MeasureText(n, owner.BodyFont).Width);
+                    return w + owner.S(36);
+                }
+            }
+
+            public int PreferredH { get { return TextRenderer.MeasureText("准星", owner.BodyFont).Height + owner.S(14); } }
+
+            public Rectangle TabRect(int i) { return new Rectangle(i * (TabW + owner.S(4)), 0, TabW, Height - 1); }
+
+            private int Hit(Point p) { for (int i = 0; i < Names.Length; i++) if (TabRect(i).Contains(p)) return i; return -1; }
+
+            protected override void OnMouseMove(MouseEventArgs e) { base.OnMouseMove(e); int h = Hit(e.Location); if (h != hover) { hover = h; Invalidate(); } }
+            protected override void OnMouseLeave(EventArgs e) { base.OnMouseLeave(e); hover = -1; Invalidate(); }
+            protected override void OnMouseClick(MouseEventArgs e) { base.OnMouseClick(e); int h = Hit(e.Location); if (h >= 0) Pick(h); }
+            protected override bool IsInputKey(Keys k) { return k == Keys.Left || k == Keys.Right || base.IsInputKey(k); }
+            protected override void OnKeyDown(KeyEventArgs e)
+            {
+                base.OnKeyDown(e);
+                if (e.KeyCode == Keys.Left) { Pick((Selected + Names.Length - 1) % Names.Length); e.Handled = true; }
+                else if (e.KeyCode == Keys.Right) { Pick((Selected + 1) % Names.Length); e.Handled = true; }
+            }
+            protected override void OnGotFocus(EventArgs e) { Invalidate(); base.OnGotFocus(e); }
+            protected override void OnLostFocus(EventArgs e) { Invalidate(); base.OnLostFocus(e); }
+
+            public void Pick(int i)
+            {
+                if (i < 0 || i >= Names.Length) return;
+                Selected = i;
+                Invalidate();
+                Action<int> p = Picked;
+                if (p != null) p(i);
+            }
+
+            protected override void OnPaint(PaintEventArgs e)
+            {
+                Graphics gr = e.Graphics;
+                using (SolidBrush bg = new SolidBrush(Theme.ColSurface)) gr.FillRectangle(bg, ClientRectangle);
+                for (int i = 0; i < Names.Length; i++)
+                {
+                    Rectangle r = TabRect(i);
+                    bool on = i == Selected;
+                    using (SolidBrush b = new SolidBrush(on ? Theme.ColPressed : (hover == i ? Theme.ColHover : Theme.ColInput))) gr.FillRectangle(b, r);
+                    TextRenderer.DrawText(gr, Names[i], owner.BodyFont, r, on ? Theme.ColAccent : Theme.ColText,
+                        TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
+                    using (Pen p = new Pen(on ? Theme.ColAccent : Theme.ColBorder, on ? Math.Max(2, owner.S(2)) : 1))
+                    {
+                        p.Alignment = PenAlignment.Inset;
+                        gr.DrawRectangle(p, r.X, r.Y, r.Width - 1, r.Height - 1);
+                    }
+                    if (on && Focused) using (Pen p = new Pen(Theme.ColAccent2)) gr.DrawRectangle(p, r.X + 3, r.Y + 3, r.Width - 7, r.Height - 7);
+                }
+            }
+        }
+
+        /// <summary>v5.1.1 (X3, Leo B3): the bar presets as tiles drawn with the real bar pixels (大半, the user's colours).</summary>
+        private sealed class AmmoPresetPicker : Control
+        {
+            private readonly StylePanel owner;
+            public event Action<int> Picked;
+            private readonly Bitmap[] thumbs = new Bitmap[AmmoBarSettings.Presets.Length];
+            private readonly int[] thumbN = new int[AmmoBarSettings.Presets.Length];
+            private AmmoBarSettings thumbSrc;
+            private string thumbStyle;
+            private int hover = -1;
+            public const double ThumbInner = 10;
+
+            public AmmoPresetPicker(StylePanel owner)
+            {
+                this.owner = owner;
+                Tag = "theme:keep";
+                SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.UserPaint
+                    | ControlStyles.ResizeRedraw | ControlStyles.Selectable, true);
+                TabStop = true;
+                Cursor = Cursors.Hand;
+                Height = TileH;
+            }
+
+            private int Count { get { return AmmoBarSettings.Presets.Length; } }
+            private int TileW { get { return Math.Max(owner.S(96), TextRenderer.MeasureText("CF 风格", owner.SmallFont).Width + owner.S(24)); } }
+            private int LabelH { get { return TextRenderer.MeasureText("CF 风格", owner.SmallFont).Height + owner.S(6); } }
+            private int TileH { get { return owner.S(64) + LabelH; } }
+            private int Gap { get { return owner.S(6); } }
+            private int Cols { get { return Math.Max(1, Math.Min(Count, (Width + Gap) / (TileW + Gap))); } }
+            public int Selected { get { return Array.IndexOf(AmmoBarSettings.Presets, owner.Bar.PresetOf()); } }
+
+            public int HeightFor(int width)
+            {
+                int cols = Math.Max(1, Math.Min(Count, (width + Gap) / (TileW + Gap)));
+                int rows = (Count + cols - 1) / cols;
+                return rows * TileH + (rows - 1) * Gap;
+            }
+
+            protected override void OnSizeChanged(EventArgs e) { base.OnSizeChanged(e); int h = HeightFor(Width); if (Height != h) Height = h; }
+
+            public Rectangle TileRect(int i) { int c = Cols; return new Rectangle((i % c) * (TileW + Gap), (i / c) * (TileH + Gap), TileW, TileH); }
+            private int Hit(Point p) { for (int i = 0; i < Count; i++) if (TileRect(i).Contains(p)) return i; return -1; }
+
+            protected override void OnMouseMove(MouseEventArgs e) { base.OnMouseMove(e); int h = Hit(e.Location); if (h != hover) { hover = h; Invalidate(); } }
+            protected override void OnMouseLeave(EventArgs e) { base.OnMouseLeave(e); hover = -1; Invalidate(); }
+            protected override void OnMouseClick(MouseEventArgs e) { base.OnMouseClick(e); int h = Hit(e.Location); if (h >= 0) Pick(h); }
+            protected override bool IsInputKey(Keys k) { return k == Keys.Left || k == Keys.Right || base.IsInputKey(k); }
+            protected override void OnKeyDown(KeyEventArgs e)
+            {
+                base.OnKeyDown(e);
+                int s = Math.Max(0, Selected);
+                if (e.KeyCode == Keys.Left) { Pick((s + Count - 1) % Count); e.Handled = true; }
+                else if (e.KeyCode == Keys.Right) { Pick((s + 1) % Count); e.Handled = true; }
+            }
+
+            private void Pick(int i) { Action<int> p = Picked; if (p != null) p(i); Invalidate(); }
+
+            private void Build()
+            {
+                AmmoBarSettings b = owner.Bar;
+                if (thumbSrc != null && thumbs[0] != null && thumbStyle == owner.g.AmmoStyle && SameColours(b, thumbSrc)) return;
+                Drop();
+                thumbSrc = b.Clone(); thumbStyle = owner.g.AmmoStyle;
+                int style = AmmoDisplay.ParseStyle(owner.g.AmmoStyle);
+                for (int i = 0; i < Count; i++)
+                {
+                    AmmoBarSettings s = b.Clone();
+                    AmmoBarSettings.ApplyPreset(s, AmmoBarSettings.Presets[i]);
+                    s.Pos = "below"; s.ShowBelowOn = false; s.Warn1.On = false; s.Warn2.On = false;
+                    AmmoBarCfg c = AmmoBarCfg.From(s);
+                    AmmoDisplay d = new AmmoDisplay();
+                    AmmoView v = new AmmoView(); v.Active = true; v.Band = 3; v.Progress = double.NaN; v.Share = 0.7;
+                    d.Update(v, 0, style, c);
+                    int n = AmmoDisplay.CanvasNeed(ThumbInner, style, c);
+                    int[] px = new int[n * n];
+                    d.Draw(px, n, n / 2.0, n / 2.0, ThumbInner, style, 255);
+                    thumbs[i] = CustomCrosshair.ToBitmap(px, n, n);
+                    thumbN[i] = n;
+                }
+            }
+
+            private static bool SameColours(AmmoBarSettings a, AmmoBarSettings b)
+            {
+                if (a.Colour != b.Colour || a.OpacityPct != b.OpacityPct) return false;
+                for (int i = 0; i < AmmoBarSettings.BandCount; i++) if (a.BandColours[i] != b.BandColours[i]) return false;
+                return true;
+            }
+
+            private void Drop() { for (int i = 0; i < thumbs.Length; i++) if (thumbs[i] != null) { thumbs[i].Dispose(); thumbs[i] = null; } thumbSrc = null; }
+
+            protected override void Dispose(bool disposing) { if (disposing) Drop(); base.Dispose(disposing); }
+
+            protected override void OnPaint(PaintEventArgs e)
+            {
+                Graphics gr = e.Graphics;
+                using (SolidBrush bg = new SolidBrush(Theme.ColCard)) gr.FillRectangle(bg, ClientRectangle);
+                try { Build(); } catch (Exception) { Drop(); }
+                int sel = Selected, lh = LabelH;
+                Font f = owner.SmallFont;
+                for (int i = 0; i < Count; i++)
+                {
+                    Rectangle r = TileRect(i);
+                    bool on = i == sel;
+                    using (SolidBrush b = new SolidBrush(on ? Theme.ColPressed : (hover == i ? Theme.ColHover : Theme.ColInput))) gr.FillRectangle(b, r);
+                    Rectangle img = new Rectangle(r.X + owner.S(4), r.Y + owner.S(4), r.Width - owner.S(8), r.Height - lh - owner.S(6));
+                    Bitmap bm = thumbs[i];
+                    if (bm != null && img.Width > 0 && img.Height > 0)
+                    {
+                        int n = thumbN[i];
+                        float sc = Math.Min(Math.Min(img.Width / (float)n, img.Height / (float)n) * 1.3f, 2f * owner.k);
+                        float w = n * sc, cxp = img.X + img.Width / 2f, cyp = img.Y + img.Height / 2f - w * 0.12f;
+                        GraphicsState gs = gr.Save();
+                        gr.SetClip(img);
+                        gr.InterpolationMode = InterpolationMode.HighQualityBicubic;
+                        gr.PixelOffsetMode = PixelOffsetMode.HighQuality;
+                        gr.DrawImage(bm, cxp - w / 2, cyp - w / 2, w, w);
+                        float rr = (float)(ThumbInner - 4) * sc;
+                        gr.SmoothingMode = SmoothingMode.AntiAlias;
+                        using (Pen p = new Pen(Theme.ColText, Math.Max(1f, 1.3f * sc))) gr.DrawEllipse(p, cxp - rr, cyp - rr, 2 * rr, 2 * rr);
+                        gr.Restore(gs);
+                    }
+                    Rectangle lr = new Rectangle(r.X, r.Bottom - lh - owner.S(2), r.Width, lh);
+                    TextRenderer.DrawText(gr, AmmoBarSettings.PresetNames[i], f, lr, on ? Theme.ColAccent : Theme.ColText,
+                        TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
+                    using (Pen p = new Pen(on ? Theme.ColAccent : Theme.ColBorder, on ? Math.Max(2, owner.S(2)) : 1))
+                    {
+                        p.Alignment = PenAlignment.Inset;
+                        gr.DrawRectangle(p, r.X, r.Y, r.Width - 1, r.Height - 1);
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// v5.1.1 (X3, Leo B2 / B3): live preview around the current crosshair, drawn with the overlay's own code (LookExtras).
+        /// Anim mode loops 静止 → 开火 → 移动 → 边走边开火 (buttons fire a burst). Ammo mode drains a mag, reloads, and the
+        /// buttons play 普通换弹 / 快速换弹 / 低弹警告 / 紧急警告 with the real reload times. Ticks only while it is on screen.
+        /// </summary>
+        internal sealed class FxLivePreview : Control
+        {
+            private readonly StylePanel owner;
+            private readonly bool ammoMode;
+            private readonly Timer timer = new Timer();
+            private readonly Stopwatch clock = Stopwatch.StartNew();
+            private readonly LookExtras ex = new LookExtras();
+            private Bitmap bmp;
+            private int bmpN, lastKey = int.MinValue;
+            private int[] work;
+            private string caption = "", lastCap;
+            private double lastS;
+            // ammo sim
+            private double share = 1, holdUntil, reloadStart = -1, reloadMs;
+            private int reloadSeq, reloadKind, warnDemo;
+            // anim sim
+            private double burstUntil = -1;
+            public const double AnimCycleS = 9;
+
+            public FxLivePreview(StylePanel owner, bool ammo)
+            {
+                this.owner = owner;
+                ammoMode = ammo;
+                Tag = "theme:keep";
+                SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.UserPaint | ControlStyles.ResizeRedraw, true);
+                Height = owner.S(150);
+                timer.Interval = 33;
+                timer.Tick += delegate { Tick(); };
+            }
+
+            private double Now { get { return clock.Elapsed.TotalSeconds; } }
+
+            public void Reload(int kind)
+            {
+                reloadKind = kind; reloadSeq++; reloadStart = Now; warnDemo = 0;
+                reloadMs = kind == 2 ? owner.g.AmmoQuickReloadMs : owner.g.AmmoReloadMs;
+                if (!(reloadMs > 0)) reloadMs = kind == 2 ? AmmoDisplay.QuickReloadMs : AmmoDisplay.NormalReloadMs;
+                Sync(); Tick();
+            }
+
+            public void Warn(int level)
+            {
+                AmmoWarnSettings w = level == 2 ? owner.Bar.Warn2 : owner.Bar.Warn1;
+                reloadStart = -1;
+                share = Math.Max(0.005, w.Pct / 100.0 - 0.02);
+                holdUntil = Now + 3.5; warnDemo = w.On ? level : -level;
+                Sync(); Tick();
+            }
+
+            public void Burst(int rounds)
+            {
+                double per = 60.0 / Math.Max(60, owner.g.AmmoRpm);
+                burstUntil = Now + rounds * per;
+                Sync(); Tick();
+            }
+
+            /// <summary>Anim mode script at t seconds: firing, moving and the caption (pure; tests use it).</summary>
+            internal static void AnimScript(double tS, out bool firing, out bool moving, out string cap)
+            {
+                double t = tS % AnimCycleS; if (t < 0) t += AnimCycleS;
+                firing = (t >= 1.2 && t < 3.2) || (t >= 6.0 && t < 7.6);
+                moving = t >= 4.4 && t < 7.6;
+                cap = firing && moving ? "边走边开火" : (firing ? "开火" : (moving ? "移动" : "静止"));
+            }
+
+            private bool Live()
+            {
+                if (!Visible || !IsHandleCreated || Width < 8 || Height < 8) return false;
+                Form f = FindForm();
+                return f != null && f.Visible && f.WindowState != FormWindowState.Minimized;
+            }
+
+            private void Sync() { bool on = Live(); if (on && !timer.Enabled) { lastS = Now; timer.Start(); } else if (!on && timer.Enabled) timer.Stop(); }
+
+            protected override void OnVisibleChanged(EventArgs e) { base.OnVisibleChanged(e); Sync(); }
+            protected override void OnParentVisibleChanged(EventArgs e) { base.OnParentVisibleChanged(e); Sync(); }
+            protected override void OnHandleCreated(EventArgs e) { base.OnHandleCreated(e); Sync(); }
+            protected override void OnHandleDestroyed(EventArgs e) { timer.Stop(); base.OnHandleDestroyed(e); }
+
+            private void Tick()
+            {
+                if (!Live()) { timer.Stop(); return; }
+                timer.Interval = owner.g.PerfMode ? 100 : 33; // 性能模式: the preview at 10 fps
+                try { Render(); } catch (Exception) { lastKey = int.MinValue; }
+            }
+
+            private void Render()
+            {
+                Profile p = owner.Active;
+                if (p == null) return;
+                double now = Now, dt = Math.Max(0, Math.Min(0.1, now - lastS));
+                lastS = now;
+                RingStyle st = RingStyle.From(p, 0, false);
+                AnimInput ai = new AnimInput(); ai.MoveLevel = double.NaN; ai.ShotSeq = -1; ai.Rpm = owner.g.AmmoRpm; ai.Semi = owner.g.AmmoSemi;
+                AmmoView av = new AmmoView(); av.Progress = double.NaN;
+                AnimOptions o = new AnimOptions();
+                string cap;
+                if (ammoMode)
+                {
+                    av.Active = true;
+                    if (reloadStart >= 0)
+                    {
+                        double el = (now - reloadStart) * 1000;
+                        if (el >= reloadMs) { reloadStart = -1; share = 1; holdUntil = now + 1.2; }
+                        else { av.Reloading = true; av.Progress = el / reloadMs; }
+                    }
+                    if (reloadStart < 0 && now >= holdUntil)
+                    {
+                        share -= dt / 6.0; // a mag in ~6 s
+                        if (share <= 0.02) { share = 0.02; Reload(reloadSeq % 2 == 0 ? 1 : 2); return; }
+                    }
+                    av.Share = share;
+                    av.Band = AmmoModel.BandOf((int)Math.Round(share * 1000), 1000);
+                    av.ReloadSeq = reloadSeq; av.ReloadKind = reloadKind; av.ReloadMs = reloadMs;
+                    if (reloadStart >= 0) cap = reloadKind == 2 ? "快速换弹中" : "普通换弹中";
+                    else if (warnDemo < 0) cap = (warnDemo == -2 ? "紧急警告" : "低弹警告") + "没有开启";
+                    else
+                    {
+                        cap = AmmoDisplay.BandNames[Math.Max(0, Math.Min(4, av.Band))];
+                        if (now < holdUntil && warnDemo > 0) cap += warnDemo == 2 ? " · 紧急警告" : " · 低弹警告";
+                    }
+                }
+                else
+                {
+                    bool firing, moving;
+                    AnimScript(now, out firing, out moving, out cap);
+                    if (now < burstUntil) { firing = true; moving = false; cap = "开火"; }
+                    ai.Firing = firing; ai.Moving = moving;
+                    o = ex.AnimFrom(owner.g);
+                }
+                ex.Frame(st, o, ai, ammoMode, av, owner.g.AmmoStyle, ex.BarFrom(owner.g), dt, now * 1000.0);
+                int n = ex.Canvas;
+                int key;
+                unchecked { key = st.Key().GetHashCode() * 31 + n; key = key * 31 + ex.Anim.Key; key = key * 31 + (ex.FxActive ? ex.Fx.Key : 0); key = key * 31 + (ex.Ammo.Visible ? ex.Ammo.Key : 0); }
+                if (key == lastKey && cap == lastCap && bmp != null) return;
+                lastKey = key; lastCap = cap; caption = cap;
+                int[] px = RingRaster.Render(st, n, n / 2.0, n / 2.0);
+                FadePixels.Scale(px, px, n * n, FrameVisibility.Level(st.OpacityPct, 1.0));
+                if (ex.FxActive) ex.Fx.Draw(px, n, n / 2.0, n / 2.0, ex.Reach, 255);
+                if (ammoMode) ex.Ammo.Draw(px, n, n / 2.0, n / 2.0, ex.Inner, ex.AmmoStyle, 255);
+                work = px;
+                if (bmp == null || bmpN != n) { if (bmp != null) bmp.Dispose(); bmp = new Bitmap(n, n, PixelFormat.Format32bppPArgb); bmpN = n; }
+                BitmapData d = bmp.LockBits(new Rectangle(0, 0, n, n), ImageLockMode.WriteOnly, PixelFormat.Format32bppPArgb);
+                try
+                {
+                    for (int y = 0; y < n; y++)
+                        System.Runtime.InteropServices.Marshal.Copy(work, y * n, new IntPtr(d.Scan0.ToInt64() + (long)y * d.Stride), n);
+                }
+                finally { bmp.UnlockBits(d); }
+                Invalidate();
+            }
+
+            protected override void Dispose(bool disposing)
+            {
+                if (disposing) { timer.Stop(); timer.Dispose(); if (bmp != null) { bmp.Dispose(); bmp = null; } }
+                base.Dispose(disposing);
+            }
+
+            protected override void OnPaint(PaintEventArgs e)
+            {
+                Graphics gr = e.Graphics;
+                Rectangle r = ClientRectangle;
+                using (SolidBrush b = new SolidBrush(Theme.ColInput)) gr.FillRectangle(b, r);
+                if (bmp == null) { try { Render(); } catch (Exception) { } }
+                if (bmp != null)
+                {
+                    int pad = owner.S(6);
+                    float sc = Math.Min((r.Height - 2 * pad) / (float)bmpN, 3f * owner.k);
+                    if (sc > 0)
+                    {
+                        float w = bmpN * sc;
+                        gr.InterpolationMode = sc >= 1.5f ? InterpolationMode.NearestNeighbor : InterpolationMode.HighQualityBicubic;
+                        gr.PixelOffsetMode = PixelOffsetMode.Half;
+                        gr.DrawImage(bmp, r.X + r.Width / 2f - w / 2, r.Y + r.Height / 2f - w / 2, w, w);
+                    }
+                }
+                Font f = owner.SmallFont;
+                string text = "预览：" + caption;
+                Size ts = TextRenderer.MeasureText(text, f);
+                TextRenderer.DrawText(gr, text, f, new Rectangle(r.X + owner.S(6), r.Y + owner.S(4), Math.Max(ts.Width + 4, r.Width - owner.S(12)), ts.Height + 2),
+                    Theme.ColMuted, TextFormatFlags.Left | TextFormatFlags.Top | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
+                using (Pen p = new Pen(Theme.ColBorder)) gr.DrawRectangle(p, 0, 0, r.Width - 1, r.Height - 1);
+            }
+        }
+
         private sealed class Swatch : Control
         {
             private readonly StylePanel owner;

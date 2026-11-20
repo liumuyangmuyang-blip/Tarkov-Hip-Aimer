@@ -12,7 +12,7 @@
 param(
     [string]$Sizes = '1280x720,1920x1080,2160x1440,2560x1440',
     [string]$Scales = '100,150,200',
-    [string]$Modes = 'timing,settings,dialogs,tutorial,filtertut,windows',
+    [string]$Modes = 'timing,timingjit,settings,dialogs,tutorial,filtertut,windows',
     [int]$ModeTimeoutSec = 1200,
     # screenshots: 'pages' = settings pages + other windows (default, keeps the artifact small), 'all' = also every
     # tutorial step and dialog, 'none'
@@ -24,8 +24,9 @@ param(
 
 $probeOut = Join-Path $Out 'probe'
 if ($ResultDir) { $probeOut = $ResultDir }
-$shots = Join-Path $Out 'shots'
-New-Item -ItemType Directory -Force -Path $probeOut, $shots | Out-Null
+# (PowerShell names ignore case: $shots would be the validated -Shots parameter and crash with MetadataError)
+$shotDir = Join-Path $Out 'shots'
+New-Item -ItemType Directory -Force -Path $probeOut, $shotDir | Out-Null
 $notRun = New-Object System.Collections.Generic.List[string]
 $scaleList = @($Scales -split ',' | ForEach-Object { [int]$_.Trim() })
 
@@ -62,7 +63,7 @@ if (-not $AggregateOnly) {
                     $log = Join-Path $probeOut "log-$size-$s-$mode.txt"
                     Write-Host "probe $size@$s% $mode"
                     $pa = @($res, $mode)
-                    if ($Shots -eq 'all' -or ($Shots -eq 'pages' -and ($mode -eq 'settings' -or $mode -eq 'windows'))) { $pa += $shots }
+                    if ($Shots -eq 'all' -or ($Shots -eq 'pages' -and ($mode -eq 'settings' -or $mode -eq 'windows'))) { $pa += $shotDir }
                     $rc = Invoke-Logged $probeExe $pa $log $ModeTimeoutSec $probeDir
                     if (-not (Test-Path $res) -or (Get-Item $res).Length -eq 0) {
                         Write-Utf8 $res "RESULT $size@$s% mode=$mode NO-RESULT (exit $rc, see log-$size-$s-$mode.txt)`n"

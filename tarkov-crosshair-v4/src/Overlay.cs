@@ -681,7 +681,7 @@ namespace TarkovCrosshair
                         // and the ammo hint is drawn in the same canvas (hidden with it on 开镜 / 丢雷 / off: level 0 below).
                         AnimInput ai; AmmoView av;
                         OverlayInputs.Fill(eng, g, raw, keysLive, out ai, out av);
-                        extras.Frame(style, CrosshairAnim.From(g), ai, g.AmmoOn, av, g.AmmoStyle, dt, now * 1000.0 / freq);
+                        extras.Frame(style, extras.AnimFrom(g), ai, g.AmmoOn, av, g.AmmoStyle, extras.BarFrom(g), dt, now * 1000.0 / freq); // v5.1.1 B: cached settings
                         byte crossLevel = FrameVisibility.Level(style.OpacityPct, eng.Alpha);
                         byte ammoLevel = extras.Ammo.Visible ? FrameVisibility.Level(100, eng.Alpha) : (byte)0;
                         byte level = crossLevel > ammoLevel ? crossLevel : ammoLevel; // 0 = the all-zero frame (开镜 path)
@@ -904,6 +904,8 @@ namespace TarkovCrosshair
             // with the same phase changes nothing here: only the window moves (Present below).
             bool ammo = ammoLevel != 0 && extras.Ammo.Visible;
             int ammoKey = ammo ? extras.Ammo.Key : 0;
+            bool fx = level != 0 && extras.FxActive; // v5.1.1 (B2): 开火波纹 / 开火渐变色 this frame
+            if (fx) unchecked { ammoKey = ammoKey * 397 ^ extras.Fx.Key; }
             bool imageChanged = rasterChanged.Changed(p, S, cx, cy) | level != dibLevel | ammoKey != dibAmmoKey | (ammo && ammoLevel != dibAmmoLevel);
             if (imageChanged)
             {
@@ -913,12 +915,14 @@ namespace TarkovCrosshair
                     // image comes from RasterCache (a cached copy for small canvases, the moved master for big ones); a look
                     // is rasterised once when it changes. v5.0.2: opacity / fades are applied to the pixels here.
                     int[] img = rasterCache.Image(p, S, cx, cy);
-                    if (!ammo && level == 255) Marshal.Copy(img, 0, dib.Bits, S * S);
+                    if (!ammo && !fx && level == 255) Marshal.Copy(img, 0, dib.Bits, S * S);
                     else
                     {
                         FadePixels.Scale(img, fadeBuf, S * S, level);
                         // v5.1 (W22): the ammo hint goes UNDER the crosshair's pixels, outside the look's reach (never
                         // recolours the crosshair, never inside the 中心留空).
+                        // v5.1.1 (B2): the gradient recolours the crosshair's own pixels first, the ripples go under it
+                        if (fx) extras.Fx.Draw(fadeBuf, S, cx, cy, extras.Reach, level);
                         if (ammo) extras.Ammo.Draw(fadeBuf, S, cx, cy, extras.Inner, extras.AmmoStyle, ammoLevel);
                         Marshal.Copy(fadeBuf, 0, dib.Bits, S * S);
                     }

@@ -717,6 +717,7 @@ namespace TarkovCrosshair
 
         private KeyButton capturing;
         private readonly KeyCapture capture = new KeyCapture();
+        private readonly MouseButtonPoll mousePoll = new MouseButtonPoll(); // v5.1.1 (X1, F3): side / middle buttons for key boxes
         private bool suppressNextClick;
         public bool AllowClose;
 
@@ -2472,6 +2473,10 @@ namespace TarkovCrosshair
                 capture.Start();
                 b.Text = capture.Shown;
                 b.ForeColor = Theme.ColAccent;
+                mousePoll.Start(delegate(int pvk) // v5.1.1 (X1, F3)
+                {
+                    if (capturing == b && capture.Mouse(pvk, ModsOf(Control.ModifierKeys)) == KeyCapture.Result.Done) FinishCapture();
+                });
             };
             b.MouseDown += delegate(object s, MouseEventArgs e)
             {
@@ -2500,6 +2505,7 @@ namespace TarkovCrosshair
 
         private void CancelCapture()
         {
+            mousePoll.Stop(); // v5.1.1 (X1, F3)
             KeyButton b = capturing;
             capturing = null;
             if (b != null)
@@ -2512,6 +2518,7 @@ namespace TarkovCrosshair
         /// <summary>Applies capture.Vk / capture.Mods to the capturing button's action (asks first if another action has it).</summary>
         private void FinishCapture()
         {
+            mousePoll.Stop(); // v5.1.1 (X1, F3)
             KeyButton b = capturing;
             capturing = null;
             if (b == null) return;
@@ -3222,13 +3229,44 @@ namespace TarkovCrosshair
                 }
                 return false;
             }
+            // v5.1.1 (X2, Leo F6: no UI freeze > 100 ms while prebuilding): a page's window handles are made in slices of at
+            // most HandleSliceMs, one slice per idle slot, after the page body is built (the body is its own slot)
+            if (handleQueue != null && handleQueue.Count > 0) { HandleSlice(); return true; }
             System.Diagnostics.Stopwatch sw = System.Diagnostics.Stopwatch.StartNew();
             Page pg = pages[i];
             EnsureBuilt(i);
-            try { CreateHandles(pg.Host); } catch (Exception ex) { Program.Log("UI: prebuild handles " + pg.Id + ": " + ex.Message); }
             PrebuildMs[pg.Id] = sw.ElapsedMilliseconds;
-            Program.Log("启动耗时 设置页「" + pg.Title + "」后台预先创建: " + sw.ElapsedMilliseconds + " ms");
+            Program.Log("启动耗时 设置页「" + pg.Title + "」后台预先创建: " + sw.ElapsedMilliseconds + " ms（窗口句柄随后分片创建）");
+            handleQueue = new Queue<Control>();
+            handleQueue.Enqueue(pg.Host);
+            handlePage = pg;
             return true;
+        }
+
+        /// <summary>v5.1.1: longest single slice of window-handle creation in the background build.</summary>
+        internal const int HandleSliceMs = 25;
+        private Queue<Control> handleQueue;
+        private Page handlePage;
+        /// <summary>Probe / tests: longest handle slice so far (ms).</summary>
+        internal long MaxHandleSliceMs;
+
+        /// <summary>Parents before children (breadth first), so each Handle call makes exactly one window.</summary>
+        private void HandleSlice()
+        {
+            System.Diagnostics.Stopwatch sw = System.Diagnostics.Stopwatch.StartNew();
+            try
+            {
+                while (handleQueue.Count > 0 && sw.ElapsedMilliseconds < HandleSliceMs)
+                {
+                    Control c = handleQueue.Dequeue();
+                    if (c == null || c.IsDisposed) continue;
+                    IntPtr h = c.Handle;
+                    GC.KeepAlive(h);
+                    foreach (Control k in c.Controls) handleQueue.Enqueue(k);
+                }
+            }
+            catch (Exception ex) { Program.Log("UI: prebuild handles " + (handlePage != null ? handlePage.Id : "?") + ": " + ex.Message); handleQueue.Clear(); }
+            if (sw.ElapsedMilliseconds > MaxHandleSliceMs) MaxHandleSliceMs = sw.ElapsedMilliseconds;
         }
 
         /// <summary>Window handles for a hidden page now (WinForms makes them at the first show otherwise).</summary>

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
@@ -282,15 +282,16 @@ namespace TarkovCrosshair.Tests
             Func<string, bool> none = delegate(string f) { return false; };
             Func<string, string[]> garbledBat = delegate(string d) { return new string[] { d + "/鍚姩 Start-HipAimer.bat", d + "/说明 README.txt" }; };
             Func<string, string[]> noBat = delegate(string d) { return new string[] { d + "/Start-HipAimer.bat.txt", d + "/xStart-HipAimer.bat" }; };
+            Func<string, Func<string, bool>, Func<string, string[]>, string> U = delegate(string d, Func<string, bool> fe, Func<string, string[]> lb) { string r = SettingsIO.UserDirFor(d, fe, lb); return r == null ? null : r.Replace('\\', '/'); }; // v5.1.1: Windows gives \
             Func<string, string[]> throws = delegate(string d) { throw new IOException("denied"); };
-            bool a = SettingsIO.UserDirFor(root + "/绋嬪簭 app", none, garbledBat) == root;
-            bool b = SettingsIO.UserDirFor(root + "/绋嬪簭 app/", none, garbledBat) == root;
-            bool c = SettingsIO.UserDirFor(root + "/程序 app", none, noBat) == root + "/程序 app";
-            bool d1 = SettingsIO.UserDirFor(root + "/myapp", none, garbledBat) == root + "/myapp";
-            bool e = SettingsIO.UserDirFor(root + "/绋嬪簭 app", none, throws) == root + "/绋嬪簭 app";
-            bool f1 = SettingsIO.UserDirFor(root + "/bin", none, garbledBat) == root + "/bin";
-            bool g = SettingsIO.UserDirFor(root + "/APP", delegate(string p) { return p.Replace('\\', '/') == root + "/启动 Start-HipAimer.bat"; }, null) == root;
-            bool h = SettingsIO.UserDirFor(root + "/x app", delegate(string p) { return p.Replace('\\', '/') == root + "/Start-HipAimer.bat"; }, null) == root;
+            bool a = U(root + "/绋嬪簭 app", none, garbledBat) == root;
+            bool b = U(root + "/绋嬪簭 app/", none, garbledBat) == root;
+            bool c = U(root + "/程序 app", none, noBat) == root + "/程序 app";
+            bool d1 = U(root + "/myapp", none, garbledBat) == root + "/myapp";
+            bool e = U(root + "/绋嬪簭 app", none, throws) == root + "/绋嬪簭 app";
+            bool f1 = U(root + "/bin", none, garbledBat) == root + "/bin";
+            bool g = U(root + "/APP", delegate(string p) { return p.Replace('\\', '/') == root + "/启动 Start-HipAimer.bat"; }, null) == root;
+            bool h = U(root + "/x app", delegate(string p) { return p.Replace('\\', '/') == root + "/Start-HipAimer.bat"; }, null) == root;
             bool i = SettingsIO.UserDirFor(null, none, garbledBat) == "" && SettingsIO.UserDirFor("app", none, garbledBat) == "app";
             // real file system through the 2-argument overload
             string real = Path.Combine(outDir, "userdir-garbled");

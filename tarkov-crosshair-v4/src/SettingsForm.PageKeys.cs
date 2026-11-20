@@ -138,8 +138,8 @@ namespace TarkovCrosshair
             return box;
         }
 
-        /// <summary>A key box for a plain VK setting (no combo): click, then press a key (Esc cancels). Keyboard keys and mouse
-        /// side buttons.</summary>
+        /// <summary>A key box for a plain VK setting (no combo): click, then press a key (Esc cancels). Keyboard keys, the
+        /// middle button and the mouse side buttons (v5.1.1 F3: also read directly while waiting, see KeyBoxMouse.cs).</summary>
         private Button VkBtn(Func<int> get, Action<int> set)
         {
             Button b = new Button();
@@ -154,16 +154,22 @@ namespace TarkovCrosshair
             Action<int> done = delegate(int vk)
             {
                 waiting = false;
+                mousePoll.Stop();
                 if (vk >= 1 && vk <= 254) { set(vk); app.Changed(); SetStatus("已设成 " + KeyBindings.KeyName(vk), false); }
                 show();
             };
-            b.Click += delegate { waiting = true; b.Text = "请按一个键…"; b.ForeColor = Theme.ColAccent; };
+            b.Click += delegate
+            {
+                if (capturing != null) CancelCapture();
+                waiting = true; b.Text = "请按一个键…"; b.ForeColor = Theme.ColAccent;
+                mousePoll.Start(delegate(int pvk) { if (waiting) done(pvk); });
+            };
             b.PreviewKeyDown += delegate(object s, PreviewKeyDownEventArgs e) { if (waiting) e.IsInputKey = true; };
             b.KeyDown += delegate(object s, KeyEventArgs e)
             {
                 if (!waiting) return;
                 e.Handled = true; e.SuppressKeyPress = true;
-                if (e.KeyCode == Keys.Escape) { waiting = false; show(); return; }
+                if (e.KeyCode == Keys.Escape) { waiting = false; mousePoll.Stop(); show(); return; }
                 done((int)e.KeyCode);
             };
             b.MouseDown += delegate(object s, MouseEventArgs e)
@@ -171,8 +177,9 @@ namespace TarkovCrosshair
                 if (!waiting) return;
                 if (e.Button == MouseButtons.XButton1) done(KeyBindings.VkXButton1);
                 else if (e.Button == MouseButtons.XButton2) done(KeyBindings.VkXButton2);
+                else if (e.Button == MouseButtons.Middle) done(0x04);
             };
-            b.Leave += delegate { if (waiting) { waiting = false; show(); } };
+            b.Leave += delegate { if (waiting) { waiting = false; mousePoll.Stop(); show(); } };
             refreshers.Add(delegate { if (!waiting) show(); });
             return b;
         }

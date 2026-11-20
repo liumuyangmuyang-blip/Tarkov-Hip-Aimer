@@ -1,4 +1,4 @@
-// SETTINGS41F (v4.1): brute-settings P1/P2 fixes in Settings.cs, v4.3 (W10) old mouse-sway files + F11 free, 站着偏移
+﻿// SETTINGS41F (v4.1): brute-settings P1/P2 fixes in Settings.cs, v4.3 (W10) old mouse-sway files + F11 free, 站着偏移
 // always 0, Autostart via the HKCU Run key, TestsV4Brute scratch folder. Runs from a module initializer (like TestsV41Core).
 using System;
 using System.Collections.Generic;
@@ -725,8 +725,10 @@ namespace TarkovCrosshair.Tests
                     }
                     return 1;
                 };
-                string exe = "/opt/Tarkov Hip/app/TarkovHipAimer.exe", e;
-                st.V[Autostart.ValueName] = "\"/opt/Tarkov Hip/app/TarkovHipAimer.exe\" --autostart";
+                // v5.1.1 (X2): a path of the OS the tests run on (Autostart compares after Path.GetFullPath, which turns /opt/... into
+                // D:\opt\... on Windows, so the Linux path never matched there; CI run 44729023467)
+                string exe = OperatingSystem.IsWindows() ? "C:\\Tarkov Hip\\app\\TarkovHipAimer.exe" : "/opt/Tarkov Hip/app/TarkovHipAimer.exe", e;
+                st.V[Autostart.ValueName] = "\"" + exe + "\" --autostart";
                 bool en = Autostart.Enable(exe, out e) && taskXml != null && Autostart.IsOurTask(taskXml) && taskXml.Contains("<RunLevel>HighestAvailable</RunLevel>")
                     && taskXml.Contains("<LogonType>InteractiveToken</LogonType>") && !taskXml.Contains("Password") && Autostart.IsEnabled()
                     && Autostart.RegisteredPath() == exe && !st.V.ContainsKey(Autostart.ValueName) && calls.Exists(x => x.StartsWith("/Create")) && !Autostart.LegacyTaskLeft;

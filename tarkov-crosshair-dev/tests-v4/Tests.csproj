@@ -125,8 +125,12 @@
     <!-- v5.1 (W22): ammo hint (AmmoDisplay), CS feel + canvas extras (CrosshairAnim / LookExtras), W21's AmmoModel; overlay sim -->
     <Compile Include="../../tarkov-crosshair-v4/src/AmmoModel.cs" />
     <Compile Include="../../tarkov-crosshair-v4/src/AmmoDisplay.cs" />
+    <Compile Include="../../tarkov-crosshair-v4/src/LookFxSettings.cs" />
     <Compile Include="../../tarkov-crosshair-v4/src/CrosshairAnim.cs" />
     <Compile Include="TestsV51W22.cs" />
+    <!-- v5.1.1 (X3): F4 换手 tutorial tracer, F5 ammo hint looks (AmmoLook) -->
+    <Compile Include="TestsV511X3.cs" />
+    <Compile Include="TestsV511X4.cs" />
     <!-- v5.1 (W33): texture-drop diagnostics: 开镜/丢雷真隐藏, DirectComposition mode choice + fallback, GPU log (pure + graceful failure + source) -->
     <Compile Include="../../tarkov-crosshair-v4/src/OverlayDiag.cs" />
     <Compile Include="../../tarkov-crosshair-v4/src/DCompPresenter.cs" />
@@ -157,5 +161,9 @@
     <Compile Include="../../tarkov-crosshair-v4/src/Net.HubLogic.cs" />
     <Compile Include="TestsV44Net.cs" />
     <Compile Include="TestsV51Net.cs" />
+    <!-- v5.1.1 (X1): key box mouse poll (KeyBoxMouse.cs pure part), wizard F1/F3, check box / radio drawing + exclusive groups (F2) -->
+    <Compile Include="../../tarkov-crosshair-v4/src/KeyBoxMouse.cs" />
+    <Compile Include="TestsV511X1.cs" />
+    <Compile Include="TestsV511X2.cs" />
   </ItemGroup>
 </Project>

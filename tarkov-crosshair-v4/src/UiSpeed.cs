@@ -299,4 +299,99 @@ namespace TarkovCrosshair
             return vis[((at + d) % n + n) % n];
         }
     }
+
+    /// <summary>
+    /// v5.1.1 (X2, Leo F6 「别的也都卡」): the settings window's code is compiled to machine code on a low-priority background
+    /// thread right after start, so the UI thread does not stop to compile when it builds the window and each page (on
+    /// .NET Framework every method is compiled the first time it runs, in every process). Order: the settings window and its
+    /// pages first, the rest after. Finite: one pass, then the thread ends. Nothing runs: methods are only compiled.
+    /// </summary>
+    internal static class PreJit
+    {
+        /// <summary>Methods compiled / failed and ms of the last run (tests, crash.log).</summary>
+        public static int Compiled, Failed;
+        public static long Ms = -1;
+        private static int started;
+
+        /// <summary>Starts the one background pass (only the first call does anything). log gets one line at the end.</summary>
+        public static void Start(System.Reflection.Assembly asm, bool skipTutorials, Action<string> log)
+        {
+            if (asm == null || Interlocked.Exchange(ref started, 1) != 0) return;
+            Thread t = new Thread(delegate() { Run(asm, skipTutorials, log); });
+            t.IsBackground = true;
+            t.Priority = ThreadPriority.BelowNormal;
+            t.Name = "PreJit";
+            t.Start();
+        }
+
+        /// <summary>Lower = earlier. The settings window shell and the pages a user opens first come first.</summary>
+        public static int Rank(string typeName)
+        {
+            string n = typeName ?? "";
+            int plus = n.IndexOf('+');
+            if (plus >= 0) n = n.Substring(0, plus); // nested (lambda) classes go with their owner
+            int dot = n.LastIndexOf('.');
+            if (dot >= 0) n = n.Substring(dot + 1);
+            if (n.StartsWith("<")) return 9; // compiler-generated at namespace level
+            if (n == "SettingsForm" || n == "Theme" || n == "TextFit") return 0;
+            if (n.StartsWith("Dashboard") || n == "StatusLine" || n == "HelpText" || n == "StylePanel" || n == "NavModel") return 1;
+            if (n.StartsWith("Filter") && !n.StartsWith("FilterTutorial")) return 2;
+            if (n == "CurveEditor" || n.StartsWith("Wizard") || n == "SetupWizard" || n.StartsWith("Faq") || n == "MustRead") return 2;
+            if (n.StartsWith("Tutorial") || n.StartsWith("FilterTutorial")) return 4;
+            return 3;
+        }
+
+        public static bool IsTutorial(string typeName)
+        {
+            string n = typeName ?? "";
+            int dot = n.LastIndexOf('.');
+            if (dot >= 0) n = n.Substring(dot + 1);
+            return n.StartsWith("Tutorial") || n.StartsWith("FilterTutorial");
+        }
+
+        /// <summary>The pass itself (public for tests: it may be called directly, on any thread).</summary>
+        public static void Run(System.Reflection.Assembly asm, bool skipTutorials, Action<string> log)
+        {
+            System.Diagnostics.Stopwatch sw = System.Diagnostics.Stopwatch.StartNew();
+            int ok = 0, bad = 0;
+            try
+            {
+                Type[] types;
+                try { types = asm.GetTypes(); }
+                catch (System.Reflection.ReflectionTypeLoadException ex) { types = ex.Types ?? new Type[0]; }
+                List<Type> list = new List<Type>();
+                foreach (Type t in types)
+                {
+                    if (t == null || t.ContainsGenericParameters || t.IsInterface) continue;
+                    if (skipTutorials && IsTutorial(t.FullName)) continue;
+                    list.Add(t);
+                }
+                list.Sort(delegate(Type a, Type b)
+                {
+                    int r = Rank(a.FullName).CompareTo(Rank(b.FullName));
+                    return r != 0 ? r : string.CompareOrdinal(a.FullName, b.FullName);
+                });
+                const System.Reflection.BindingFlags all = System.Reflection.BindingFlags.DeclaredOnly | System.Reflection.BindingFlags.Instance
+                    | System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic;
+                foreach (Type t in list)
+                {
+                    List<System.Reflection.MethodBase> ms = new List<System.Reflection.MethodBase>();
+                    try { ms.AddRange(t.GetConstructors(all)); ms.AddRange(t.GetMethods(all)); } catch (Exception) { bad++; continue; }
+                    foreach (System.Reflection.MethodBase m in ms)
+                    {
+                        if (m.IsAbstract || m.ContainsGenericParameters) continue;
+                        if ((m.Attributes & System.Reflection.MethodAttributes.PinvokeImpl) != 0) continue;
+                        System.Reflection.MethodImplAttributes f = m.GetMethodImplementationFlags();
+                        if ((f & (System.Reflection.MethodImplAttributes.InternalCall | System.Reflection.MethodImplAttributes.Runtime
+                            | System.Reflection.MethodImplAttributes.Native)) != 0) continue;
+                        try { System.Runtime.CompilerServices.RuntimeHelpers.PrepareMethod(m.MethodHandle); ok++; }
+                        catch (Exception) { bad++; }
+                    }
+                }
+            }
+            catch (Exception ex) { if (log != null) log("PreJit: " + ex.Message); }
+            Compiled = ok; Failed = bad; Ms = sw.ElapsedMilliseconds;
+            if (log != null) log("启动耗时 后台预编译设置窗口代码: " + ok + " 个方法，" + sw.ElapsedMilliseconds + " ms（后台线程，界面不等它）" + (bad > 0 ? "，跳过 " + bad : ""));
+        }
+    }
 }

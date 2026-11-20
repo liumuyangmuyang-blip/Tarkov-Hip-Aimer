@@ -188,9 +188,20 @@ namespace TarkovCrosshair
         public const double DefaultTapThresholdMs = 120, DefaultReturnTimePct = 100, DefaultReversePauseMs = 0;
         // this frame's tunables (read from GlobalSettings at the start of Update, clamped)
         private double tapMs = DefaultTapThresholdMs, reverseMinMs = MinReverseMs, returnScale = 1.0, reversePauseMs = DefaultReversePauseMs;
-        /// <summary>R4 tunables until GlobalSettings has them (W23): 回程时间 % and 换向停顿 ms.</summary>
-        public double ReturnTimePct = DefaultReturnTimePct, ReversePauseMs = DefaultReversePauseMs;
+        /// <summary>R4 tunables 回程时间 % and 换向停顿 ms. v5.1.1 (X4): the engine reads GlobalSettings.ReturnTimePct /
+        /// ReversePauseMs (the 移动 page sliders); these fields only override them when set to a number (NaN = follow settings).</summary>
+        public double ReturnTimePct = double.NaN, ReversePauseMs = double.NaN;
         private readonly double[] legPause = new double[2]; // rest at 0 between the two legs of a reversal, ms
+        // v5.1.1 (X4, Leo B6): a leg back toward 0 runs DOWN the ramp (the outward slow-start travel played backwards, so the
+        // same ms out and back cancel exactly): curve position u goes legUa -> legUb (0..1) linearly over the leg.
+        private readonly bool[] legDown = new bool[2];
+        private readonly double[] legUa = new double[2], legUb = new double[2];
+        // ms since the last outward press of this axis began, and whether the last leg started on this axis went outward
+        private readonly double[] holdMs = new double[2];
+        private readonly bool[] lastOut = new bool[2];
+        /// <summary>v5.1.1 (X4, B6): a press is undone in at most its own held time (× ReturnTimePct), so rapid W A S D
+        /// alternation never builds up offset; but a way back is never faster than this many times the normal ramp speed.</summary>
+        public const double AltReturnMaxSpeed = 2.0;
 
         private static double Tune(double v, double lo, double hi, double def)
         {
@@ -203,8 +214,10 @@ namespace TarkovCrosshair
         {
             tapMs = Tune(g.TapThresholdMs, GlobalSettings.TapThresholdMsMin, GlobalSettings.TapThresholdMsMax, DefaultTapThresholdMs);
             reverseMinMs = Tune(g.ReverseMinMs, GlobalSettings.ReverseMinMsMin, GlobalSettings.ReverseMinMsMax, MinReverseMs);
-            returnScale = Tune(ReturnTimePct, 25, 300, DefaultReturnTimePct) / 100.0;   // W21-R2-PENDING: g.ReturnTimePct (W23)
-            reversePauseMs = Tune(ReversePauseMs, 0, 300, DefaultReversePauseMs);       // W21-R2-PENDING: g.ReversePauseMs (W23)
+            double rt = double.IsNaN(ReturnTimePct) ? g.ReturnTimePct : ReturnTimePct;
+            double rp = double.IsNaN(ReversePauseMs) ? g.ReversePauseMs : ReversePauseMs;
+            returnScale = Tune(rt, GlobalSettings.ReturnTimePctMin, GlobalSettings.ReturnTimePctMax, DefaultReturnTimePct) / 100.0;
+            reversePauseMs = Tune(rp, GlobalSettings.ReversePauseMsMin, GlobalSettings.ReversePauseMsMax, DefaultReversePauseMs);
         }
 
         /// <summary>v3.0 只在塔科夫前台时显示: set by the render thread (≤ 10 Hz) before Update. Defaults = game in front.</summary>
@@ -234,7 +247,7 @@ namespace TarkovCrosshair
             liveBoost = false; prevBoostKey = false; boostShown = false;
             grenadeHidden = false; prevGrenadeKey = false; prevAmmoOn = false;
             Ammo.Reset();
-            for (int a = 0; a < 2; a++) { legDur[a] = 0; legU0[a] = 0; legToZero[a] = false; refMag[a] = 0; pressMs[a] = 0; outward[a] = false; legC[a] = 1; liveTarget[a] = 0; legPause[a] = 0; }
+            for (int a = 0; a < 2; a++) { legDur[a] = 0; legU0[a] = 0; legToZero[a] = false; refMag[a] = 0; pressMs[a] = 0; outward[a] = false; legC[a] = 1; liveTarget[a] = 0; legPause[a] = 0; legDown[a] = false; legUa[a] = 0; legUb[a] = 0; holdMs[a] = 0; lastOut[a] = false; }
             LastTap = false; TapCount = 0; MoveLevel = 0; Firing = false;
             prevKeysLive = true;
             Alpha = 0;
@@ -532,6 +545,9 @@ namespace TarkovCrosshair
         /// - other side (A→D): first back to 0 like a release, rest ReversePauseMs at 0, then out from rest with the full curve;
         ///   never a jump; total ≥ ReverseMinMs (the first leg is stretched when needed).
         /// R4 tunables (settings): TapThresholdMs (短按 label only), ReverseMinMs, ReturnTimePct, ReversePauseMs.
+        /// v5.1.1 (X4, Leo B6, W A S D spam drifted to the full offset): every way back runs DOWN the ramp (u falls linearly,
+        /// the outward travel played backwards; before, it started slowly and the next press climbed again from high up), and a
+        /// press is undone in at most its own held time (BackMs), so rapid alternation stays near rest and never builds up.
         /// </summary>
         private void StartLeg(int a, double oldT, double newT, double T, double[] speeds)
         {
@@ -543,15 +559,21 @@ namespace TarkovCrosshair
                 LastTap = outward[a] && moving[a] && pressMs[a] < tapMs;
                 if (LastTap) TapCount++;
             }
+            // X4 (B6): the press that is being undone was held this long (only when the last leg on this axis went outward)
+            double capMs = lastOut[a] ? holdMs[a] : double.PositiveInfinity;
+            // a real hold (reached its target and held at least 总时长) keeps the v5.1 way back (slow start, time it took)
+            bool held = lastOut[a] && !moving[a] && x != 0 && T > 0 && holdMs[a] >= T;
             travelMs[a] = 0; moving[a] = true; from[a] = x;
-            legPause[a] = 0;
-            if (!(T > 0)) { legDur[a] = 0; legU0[a] = 0; legToZero[a] = false; outward[a] = false; refMag[a] = an; return; }
+            legPause[a] = 0; legDown[a] = false; legUa[a] = 0; legUb[a] = 0;
+            if (!(T > 0)) { legDur[a] = 0; legU0[a] = 0; legToZero[a] = false; outward[a] = false; refMag[a] = an; lastOut[a] = an > ax; holdMs[a] = 0; return; }
             double F = Math.Max(refMag[a], ax);
             bool cross = (x > 0 && newT < 0) || (x < 0 && newT > 0);
             if (cross)
             {
-                legToZero[a] = true; legU0[a] = 0; outward[a] = false;
-                double d1 = F > 0 ? returnScale * T * MotionCurve.ProgressInverse(speeds, ax / F) : 0;
+                legToZero[a] = true; legU0[a] = 0; outward[a] = false; lastOut[a] = false;
+                double ux = F > 0 ? MotionCurve.ProgressInverse(speeds, ax / F) : 0;
+                double d1 = BackMs(returnScale * T * ux, capMs);
+                legDown[a] = !held; legUa[a] = ux; legUb[a] = 0;
                 legPause[a] = reversePauseMs;
                 if (d1 + legPause[a] + T < reverseMinMs) d1 = reverseMinMs - legPause[a] - T;
                 legDur[a] = d1;
@@ -563,13 +585,26 @@ namespace TarkovCrosshair
                 legU0[a] = an > 0 ? MotionCurve.ProgressInverse(speeds, ax / an) : 0;
                 legDur[a] = T * (1 - legU0[a]);
                 refMag[a] = an; outward[a] = an > 0; pressMs[a] = 0;
+                lastOut[a] = an > 0; holdMs[a] = 0;
             }
             else
             {
-                legToZero[a] = false; legU0[a] = 0; outward[a] = false;
-                legDur[a] = F > 0 ? returnScale * T * (MotionCurve.ProgressInverse(speeds, ax / F) - MotionCurve.ProgressInverse(speeds, an / F)) : 0;
+                legToZero[a] = false; legU0[a] = 0; outward[a] = false; lastOut[a] = false;
+                double ux = F > 0 ? MotionCurve.ProgressInverse(speeds, ax / F) : 0, un = F > 0 ? MotionCurve.ProgressInverse(speeds, an / F) : 0;
+                legDur[a] = F > 0 ? BackMs(returnScale * T * (ux - un), capMs) : 0;
+                legDown[a] = !held; legUa[a] = ux; legUb[a] = un;
                 refMag[a] = F;
             }
+        }
+
+        /// <summary>X4 (B6): time of a way back. full = the normal time (down the ramp in the time it took to get there ×
+        /// ReturnTimePct); a press held only heldMs is undone in heldMs × ReturnTimePct (no build-up from rapid alternation),
+        /// but never faster than AltReturnMaxSpeed × the normal speed. A single press from rest: heldMs = its own time = full.</summary>
+        private double BackMs(double full, double heldMs)
+        {
+            double cap = returnScale * heldMs;
+            if (!(cap < full)) return full;
+            return Math.Max(cap, full / AltReturnMaxSpeed);
         }
 
         /// <summary>One frame of the current leg (travelMs already advanced). target = the live axis target.</summary>
@@ -580,7 +615,14 @@ namespace TarkovCrosshair
                 double d1 = legDur[a];
                 if (d1 > 0 && travelMs[a] < d1)
                 {
-                    legC[a] = MotionCurve.Progress(speeds, travelMs[a] / d1);
+                    if (legDown[a])
+                    {
+                        // X4 (B6): down the ramp, u = legUa -> 0 (the outward travel played backwards)
+                        double pa = MotionCurve.Progress(speeds, legUa[a]);
+                        double pu = MotionCurve.Progress(speeds, legUa[a] * (1 - travelMs[a] / d1));
+                        legC[a] = pa > 0 ? 1 - pu / pa : 1;
+                    }
+                    else legC[a] = MotionCurve.Progress(speeds, travelMs[a] / d1); // after a real hold: as v5.1
                     pos[a] = from[a] * (1 - legC[a]);
                     return;
                 }
@@ -590,8 +632,9 @@ namespace TarkovCrosshair
                 // back at 0: out the other way from rest with the full curve (the left-over time of this frame counts)
                 double over = tz - legPause[a];
                 legPause[a] = 0;
-                legToZero[a] = false; from[a] = 0; legU0[a] = 0; legDur[a] = T > 0 ? T : 0;
+                legToZero[a] = false; from[a] = 0; legU0[a] = 0; legDur[a] = T > 0 ? T : 0; legDown[a] = false;
                 refMag[a] = Math.Abs(target); outward[a] = target != 0; pressMs[a] = over; travelMs[a] = over;
+                lastOut[a] = target != 0; holdMs[a] = over;
             }
             double dur = legDur[a];
             if (!(dur > 0) || travelMs[a] >= dur)
@@ -600,7 +643,14 @@ namespace TarkovCrosshair
                 if (target != 0) refMag[a] = Math.Abs(target);
                 return;
             }
-            legC[a] = MotionCurve.ProgressFrom(speeds, legU0[a], travelMs[a] / dur);
+            if (legDown[a])
+            {
+                // X4 (B6): down the ramp from legUa to legUb (back toward 0 on the same side)
+                double pa = MotionCurve.Progress(speeds, legUa[a]), pb = MotionCurve.Progress(speeds, legUb[a]);
+                double pu = MotionCurve.Progress(speeds, legUa[a] + (legUb[a] - legUa[a]) * (travelMs[a] / dur));
+                legC[a] = pa > pb ? (pa - pu) / (pa - pb) : 1;
+            }
+            else legC[a] = MotionCurve.ProgressFrom(speeds, legU0[a], travelMs[a] / dur);
             pos[a] = from[a] + (target - from[a]) * legC[a];
         }
 
@@ -744,6 +794,7 @@ namespace TarkovCrosshair
                 double total = c == null ? 0 : c.DurationMs;
                 double target = AxisTarget(a, dir, lt);
                 liveTarget[a] = target;
+                holdMs[a] += dtMs; // X4 (B6): time since this axis's last outward press began
                 if (moving[a])
                 {
                     travelMs[a] += dtMs;

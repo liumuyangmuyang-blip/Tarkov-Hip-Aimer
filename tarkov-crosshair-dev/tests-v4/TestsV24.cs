@@ -196,7 +196,9 @@ namespace TarkovCrosshair.Tests
                 // v5.1 (W21, decision 7): A->D = back to 0 in the time A took to get there (40 ms; at least MinReverseMs − 总时长
                 // = 50 ms here), then out from rest over 总时长
                 double d1 = Math.Max(40, MotionEngine.MinReverseMs - 100);
-                double first = m.MoveX, want1 = at * (1 - MotionCurve.Progress(p.CurveAD.Speeds, 1 / d1));
+                // v5.1.1 (X4, B6): a tap (not a real hold) goes back DOWN the ramp: curve position u falls linearly from ux
+                double ux = MotionCurve.ProgressInverse(p.CurveAD.Speeds, Math.Abs(at / p.Dirs[2].OffX));
+                double first = m.MoveX, want1 = at * MotionCurve.Progress(p.CurveAD.Speeds, ux * (1 - 1 / d1)) / MotionCurve.Progress(p.CurveAD.Speeds, ux);
                 Step(m, p, g, "D", (int)d1 + 98, 0.001);
                 bool still = m.Traveling(0);
                 Step(m, p, g, "D", 1, 0.001);

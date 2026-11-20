@@ -1592,6 +1592,10 @@ namespace TarkovCrosshair
         /// "brackets,colour". Validate keeps known tokens in AmmoStyleIds order; empty -> "brackets".</summary>
         [DataMember(Name = "AmmoStyle")] public string AmmoStyle;
         public static readonly string[] AmmoStyleIds = new string[] { "brackets", "bottombar", "colour", "fade", "flash" };
+        // v5.1.1 (X3, Leo round B): the 弹药提示 bar (look, 只在少于 X% 时显示, warnings, reload animations) and the 准星动态
+        // amounts / firing effects (LookFxSettings.cs). Absent in an older file -> defaults (Validate).
+        [DataMember(Name = "AmmoBar")] public AmmoBarSettings AmmoBar;
+        [DataMember(Name = "AnimFx")] public AnimFxSettings AnimFx;
         /// <summary>换弹键 (virtual-key code, default R = 0x52). Press = 普通换弹, double-tap within AmmoQuickTapMs = 快速换弹.</summary>
         [DataMember(Name = "AmmoReloadKey")] public int AmmoReloadKey;
         /// <summary>双击判定 window in ms (100..800, default 300).</summary>
@@ -1627,7 +1631,8 @@ namespace TarkovCrosshair
         public int BoostKeyMods { get { return Keys == null ? 0 : Keys.BoostMods; } set { if (Keys != null) Keys.SetMods(KeyBindings.ActionBoost, value); } }
         /// <summary>强化方式: true = 切换 (default), false = 按住.</summary>
         [DataMember(Name = "BoostToggle")] public bool BoostToggle;
-        /// <summary>准星动态 preset: "static" (静态, default) / "cs" (CS 动态) / "classic" (经典).</summary>
+        /// <summary>准星动态 preset: "static" (静态, default) / "cs" (跟随动作; id kept for old files) / "classic" (开火跳动) /
+        /// "fx" (开火特效). v5.1.1 (Leo B2): AnimLeanRotate and AnimShake are kept only so files import; no effect any more.</summary>
         [DataMember(Name = "AnimPreset")] public string AnimPreset;
         [DataMember(Name = "AnimDynGap")] public bool AnimDynGap;
         [DataMember(Name = "AnimFirePulse")] public bool AnimFirePulse;
@@ -1646,6 +1651,34 @@ namespace TarkovCrosshair
         [DataMember(Name = "ResStretched")] public bool? ResStretched;
         /// <summary>True when the game picture is stretched to the full screen (ResStretched null or true).</summary>
         public bool PictureStretched { get { return ResStretched != false; } }
+        /// <summary>v5.1.1 (X1, Leo): which black bars the game shows when the picture is NOT stretched: "none" (拉宽了，铺满屏幕),
+        /// "topbottom" (没拉宽，上下有黑边), "leftright" (没拉宽，左右有黑边). Kept in step with ResStretched (none = stretched;
+        /// the other two = ResStretched false). A file without it (v5.1 and older) gets it from ResStretched: false -> the side the
+        /// ratio itself leaves empty (a ratio narrower than the resolution -> leftright, wider -> topbottom). Set it with SetBars.</summary>
+        [DataMember(Name = "ResBars")] public string ResBars;
+        public const string BarsNone = "none", BarsTopBottom = "topbottom", BarsLeftRight = "leftright";
+        public static readonly string[] BarsIds = { BarsNone, BarsTopBottom, BarsLeftRight };
+
+        /// <summary>The bars the ratio leaves empty when it is not stretched (leftright for a narrower ratio, else topbottom).</summary>
+        public string NaturalBars()
+        {
+            return ViewScale.StretchX(ResGameW, ResGameH, ResAspect) > 1.0 + 1e-9 ? BarsLeftRight : BarsTopBottom;
+        }
+
+        /// <summary>Stores the 3-way choice and keeps ResStretched in step (none -> true, bars -> false).</summary>
+        public void SetBars(string bars)
+        {
+            ResBars = Array.IndexOf(BarsIds, bars) >= 0 ? bars : BarsNone;
+            ResStretched = ResBars == BarsNone ? (bool?)true : false;
+        }
+
+        /// <summary>ResBars made valid and consistent with ResStretched (called by Validate).</summary>
+        private void FixBars()
+        {
+            if (Array.IndexOf(BarsIds, ResBars) < 0) ResBars = ResStretched == false ? NaturalBars() : BarsNone;
+            else if (ResBars == BarsNone && ResStretched == false) ResBars = NaturalBars();
+            else if (ResBars != BarsNone && ResStretched != false) ResBars = BarsNone;
+        }
         // ---- v5.1 W33 (overlay texture-drop diagnostics), all default false ----
         /// <summary>新的显示方式（DirectComposition）.</summary>
         [DataMember(Name = "OverlayDCompMode")] public bool OverlayDCompMode;
@@ -1665,7 +1698,7 @@ namespace TarkovCrosshair
         [DataMember(Name = "TapThresholdMs")] public double TapThresholdMs;
         /// <summary>A→D 反向: "slowstart" (only mode in v5.1: from the current position, decelerate then accelerate).</summary>
         [DataMember(Name = "ReverseMode")] public string ReverseMode;
-        public static readonly string[] AnimPresetIds = new string[] { "static", "cs", "classic" };
+        public static readonly string[] AnimPresetIds = new string[] { "static", "cs", "classic", "fx", "race" };
         public static readonly string[] ReverseModeIds = new string[] { "slowstart" };
         /// <summary>Default weapon keys (V51-RESEARCH §2, Tarkov defaults): main = 2 (枪带上的主武器); other = 1 (手枪), 3 (背上的
         /// 第二把长枪), V (近战), 4-0 (快捷栏).</summary>
@@ -1753,12 +1786,13 @@ namespace TarkovCrosshair
         /// <summary>v5.1 shared fields: defaults (also for an older file without them).</summary>
         public void SetV51Defaults()
         {
-            AmmoOn = false; AmmoMagSize = 30; AmmoRpm = 600; AmmoSemi = false; AmmoStyle = "brackets,colour";
+            AmmoOn = false; AmmoMagSize = 30; AmmoRpm = 600; AmmoSemi = false; AmmoStyle = "brackets,colour"; // v5.1.1 B3: shape words no longer matter (kept so old checks / files read the same)
+            AmmoBar = AmmoBarSettings.Defaults(); AnimFx = AnimFxSettings.Defaults();
             AmmoReloadKey = 0x52; AmmoQuickTapMs = 300;
             AmmoWeaponKeysMain = DefaultWeaponKeysMain(); AmmoWeaponKeysOther = DefaultWeaponKeysOther();
             GrenadeHideOn = true; GrenadeKey = 0x47; BoostToggle = true;
             AnimPreset = "static"; AnimDynGap = false; AnimFirePulse = false; AnimLeanRotate = false; AnimStateColour = false; AnimShake = false;
-            PerfMode = false; OverlayDCompMode = false; AdsRealHide = false; GpuDiagLog = false; ResAspectCustom = "16:9"; ResStretched = null; WizardDone = false; MustReadAck = false;
+            PerfMode = false; OverlayDCompMode = false; AdsRealHide = false; GpuDiagLog = false; ResAspectCustom = "16:9"; ResStretched = null; ResBars = BarsNone; WizardDone = false; MustReadAck = false;
             NetUpdateCheck = true; NetStatsConsent = null; NetCrashAsk = true;
             TapThresholdMs = 120; ReverseMode = "slowstart";
             AmmoReloadMs = 2400; AmmoQuickReloadMs = 900; ReverseMinMs = 150; ReturnTimePct = 100; ReversePauseMs = 0;
@@ -1771,6 +1805,8 @@ namespace TarkovCrosshair
             if (AmmoMagSize < 1 || AmmoMagSize > 200) AmmoMagSize = d.AmmoMagSize;
             if (AmmoRpm < 60 || AmmoRpm > 2000) AmmoRpm = d.AmmoRpm;
             AmmoStyle = NormalizeAmmoStyle(AmmoStyle);
+            if (AmmoBar == null) AmmoBar = AmmoBarSettings.Defaults(); else AmmoBar.Validate();
+            if (AnimFx == null) AnimFx = AnimFxSettings.Defaults(); else AnimFx.Validate();
             if (AmmoReloadKey < 1 || AmmoReloadKey > 254) AmmoReloadKey = d.AmmoReloadKey;
             if (AmmoQuickTapMs < 100 || AmmoQuickTapMs > 800) AmmoQuickTapMs = d.AmmoQuickTapMs;
             AmmoWeaponKeysMain = CleanVks(AmmoWeaponKeysMain, d.AmmoWeaponKeysMain);
@@ -1780,6 +1816,7 @@ namespace TarkovCrosshair
             int cw, ch;
             if (!ViewScale.TryParseRatio(ResAspectCustom, out cw, out ch)) ResAspectCustom = d.ResAspectCustom;
             else ResAspectCustom = cw + ":" + ch;
+            FixBars(); // v5.1.1 (X1)
             TapThresholdMs = Math.Round(Clamp.D(TapThresholdMs, TapThresholdMsMin, TapThresholdMsMax, d.TapThresholdMs));
             AmmoReloadMs = Math.Round(Clamp.D(AmmoReloadMs, AmmoReloadMsMin, AmmoReloadMsMax, d.AmmoReloadMs));
             AmmoQuickReloadMs = Math.Round(Clamp.D(AmmoQuickReloadMs, AmmoQuickReloadMsMin, AmmoQuickReloadMsMax, d.AmmoQuickReloadMs));
@@ -1852,6 +1889,7 @@ namespace TarkovCrosshair
             g.Keys = Keys == null ? new KeyBindings() : Keys.Clone();
             g.AmmoWeaponKeysMain = AmmoWeaponKeysMain == null ? null : (int[])AmmoWeaponKeysMain.Clone();
             g.AmmoWeaponKeysOther = AmmoWeaponKeysOther == null ? null : (int[])AmmoWeaponKeysOther.Clone();
+            g.AmmoBar = AmmoBar == null ? null : AmmoBar.Clone(); g.AnimFx = AnimFx == null ? null : AnimFx.Clone();
             g.Profiles = new List<Profile>();
             if (withProfiles && Profiles != null)
                 foreach (Profile p in Profiles) g.Profiles.Add(p.Clone());

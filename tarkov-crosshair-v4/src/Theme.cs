@@ -658,6 +658,7 @@ internal static class Theme
             bb.FlatAppearance.MouseOverBackColor = ColHover;
             bb.FlatAppearance.MouseDownBackColor = ColPressed;
             bb.Cursor = Cursors.Hand;
+            HookCheckGlyph(bb); // v5.1.1 (F2): owner-drawn, clearly visible on/off box and radio dot
             return;
         }
         RichTextBox rtb = c as RichTextBox;
@@ -808,6 +809,141 @@ internal static class Theme
             if (b != null) b.FlatAppearance.BorderColor = RestBorder(b);
         }
         catch { }
+    }
+
+    // ---------------------------------------------------------------- CheckBox / RadioButton (v5.1.1, F2)
+    // Leo (Windows, 20 Nov): the flat system glyph was a thin grey frame with a faint mark -- on / off and the chosen option
+    // could not be told apart. Every themed check box and radio button (Appearance.Normal) is now drawn here:
+    //   check box ON  = filled accent box with a dark tick;      OFF = hollow box with a light 2 px frame
+    //   radio ON      = accent ring with a filled accent dot;    OFF = hollow ring
+    // Disabled = muted colours. Text is drawn right of the glyph with the control's own font. The glyph is about the font
+    // height, so the right padding grows once by what the system glyph did not reserve (TextFit counts font height + 3 px).
+    private static readonly ConditionalWeakTable<Control, object> GlyphHooked = new ConditionalWeakTable<Control, object>();
+
+    /// <summary>Glyph edge for a font height (px): about 0.8 of the text height, never below 12 px.</summary>
+    internal static int CheckGlyphSize(int fontHeight) { return Math.Max(12, (int)Math.Round(fontHeight * 0.8)); }
+
+    /// <summary>Gap between glyph and text (px).</summary>
+    internal static int CheckGlyphGap(int fontHeight) { return Math.Max(4, fontHeight / 4); }
+
+    private static void HookCheckGlyph(ButtonBase bb)
+    {
+        CheckBox cbx = bb as CheckBox;
+        RadioButton rb = bb as RadioButton;
+        if (cbx != null && cbx.Appearance != Appearance.Normal) return;
+        if (rb != null && rb.Appearance != Appearance.Normal) return;
+        if (!MarkOnce(GlyphHooked, bb)) return;
+        try
+        {
+            int fh = bb.Font.Height;
+            int extra = Math.Max(0, CheckGlyphSize(fh) + CheckGlyphGap(fh) - Px(bb, 13));
+            Padding p = bb.Padding;
+            bb.Padding = new Padding(p.Left, p.Top, p.Right + extra, p.Bottom);
+        }
+        catch { }
+        bb.Paint += OnCheckGlyphPaint;
+    }
+
+    private static void OnCheckGlyphPaint(object sender, PaintEventArgs e)
+    {
+        try
+        {
+            ButtonBase c = sender as ButtonBase;
+            if (c == null) return;
+            CheckBox cbx = c as CheckBox;
+            RadioButton rb = c as RadioButton;
+            bool radio = rb != null;
+            bool on = radio ? rb.Checked : cbx != null && cbx.CheckState == CheckState.Checked;
+            bool mixed = cbx != null && cbx.CheckState == CheckState.Indeterminate;
+            Graphics g = e.Graphics;
+            Rectangle cr = c.ClientRectangle;
+            using (SolidBrush back = new SolidBrush(EffectiveBackUp(c))) g.FillRectangle(back, cr);
+
+            int fh = c.Font.Height;
+            int s = Math.Min(CheckGlyphSize(fh), Math.Max(8, cr.Height - 2));
+            int gap = CheckGlyphGap(fh);
+            Padding pad = c.Padding;
+            int x = pad.Left + 1;
+            int y;
+            ContentAlignment ca = radio ? rb.CheckAlign : cbx.CheckAlign;
+            if (ca == ContentAlignment.TopLeft || ca == ContentAlignment.TopCenter || ca == ContentAlignment.TopRight)
+                y = pad.Top + Math.Max(0, (fh - s) / 2);
+            else y = pad.Top + (cr.Height - pad.Vertical - s) / 2;
+            Rectangle box = new Rectangle(x, y, s, s);
+            bool hover = false;
+            try { hover = c.Enabled && cr.Contains(c.PointToClient(Control.MousePosition)); } catch { }
+            Color frame = !c.Enabled ? ColBorder : (on || mixed) ? ColAccent : (hover || c.Focused) ? ColAccent2 : ColText;
+            Color fill = !c.Enabled ? ColMuted : ColAccent;
+            float w = Math.Max(2f, s / 9f);
+
+            SmoothingMode oldMode = g.SmoothingMode;
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            if (radio)
+            {
+                RectangleF ring = new RectangleF(box.X + w / 2f, box.Y + w / 2f, s - w, s - w);
+                using (SolidBrush inner = new SolidBrush(ColInput)) g.FillEllipse(inner, ring);
+                using (Pen p = new Pen(on ? fill : frame, w)) g.DrawEllipse(p, ring);
+                if (on)
+                {
+                    float d = s * 0.5f;
+                    using (SolidBrush dot = new SolidBrush(fill))
+                        g.FillEllipse(dot, box.X + (s - d) / 2f, box.Y + (s - d) / 2f, d, d);
+                }
+            }
+            else if (on || mixed)
+            {
+                using (SolidBrush f = new SolidBrush(fill)) g.FillRectangle(f, box);
+                using (Pen p = new Pen(ColOnAccent, Math.Max(2f, s / 7f)))
+                {
+                    p.StartCap = LineCap.Round; p.EndCap = LineCap.Round; p.LineJoin = LineJoin.Round;
+                    if (mixed) g.DrawLine(p, box.X + s * 0.25f, box.Y + s * 0.5f, box.X + s * 0.75f, box.Y + s * 0.5f);
+                    else g.DrawLines(p, new PointF[] {
+                        new PointF(box.X + s * 0.22f, box.Y + s * 0.52f),
+                        new PointF(box.X + s * 0.42f, box.Y + s * 0.72f),
+                        new PointF(box.X + s * 0.79f, box.Y + s * 0.30f) });
+                }
+            }
+            else
+            {
+                using (SolidBrush inner = new SolidBrush(ColInput)) g.FillRectangle(inner, box);
+                using (Pen p = new Pen(frame, w))
+                {
+                    p.Alignment = PenAlignment.Inset;
+                    g.DrawRectangle(p, box.X, box.Y, s - 1, s - 1);
+                }
+            }
+            g.SmoothingMode = oldMode;
+
+            int tx = box.Right + gap;
+            Rectangle tr = new Rectangle(tx, pad.Top, Math.Max(1, cr.Width - tx), cr.Height - pad.Vertical);
+            TextFormatFlags tf = TextFormatFlags.Left | TextFormatFlags.NoPadding;
+            ContentAlignment ta = c.TextAlign;
+            if (ta == ContentAlignment.TopLeft || ta == ContentAlignment.TopCenter || ta == ContentAlignment.TopRight) tf |= TextFormatFlags.Top;
+            else if (ta == ContentAlignment.BottomLeft || ta == ContentAlignment.BottomCenter || ta == ContentAlignment.BottomRight) tf |= TextFormatFlags.Bottom;
+            else tf |= TextFormatFlags.VerticalCenter;
+            tf |= c.AutoSize ? TextFormatFlags.SingleLine : TextFormatFlags.WordBreak;
+            if (!c.UseMnemonic) tf |= TextFormatFlags.NoPrefix;
+            Color tc = c.Enabled ? (on ? ColText : MapForeground(c.ForeColor, EffectiveBackUp(c))) : ColMuted;
+            TextRenderer.DrawText(g, c.Text ?? "", c.Font, tr, tc, tf);
+        }
+        catch { }
+    }
+
+    /// <summary>v5.1.1 (F2): makes radio buttons that live in DIFFERENT containers one exclusive group (WinForms only clears
+    /// siblings in the same parent). Checking one clears all the others.</summary>
+    internal static void Exclusive(params RadioButton[] group)
+    {
+        if (group == null) return;
+        foreach (RadioButton r in group)
+        {
+            if (r == null) continue;
+            RadioButton me = r;
+            me.CheckedChanged += delegate
+            {
+                if (!me.Checked) return;
+                foreach (RadioButton o in group) if (o != null && o != me && o.Checked) o.Checked = false;
+            };
+        }
     }
 
     /// <summary>Runs a style change and puts Location/Size back if the change moved them.</summary>

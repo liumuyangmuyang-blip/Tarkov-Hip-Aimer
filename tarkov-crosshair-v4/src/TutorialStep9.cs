@@ -535,12 +535,14 @@ namespace TarkovCrosshair
             double pxPerM = TutorialGeometry.ProjectedPx(1, rig.DistanceM) * rig.Zoom * gx.K;
             if (pxPerM > 0) { rig.WallWm = 2 * wallHalfW / pxPerM; rig.WallHm = 2 * wallHalfH / pxPerM; }
             rig.ShowGun = false;   // drawn smaller and lower below, so holes and labels stay clear of it
-            // the rig's own tracers (Pal.Hot) start at a fixed bottom-right point, wrong for the switched hand: hide them
-            // for this call (every hole colour comes from KindColors, so nothing else uses Pal.Hot inside rig.Draw)
-            Color hot = pal.Hot;
-            pal.Hot = Color.Transparent;
+            // the rig's own tracers start at a fixed bottom-right point, wrong for the switched hand: switch them off for this
+            // call (DrawGun below draws the real ones from the small gun's muzzle). v5.1.1 (Leo F4): this used to set Pal.Hot to
+            // Color.Transparent, but TutorialGfx.A keeps only its RGB (255,255,255), so a stray WHITE tracer was drawn beside
+            // the yellow one.
+            bool tracers = rig.ShowTracers;
+            rig.ShowTracers = false;
             try { rig.Draw(gx, scene); }
-            finally { pal.Hot = hot; }
+            finally { rig.ShowTracers = tracers; }
 
             Graphics g = gx.G;
             g.SetClip(scene);
