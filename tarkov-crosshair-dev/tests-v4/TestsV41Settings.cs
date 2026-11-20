@@ -1,4 +1,4 @@
-// SETTINGS41F (v4.1): brute-settings P1/P2 fixes in Settings.cs, v4.3 (W10) old mouse-sway files + F11 free, 站着偏移
+﻿// SETTINGS41F (v4.1): brute-settings P1/P2 fixes in Settings.cs, v4.3 (W10) old mouse-sway files + F11 free, 站着偏移
 // always 0, Autostart via the HKCU Run key, TestsV4Brute scratch folder. Runs from a module initializer (like TestsV41Core).
 using System;
 using System.Collections.Generic;
@@ -221,7 +221,8 @@ namespace TarkovCrosshair.Tests
             // v5.1 (W23): an unreadable 强化 key gets the v5.1 default Ctrl+T (decision 3 / 17); a Keys object without Boost still
             // gets the old migration key 侧键2 (6). Either way 换手方式 / ☑ 换手检测 / ☑ 强化准星 are kept.
             Func<GlobalSettings, bool> kept = delegate(GlobalSettings g) { return g != null && g.HandMode == "hold" && !g.HandEnabled && !g.BoostEnabled && g.Keys.HandSwitch == 5; };
-            Func<GlobalSettings, bool> ctrlT = delegate(GlobalSettings g) { return g != null && g.Keys.Boost == 0x54 && g.Keys.BoostMods == KeyBindings.ModCtrl; };
+            // v5.1.1 (X5, Leo 21 Nov 2026): the default 强化 key is 鼠标侧键2 (6, no modifier)
+            Func<GlobalSettings, bool> ctrlT = delegate(GlobalSettings g) { return g != null && g.Keys.Boost == 6 && g.Keys.BoostMods == 0; };
             GlobalSettings q1 = parse(delegate(JsonObject o) { o["Keys"]["HandSwitch"] = "XButton1"; o["Keys"]["Boost"] = "XButton2"; });
             GlobalSettings q2 = parse(delegate(JsonObject o) { o["Keys"] = new JsonArray(); });
             GlobalSettings q3 = parse(delegate(JsonObject o) { o["Keys"] = new JsonObject(); });
@@ -560,6 +561,7 @@ namespace TarkovCrosshair.Tests
         {
             string err; List<string> bad = new List<string>();
             JsonObject o = StDefaultJson();
+            o["Profiles"][0]["StandAsZero"] = false; /* v5.1.1 (X5, Leo 21 Nov 2026): the built-in has a 站立 point now; this case measures around the centre */
             o["Profiles"][0]["StandOffsetX"] = 7; o["Profiles"][0]["StandOffsetY"] = -27;
             o["Profiles"][0]["HandCustom"][Profile.HandStand] = JsonNode.Parse("{\"Custom\":true,\"X\":5,\"Y\":5}");
             string d = StDir("stand");
@@ -571,10 +573,10 @@ namespace TarkovCrosshair.Tests
                 if (!StStand(g.Profiles[0])) bad.Add("load");
                 // 导入… a single exported profile carrying 站着偏移
                 JsonObject ex = (JsonObject)JsonNode.Parse(SettingsIO.ExportProfile(Profile.CreateLeoDefault("x")));
-                ex["StandOffsetX"] = 7; ex["StandOffsetY"] = -27; ex["HandCustom"][Profile.HandStand] = JsonNode.Parse("{\"Custom\":true,\"X\":5,\"Y\":5}");
+                ex.Remove("StandAsZero"); ex["StandOffsetX"] = 7; ex["StandOffsetY"] = -27; ex["HandCustom"][Profile.HandStand] = JsonNode.Parse("{\"Custom\":true,\"X\":5,\"Y\":5}");
                 List<Profile> imp;
                 if (!SettingsIO.TryParseImport(ex.ToJsonString(), out imp, out err) || !StStand(imp[0])) bad.Add("导入");
-                Profile mem = Profile.CreateLeoDefault("mem"); mem.StandOffsetX = 9; mem.StandOffsetY = 3; mem.SetHandCustom(Profile.HandStand, 4, 4);
+                Profile mem = Profile.CreateLeoDefault("mem"); mem.SetStandPoint(0, 0); mem.StandOffsetX = 9; mem.StandOffsetY = 3; mem.SetHandCustom(Profile.HandStand, 4, 4);
                 g.AddImported(new List<Profile> { mem });
                 if (!StStand(g.Active)) bad.Add("AddImported");
                 // 导入旧版设置 of old files with 站着偏移 (v2.3: per profile; v1.x: global 中心校正)
@@ -595,13 +597,13 @@ namespace TarkovCrosshair.Tests
             finally { StRm(d); }
             Profile blank = Profile.CreateBlank("新");
             if (!StStand(blank)) bad.Add("新建");
-            Profile s = Profile.CreateLeoDefault("s"); s.SaveAsDefault("x"); s.SavedDefault.StandOffsetX = 6; s.SavedDefault.SetHandCustom(Profile.HandStand, 2, 2);
+            Profile s = Profile.CreateLeoDefault("s"); s.SetStandPoint(0, 0); s.SaveAsDefault("x"); s.SavedDefault.StandOffsetX = 6; s.SavedDefault.SetHandCustom(Profile.HandStand, 2, 2);
             GlobalSettings h = GlobalSettings.CreateDefault(); h.Profiles.Add(s);
             Profile restored = h.RestoreSaved(s);
             if (!StStand(restored)) bad.Add("恢复");
             // engine: standing still = screen centre, on both hands
             GlobalSettings eg = GlobalSettings.CreateDefault(); eg.ShowFadeMs = 0; eg.HideFadeMs = 0; eg.OnlyWhenGameFocused = false; eg.Validate();
-            Profile ep = eg.Active; ep.StandOffsetX = 8; ep.StandOffsetY = -6; ep.Validate();
+            Profile ep = eg.Active; ep.SetStandPoint(0, 0); ep.StandOffsetX = 8; ep.StandOffsetY = -6; ep.Validate();
             Sim sim = new Sim(ep, eg, 144);
             sim.Run(1.0, In(""));
             bool c0 = Math.Abs(sim.E.OffsetX) < 1e-9 && Math.Abs(sim.E.OffsetY) < 1e-9;
@@ -725,8 +727,10 @@ namespace TarkovCrosshair.Tests
                     }
                     return 1;
                 };
-                string exe = "/opt/Tarkov Hip/app/TarkovHipAimer.exe", e;
-                st.V[Autostart.ValueName] = "\"/opt/Tarkov Hip/app/TarkovHipAimer.exe\" --autostart";
+                // v5.1.1 (X2): a path of the OS the tests run on (Autostart compares after Path.GetFullPath, which turns /opt/... into
+                // D:\opt\... on Windows, so the Linux path never matched there; CI run 44729023467)
+                string exe = OperatingSystem.IsWindows() ? "C:\\Tarkov Hip\\app\\TarkovHipAimer.exe" : "/opt/Tarkov Hip/app/TarkovHipAimer.exe", e;
+                st.V[Autostart.ValueName] = "\"" + exe + "\" --autostart";
                 bool en = Autostart.Enable(exe, out e) && taskXml != null && Autostart.IsOurTask(taskXml) && taskXml.Contains("<RunLevel>HighestAvailable</RunLevel>")
                     && taskXml.Contains("<LogonType>InteractiveToken</LogonType>") && !taskXml.Contains("Password") && Autostart.IsEnabled()
                     && Autostart.RegisteredPath() == exe && !st.V.ContainsKey(Autostart.ValueName) && calls.Exists(x => x.StartsWith("/Create")) && !Autostart.LegacyTaskLeft;
@@ -780,8 +784,9 @@ namespace TarkovCrosshair.Tests
             GlobalSettings m = parsed ? SettingsIO.MergeLegacy(cur, old, out n) : null;
             Profile mleo = m == null ? null : m.FindProfile(GlobalSettings.DefaultProfileName);
             string after = mleo == null ? "" : OffsetUnits.Format(mleo.Dirs[3].OffX, OffsetAxis.X, m);
-            bool fov = mleo != null && m.ResBaseFov == 60 && m.ResolutionScale == kBefore && Math.Abs(kBefore - 0.7524) < 0.0001 && mleo.Dirs[3].OffX == -30
-                && before == after && after.Contains("3.14") && Math.Abs(OffsetUnits.ToPct(mleo.Dirs[3].OffX, m) + 3.135) < 0.001
+            // v5.1.1 (X5, Leo 21 Nov 2026): k has no FOV part (1 here); D (left, other side) x 75/60 = 5.21 %
+            bool fov = mleo != null && m.ResBaseFov == 60 && m.ResolutionScale == kBefore && kBefore == 1.0 && mleo.Dirs[3].OffX == -30
+                && before == after && after.Contains("5.21") && Math.Abs(OffsetUnits.ToPct(mleo.Dirs[3].OffX, OffsetAxis.X, m) + 5.2083) < 0.001
                 && SettingsIO.ExportProfile(mleo) == SettingsIO.ExportProfile(leo);
             // the imported old profiles keep their raw px values
             bool raw = m != null && n == old.Profiles.Count;

@@ -915,7 +915,7 @@ namespace TarkovCrosshair
                     double my = travelY.Active ? Math.Abs(travelY.Target - travelY.Start) : -1;
                     hudAxis = my > mx ? 'Y' : 'X';
                 }
-                if (math.UpdateA(hudAxis, hudAxis == 'Y' ? travelY : travelX, g) && live) Dirty(rHud[0]);
+                if (math.UpdateA(hudAxis, hudAxis == 'Y' ? travelY : travelX, g, engine.Hand == 1) && live) Dirty(rHud[0]);
                 if (math.UpdateB(x, y, pctX, pctY, kFactor, halfH, baseFov, gameFov, stretchR) && live) Dirty(rHud[1]);
                 // curve dots (u, c) per axis
                 for (int a = 0; a < 2; a++)

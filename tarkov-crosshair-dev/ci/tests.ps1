@@ -1,5 +1,5 @@
 ﻿# W29 (v5.1) CI step 2: tests-v4 and tests-v42-filtertut (both .NET 8 console programs), run at the same time.
-# Several tests read files through the Cloud Desktop's absolute paths (/home/dev/..., /home/dev/...).
+# Several tests read files through the Linux dev machine's absolute paths (/home/dev/..., /home/dev/...).
 # On Windows such a path means "<current drive>:\home\dev\...", so the CI links those folders to the checkout
 # (directory junctions; nothing in the tests is changed).
 . "$PSScriptRoot/common.ps1"

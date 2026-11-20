@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -701,14 +701,15 @@ namespace TarkovCrosshair.Tests
             string root = "/x/HipAimer";
             HashSet<string> files = new HashSet<string>();
             Func<string, bool> ex = delegate(string f) { return files.Contains(f.Replace('\\', '/')); };
+            Func<string, Func<string, bool>, string> UserDirFor = delegate(string d, Func<string, bool> fe) { return (SettingsIO.UserDirFor(d, fe) ?? "").Replace('\\', '/'); }; // v5.1.1: Windows gives \
             files.Add(root + "/启动 Start-HipAimer.bat");
-            bool newNames = SettingsIO.UserDirFor(root + "/程序 app/", ex) == root;
-            bool oldFolderNewBat = SettingsIO.UserDirFor(root + "/app", ex) == root;
+            bool newNames = UserDirFor(root + "/程序 app/", ex) == root;
+            bool oldFolderNewBat = UserDirFor(root + "/app", ex) == root;
             files.Clear(); files.Add(root + "/Start-HipAimer.bat");
-            bool v36 = SettingsIO.UserDirFor(root + "/app/", ex) == root && SettingsIO.UserDirFor(root + "/程序 app", ex) == root;
+            bool v36 = UserDirFor(root + "/app/", ex) == root && UserDirFor(root + "/程序 app", ex) == root;
             files.Clear();
-            bool noBat = SettingsIO.UserDirFor(root + "/程序 app/", ex) == root + "/程序 app";
-            bool other = SettingsIO.UserDirFor(root + "/bin", delegate(string f) { return true; }) == root + "/bin";
+            bool noBat = UserDirFor(root + "/程序 app/", ex) == root + "/程序 app";
+            bool other = UserDirFor(root + "/bin", delegate(string f) { return true; }) == root + "/bin";
             bool cross = SettingsIO.CrosshairFolderName == "准星样式 Crosshairs";
             Check("V40-U1 user folder: 「程序 app」 or 「app」 next to 「启动 Start-HipAimer.bat」 or 「Start-HipAimer.bat」; no bat = exe folder; 准星样式 Crosshairs name",
                 newNames && oldFolderNewBat && v36 && noBat && other && cross, newNames + " " + oldFolderNewBat + " " + v36 + " " + noBat + " " + other + " " + cross);

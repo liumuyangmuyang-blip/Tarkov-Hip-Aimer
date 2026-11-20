@@ -549,14 +549,14 @@ namespace TarkovCrosshair
         /// down so the px limit is never passed).</summary>
         private decimal PctLimit(TutorialField fd)
         {
-            return Dec(TutorialPct.FieldLimit(fd.Min, fd.Max, g), 0, 100000);
+            return Dec(TutorialPct.FieldLimit(fd.Min, fd.Max, fd.Axis, g), 0, 100000);
         }
 
         /// <summary>A 百分比偏移 box changed (or its arrow flipped): % x direction -> PROFILE px (double, not rounded), clamped
         /// to the field's px range.</summary>
         private double PctToFieldPx(TutorialField fd, double pct, int sign)
         {
-            return TutorialPct.FieldPx(pct, sign, fd.Min, fd.Max, g);
+            return TutorialPct.FieldPx(pct, sign, fd.Min, fd.Max, fd.Axis, g);
         }
 
         /// <summary>The arrow of field i was clicked (or '-' typed in its box): the direction flips. A value of 0 only flips
@@ -606,7 +606,7 @@ namespace TarkovCrosshair
                     {
                         decimal lim = PctLimit(fd);
                         if (nud.Maximum != lim) nud.Maximum = lim;
-                        decimal v = Dec(TutorialPct.FieldPct(fd.Get(p), g), nud.Minimum, nud.Maximum);
+                        decimal v = Dec(fd.PctOf(p, g), nud.Minimum, nud.Maximum);
                         if (nud.Value != v) nud.Value = v;
                         if (nud.Enabled != en) nud.Enabled = en;
                     }
@@ -638,7 +638,7 @@ namespace TarkovCrosshair
             TutorialField fd = fieldsShown[i];
             if (fd.Set != null)
             {
-                if (fd.Pct != TutorialField.PctNone) fd.Set(p, PctToFieldPx(fd, (double)nud.Value, frame.FieldSign(i)));
+                if (fd.Pct != TutorialField.PctNone) fd.Set(p, fd.PxOf(p, (double)nud.Value, frame.FieldSign(i), g)); // v5.1.1: origin + hand
                 else fd.Set(p, (double)nud.Value);
             }
             if (fd.After != null) fd.After(p);

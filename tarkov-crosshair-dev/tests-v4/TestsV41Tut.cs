@@ -49,9 +49,9 @@ namespace TarkovCrosshair.Tests
                 {
                     GlobalSettings g = TutG(r[0], r[1], 50);
                     string t = TutorialPct.X(-30, g), o = OffsetUnits.Format(-30, OffsetAxis.X, g);
-                    if (t != o || t != "← 6.86%") { ok = false; d += r[0] + "x" + r[1] + "=" + t + "/" + o + " "; }
+                    if (t != o || t != "← 2.78%") /* v5.1.1 (X5, Leo 21 Nov 2026): D left x 50/75 */ { ok = false; d += r[0] + "x" + r[1] + "=" + t + "/" + o + " "; }
                 }
-                Check("T41-2 tutorial % at FOV 50 = OffsetUnits (4 resolutions)", ok, d.Length == 0 ? "← 6.86%" : d);
+                Check("T41-2 tutorial % at FOV 50 = OffsetUnits (4 resolutions)", ok, d.Length == 0 ? "← 2.78%" : d);
             }
 
             // T41-3 per-frame labels: rebuilt only when the shown value changes (same string object otherwise)
@@ -177,7 +177,7 @@ namespace TarkovCrosshair.Tests
                 string t = GuideText.Text.Replace("\r", "");
                 string d = "";
                 string[] must = { "v5.1", "百分比偏移", "TarkovHipAimer.exe", // v5.1 (W25, decision 5): standing point = 站立静止偏移
-                                  "FOV 75", "准星默认在屏幕正中间", "站立静止偏移", "计划任务", "以管理员身份运行" }; // v5.0.2 (W17): autostart = scheduled task, the app asks for admin
+                                  "FOV 75", "屏幕中心右下一点", "站立静止偏移", /* v5.1.1 (X5, Leo 21 Nov 2026): the built-in stands right-down */ "计划任务", "以管理员身份运行" }; // v5.0.2 (W17): autostart = scheduled task, the app asks for admin
                 foreach (string w in must) if (t.IndexOf(w, StringComparison.Ordinal) < 0) d += " missing「" + w + "」";
                 string[] never = { "Start-HipAimer", ".bat", "bat ", "px", "UAC", "封号", "风险", "BattlEye", "站着偏移", "站立偏移", "鼠标滞后", "鼠标 DPI", "灵敏度", "校准键", "转一圈", "F11" }; // v4.3 (W10): 鼠标滞后 removed // v4.2: F8 is the 滤镜 toggle (Leo 08:35 UTC: F8 allowed)
                 foreach (string w in never) if (t.IndexOf(w, StringComparison.Ordinal) >= 0) d += " has「" + w + "」";
@@ -379,12 +379,13 @@ namespace TarkovCrosshair.Tests
                     && File.ReadAllText(Path.Combine(src, "SettingsForm.PageGuide.cs")).IndexOf("\"打开说明文件\"", StringComparison.Ordinal) < 0) d += " 指南 button text";
                 // R2 the FOV sentence = OffsetUnits: 1 % is half the picture height / 100 (no FOV in it); a smaller FOV raises the
                 // 换算系数 and so the shown % (Leo's D X -30 px: 「← 4.17%」 at FOV 75, 「← 6.86%」 at FOV 50)
-                GlobalSettings g75 = TutG(2560, 1440, 75), g50 = TutG(2560, 1440, 50);
-                bool fovFree = Math.Abs(OffsetUnits.HalfHeight(g75) - OffsetUnits.HalfHeight(g50)) < 1e-9, kUp = ViewScale.Factor(g50) > ViewScale.Factor(g75);
-                if (!fovFree || !kUp) d += " code: 1% FOV-free=" + fovFree + " k(50)>k(75)=" + kUp;
-                string ex = "FOV 75 时的「" + OffsetUnits.Format(-30, OffsetAxis.X, g75) + "」，FOV 50 时显示「" + OffsetUnits.Format(-30, OffsetAxis.X, g50) + "」";
+                // v5.1.1 (X5, Leo 21 Nov 2026): FOV is out of k; D (left, the other side) x gameFov / 75, A (gun side) unchanged
+                GlobalSettings g75 = TutG(2560, 1440, 75), g60 = TutG(2560, 1440, 60), g50 = TutG(2560, 1440, 50);
+                bool fovFree = Math.Abs(OffsetUnits.HalfHeight(g75) - OffsetUnits.HalfHeight(g50)) < 1e-9, kSame = ViewScale.Factor(g50) == ViewScale.Factor(g75);
+                if (!fovFree || !kSame) d += " code: 1% FOV-free=" + fovFree + " k(50)==k(75)=" + kSame;
+                string ex = "D 往左「" + OffsetUnits.Format(-30, OffsetAxis.X, g75) + "」，FOV 60 时显示「" + OffsetUnits.Format(-30, OffsetAxis.X, g60) + "」，FOV 50 时显示「" + OffsetUnits.Format(-30, OffsetAxis.X, g50) + "」；A 往右的数不变";
                 if (t.IndexOf(ex, StringComparison.Ordinal) < 0) d += " FOV example (want " + ex + ")";
-                if (t.IndexOf("和 FOV 无关", StringComparison.Ordinal) < 0 || t.IndexOf("FOV 调小，换算系数变大", StringComparison.Ordinal) < 0) d += " FOV sentence";
+                if (t.IndexOf("和 FOV 无关", StringComparison.Ordinal) < 0 || t.IndexOf("往枪那一侧", StringComparison.Ordinal) < 0 || t.IndexOf("FOV 调小，换算系数变大", StringComparison.Ordinal) >= 0) d += " FOV sentence";
                 if (t.IndexOf("同样的百分比在屏幕上会变大", StringComparison.Ordinal) >= 0) d += " old FOV sentence";
                 // R3 / R4 / R5 field names verbatim as the pages write them; 「滞后强度」 is gone
                 string gen = File.ReadAllText(Path.Combine(src, "SettingsForm.PageGeneral.cs")), mv = File.ReadAllText(Path.Combine(src, "SettingsForm.PageMove.cs"));

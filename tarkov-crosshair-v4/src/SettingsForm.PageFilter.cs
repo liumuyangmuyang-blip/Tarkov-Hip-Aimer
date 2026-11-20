@@ -39,7 +39,7 @@ namespace TarkovCrosshair
         }
 
         /// <summary>滤镜: on/off + preset, tone curve, 色调 / 色彩 / 范围 sliders (advanced rows via 高级设置), A/B, hotkeys.</summary>
-        private Control BuildFilter()
+        private IEnumerable<Control> BuildFilterSteps()
         {
             List<Control> blocks = new List<Control>();
 
@@ -119,7 +119,7 @@ namespace TarkovCrosshair
             problem.ForeColor = Theme.ColWarn;
             FilterRefresh(delegate { problem.Text = Fh.Problem; problem.Visible = Fh.Problem.Length > 0; });
 
-            TableLayoutPanel top = Grid(1);
+            TableLayoutPanel top = Held(Grid(1));
             top.Controls.Add(Line(on, onState));
             top.Controls.Add(Line(Lbl("预设"), preset));
             top.Controls.Add(Line(saveAs, saveCur, rename, delete, factory));
@@ -127,6 +127,7 @@ namespace TarkovCrosshair
             top.Controls.Add(problem);
             top.Controls.Add(Note("滤镜只改显示器的颜色曲线（和显卡控制面板的伽马一样），不截图，也不读游戏。退出程序时自动恢复原画面。", 560));
             blocks.Add(Group("滤镜", top));
+            yield return null; // v5.1.1 (X5): one background-build chunk ends here (PageChunks)
 
             // ---------------------------------------------------------------- tone curve + A/B
             filterGraph = new ToneCurveGraph();
@@ -174,19 +175,21 @@ namespace TarkovCrosshair
                 swap.Enabled = slotA != null && slotB != null;
                 abState.Text = slotA == null && slotB == null ? "" : "现在是 " + (liveSlot == ' ' ? "改动后的设置" : liveSlot.ToString());
             });
-            TableLayoutPanel curve = Grid(1);
+            TableLayoutPanel curve = Held(Grid(1));
             curve.Controls.Add(filterGraph);
             curve.Controls.Add(Hint(CurveHint, 380));
             curve.Controls.Add(curveRead);
             curve.Controls.Add(curveWhy);
             curve.Controls.Add(Line(saveA, saveB, swap, abState));
             blocks.Add(Group("色调曲线", curve));
+            yield return null; // v5.1.1 (X5): one background-build chunk ends here (PageChunks)
 
             // ---------------------------------------------------------------- 调试滤镜 (one bar moves the curve values together)
             blocks.Add(Group("调试滤镜", BuildTune()));
+            yield return null; // v5.1.1 (X5): one background-build chunk ends here (PageChunks)
 
             // ---------------------------------------------------------------- sliders
-            TableLayoutPanel tone = Grid(3);
+            TableLayoutPanel tone = Held(Grid(3));
             StyleRow(tone, PilotHelpText.Shadows, false);
             StyleRow(tone, PilotHelpText.Highlights, false);
             StyleRow(tone, PilotHelpText.Midtones, false);
@@ -194,8 +197,9 @@ namespace TarkovCrosshair
             StyleRow(tone, PilotHelpText.WhitePoint, true);
             StyleRow(tone, PilotHelpText.ContrastPivot, true);
             blocks.Add(Group("色调", tone));
+            yield return null; // v5.1.1 (X5): one background-build chunk ends here (PageChunks)
 
-            TableLayoutPanel colour = Grid(3);
+            TableLayoutPanel colour = Held(Grid(3));
             CheckBox satOn = Check("改饱和度", delegate { return Fh.Style.ApplySaturation; },
                 delegate(bool v) { PilotStyle s = Fh.Style; s.ApplySaturation = v; SetFilterStyle(s); });
             Tip(satOn, SatTip); // v5.0.2 (UI-C M1): the app never uses DDC/CI saturation
@@ -217,26 +221,31 @@ namespace TarkovCrosshair
             StyleRow(colour, PilotHelpText.Temperature, true);
             StyleRow(colour, PilotHelpText.Vibrance, true);
             blocks.Add(Group("色彩", colour));
+            yield return null; // v5.1.1 (X5): one background-build chunk ends here (PageChunks)
 
-            TableLayoutPanel range = Grid(3);
+            TableLayoutPanel range = Held(Grid(3));
             StyleRow(range, PilotHelpText.ShadowRange, false);
             StyleRow(range, PilotHelpText.HighlightRange, true);
             StyleRow(range, PilotHelpText.TransitionSoftness, true);
             blocks.Add(Group("范围", range));
+            yield return null; // v5.1.1 (X5): one background-build chunk ends here (PageChunks)
             // v5.0.1 (W13): the monitor's DDC/CI is probed only once this card is opened (it can take seconds per monitor and
             // hang on some monitors / docks / laptops); the probe runs on the filter worker, every call time-limited.
             Control hwCard = Group("显示器硬件", BuildHardware());
             Control hwFold = Fold("显示器硬件（亮度 / 对比度 / 锐度，点开才检测）", hwCard);
             blocks.Add(hwFold);
+            yield return null; // v5.1.1 (X5): one background-build chunk ends here (PageChunks)
             // v5.0.2 (UI-C M2): 高级设置 does not open it; only the user's click does, and only that probes DDC/CI
             ManualFold(hwFold, delegate { if (!IsDisposed) Fh.HardwareOpened(); });
             blocks.Add(Group("分享码", BuildShare()));
+            yield return null; // v5.1.1 (X5): one background-build chunk ends here (PageChunks)
             Label more = Note("更多设置（白位、中间对比、色温、高光范围、过渡柔和、自然色彩）在顶部打开「高级设置」后显示。", 560);
             refreshers.Add(delegate { more.Visible = !Advanced; });
             blocks.Add(more);
+            yield return null; // v5.1.1 (X5): one background-build chunk ends here (PageChunks)
 
             // ---------------------------------------------------------------- hotkeys
-            TableLayoutPanel keys = Grid(2);
+            TableLayoutPanel keys = Held(Grid(2));
             for (int a = 0; a < FilterKeys.ActionCount; a++)
             {
                 Label l = Lbl(FilterKeys.ActionNames[a]);
@@ -262,13 +271,14 @@ namespace TarkovCrosshair
                 Fh.ResetKeys();
                 RefreshValues();
             });
-            TableLayoutPanel keyBox = Grid(1);
+            TableLayoutPanel keyBox = Held(Grid(1));
             keyBox.Controls.Add(Note("改键：点一下按键框，再按键（Esc 取消）。只能用 F1–F24 或带 Ctrl / Shift / Alt 的组合键，不能和准星的按键用同一个键。", 560));
             keyBox.Controls.Add(keys);
             keyBox.Controls.Add(clash);
             keyBox.Controls.Add(AdvOnly(inGame));
             keyBox.Controls.Add(resetKeys);
             blocks.Add(Group("快捷键", keyBox));
+            yield return null; // v5.1.1 (X5): one background-build chunk ends here (PageChunks)
 
             FilterChangedHandler = delegate
             {
@@ -279,15 +289,25 @@ namespace TarkovCrosshair
             app.FilterChanged += FilterChangedHandler;
             FormClosed += delegate { app.FilterChanged -= FilterChangedHandler; };
             refreshers.Add(RunFilterRefreshers);
-            TableLayoutPanel root = Stack(blocks.ToArray());
+            // v5.1.1 (P2): Stack's layout, filled while suspended (one layout of the whole page later, not one per card)
+            TableLayoutPanel root = Held(Grid(1));
+            foreach (Control c in blocks)
+            {
+                c.Anchor = AnchorStyles.Top | AnchorStyles.Left;
+                root.Controls.Add(c);
+            }
+            // v5.1.1 (P2): the grids stay held while the page is attached, themed and sized (EnsureBuilt); the first refresh (the
+            // fill-in, before the page host's one PerformLayout) releases them. Safety net: the page's first show.
+            filterReleasePending = true;
             filterPageRoot = root;
             root.VisibleChanged += delegate
             {
+                if (filterReleasePending && root.Visible) { ReleaseFilterGrids(); root.PerformLayout(); }
                 if (!root.Visible) return;
                 Fh.PageOpened(); // v5.0.1: the engine starts (background worker) the first time the 滤镜 page is shown
                 if (filterPageStale) RunFilterRefreshers();
             };
-            return root;
+            yield return root;
         }
 
         private Action FilterChangedHandler;
@@ -313,7 +333,7 @@ namespace TarkovCrosshair
             tunePill.ForeColor = Theme.ColAccent2;
             tunePill.Cursor = Cursors.Hand;
             tunePill.TextAlign = ContentAlignment.MiddleRight;
-            tunePill.MinimumSize = new Size(TextRenderer.MeasureText("+5", monoFont).Width + S(6), 0);
+            tunePill.MinimumSize = new Size(FilterTextWidth("+5", monoFont) + S(6), 0);
             Tip(tunePill, "点一下回到中间（当前预设本来的数值）");
             Label dark = Unit("更暗"), bright = Unit("更亮");
             tuneWhy = Hint("", 560);
@@ -337,7 +357,7 @@ namespace TarkovCrosshair
                 int v = (int)Math.Round(tuneBar.Value);
                 tunePill.Text = Signed(v);
             });
-            TableLayoutPanel t = Grid(1);
+            TableLayoutPanel t = Held(Grid(1));
             t.Controls.Add(Line(dark, tuneBar, bright, tunePill));
             t.Controls.Add(tuneWhy);
             t.Controls.Add(Note("一共 11 格（-5 到 +5），每格整体调亮或调暗一点：提亮暗部、黑位、中间调一起变，其他数值和饱和度不变。满意了点上面的「另存为…」或「保存」。", 560));
@@ -380,7 +400,7 @@ namespace TarkovCrosshair
             Action fit = delegate
             {
                 int w = S(120);
-                foreach (object o in c.Items) w = Math.Max(w, TextRenderer.MeasureText(o.ToString(), Font).Width + SystemInformation.VerticalScrollBarWidth + S(16));
+                foreach (object o in c.Items) w = Math.Max(w, FilterTextWidth(o.ToString(), Font) + SystemInformation.VerticalScrollBarWidth + S(16));
                 c.Width = w;
             };
             fit();
@@ -416,7 +436,7 @@ namespace TarkovCrosshair
         private Control BuildHardware()
         {
             MonitorHardware hw = Fh.Hardware();
-            TableLayoutPanel g = Grid(4);
+            TableLayoutPanel g = Held(Grid(4));
             HardwareRow(g, PilotHelpText.HardwareBrightness, "亮度", hw.Brightness, false,
                 delegate(PilotStyle s) { return s.MonitorBrightness; }, delegate(PilotStyle s, int? v) { s.MonitorBrightness = v; },
                 delegate { return (int)Fh.Hardware().Brightness.Current; });
@@ -438,7 +458,7 @@ namespace TarkovCrosshair
             });
             Button probe = Btn("重新检测显示器", delegate { Fh.RefreshMonitors(); RefreshFilterPage(); SetStatus("已重新检测显示器", false); });
             Tip(probe, "换了显示器或在显示器菜单里打开了 DDC/CI 后点这里");
-            TableLayoutPanel box = Grid(1);
+            TableLayoutPanel box = Held(Grid(1));
             box.Controls.Add(name);
             box.Controls.Add(g);
             box.Controls.Add(Note("勾上「改」才会改显示器本身的设置；只在滤镜开着时生效。关掉滤镜、按「全部恢复原样」或退出程序时，显示器会改回原来的值。拖动后显示器要等半秒左右才变。", 560));
@@ -473,7 +493,7 @@ namespace TarkovCrosshair
             pill.Tag = "theme:keep-tag";
             pill.ForeColor = Theme.ColAccent2;
             pill.TextAlign = ContentAlignment.MiddleRight;
-            pill.MinimumSize = new Size(TextRenderer.MeasureText("不支持", Font).Width + S(6), 0);
+            pill.MinimumSize = new Size(FilterTextWidth("不支持", Font) + S(6), 0);
             use.CheckedChanged += delegate
             {
                 if (loading) return;
@@ -560,7 +580,7 @@ namespace TarkovCrosshair
                 });
             });
             Tip(import, "导入成一个新预设，不会覆盖你已有的预设");
-            TableLayoutPanel t = Grid(1);
+            TableLayoutPanel t = Held(Grid(1));
             t.Controls.Add(Line(copy));
             t.Controls.Add(Line(Lbl("粘贴分享码"), frame, import));
             t.Controls.Add(Note("分享码包含这套滤镜的全部数值（饱和度、显示器设置也在里面；对方显示器不支持的项会跳过）。只能导入本程序导出的分享码。", 560));
@@ -568,6 +588,52 @@ namespace TarkovCrosshair
         }
 
         private void FilterRefresh(Action a) { filterRefreshers.Add(a); }
+
+        /// <summary>v5.1.1 (P2, Leo's PC: 滤镜 built in 4727 ms): grids of this page are filled with their layout suspended (one
+        /// pass at the end instead of one per added control); ReleaseFilterGrids resumes them without a layout, the page host
+        /// then lays the whole page out once (EnsureBuilt).</summary>
+        private readonly List<TableLayoutPanel> filterHeld = new List<TableLayoutPanel>();
+
+        /// <summary>v5.1.1 (P2): every grid of the page, innermost first (sorted once the page is put together): a refresh suspends
+        /// them all and resumes them inner to outer, so each grid whose content changed is laid out once per refresh instead of
+        /// once per changed label (and its whole parent chain each time).</summary>
+        private readonly List<TableLayoutPanel> filterGrids = new List<TableLayoutPanel>();
+
+        private TableLayoutPanel Held(TableLayoutPanel t)
+        {
+            t.SuspendLayout();
+            filterHeld.Add(t);
+            filterGrids.Add(t);
+            return t;
+        }
+
+        private bool filterReleasePending;
+
+        private void ReleaseFilterGrids()
+        {
+            filterReleasePending = false;
+            for (int i = filterHeld.Count - 1; i >= 0; i--) filterHeld[i].ResumeLayout(false);
+            filterHeld.Clear();
+            Dictionary<Control, int> depth = new Dictionary<Control, int>();
+            foreach (TableLayoutPanel g in filterGrids)
+            {
+                int d = 0;
+                for (Control p = g.Parent; p != null; p = p.Parent) d++;
+                depth[g] = d;
+            }
+            filterGrids.Sort(delegate(TableLayoutPanel a, TableLayoutPanel b) { return depth[b].CompareTo(depth[a]); });
+        }
+
+        /// <summary>v5.1.1 (P2): text widths measured once per page build (the same "+150" / "不支持" was measured per row).</summary>
+        private readonly Dictionary<string, int> filterTextW = new Dictionary<string, int>();
+
+        private int FilterTextWidth(string text, Font f)
+        {
+            string key = f.Name + "/" + f.SizeInPoints + "/" + text;
+            int w;
+            if (!filterTextW.TryGetValue(key, out w)) { w = TextRenderer.MeasureText(text, f).Width; filterTextW[key] = w; }
+            return w;
+        }
 
         // v5.1 (W24): preset tip + the curve graph text (round 2: built-ins = 通用, 黑夜模式 only)
         internal const string PresetTip = "通用：开发者自己用的设置；黑夜模式：暗部提得更多，适合夜图；其他是你自己存的预设。选好再用「调试滤镜」调亮或调暗";
@@ -608,6 +674,8 @@ namespace TarkovCrosshair
         {
             bool was = loading;
             loading = true; // refreshers set values; no change handler may write back
+            bool hold = filterHeld.Count == 0; // v5.1.1 (P2): not while the page is still being built (its grids are held then)
+            if (hold) foreach (TableLayoutPanel g in filterGrids) g.SuspendLayout();
             try
             {
                 foreach (Action r in filterRefreshers)
@@ -615,7 +683,12 @@ namespace TarkovCrosshair
                     try { r(); } catch (Exception ex) { Program.Log("UI: filter refresh: " + ex.Message); }
                 }
             }
-            finally { loading = was; }
+            finally
+            {
+                loading = was;
+                if (hold) foreach (TableLayoutPanel g in filterGrids) g.ResumeLayout(true); // inner first: one layout per changed grid
+                else if (filterReleasePending) ReleaseFilterGrids(); // first fill-in: EnsureBuilt lays the page out once next
+            }
             filterPageStale = false;
         }
 
@@ -670,7 +743,7 @@ namespace TarkovCrosshair
             pill.ForeColor = Theme.ColAccent2;
             pill.Cursor = Cursors.Hand;
             pill.TextAlign = ContentAlignment.MiddleRight;
-            pill.MinimumSize = new Size(TextRenderer.MeasureText("+150", monoFont).Width + S(6), 0);
+            pill.MinimumSize = new Size(FilterTextWidth("+150", monoFont) + S(6), 0);
             Tip(pill, "点一下回到 " + PillText(key, neutral));
             sl.ValueChanged += delegate
             {

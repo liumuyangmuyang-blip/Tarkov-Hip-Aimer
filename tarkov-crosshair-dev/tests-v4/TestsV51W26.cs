@@ -78,6 +78,7 @@ namespace TarkovCrosshair.Tests
                 bool ir = MustRead.HeadOf(0, h).Contains("红外") && all.Contains("WMX200") && MustRead.BodyOf(0, h).Contains("T 打开");
                 bool laser = all.Contains("不要同时开准星和激光") || all.Contains("激光");
                 bool boost = all.Contains("切换战术装置模式") && all.Contains("Ctrl+T") && all.Contains("手电") && all.Contains("切回红外");
+                boost = boost && MustRead.PlainText(G()).Contains("鼠标侧键2"); // v5.1.1 (X5, Leo 21 Nov 2026): the default key
                 bool numbered = all.Contains("1. ") && all.Contains(MustRead.Items.Length + ". ");
                 bool ack1 = !h.MustReadAck && MustRead.Acknowledge(h) && h.MustReadAck, ack2 = !MustRead.Acknowledge(h);
                 // round 2 (R6): exactly Leo's 3 + 管理员 + 开镜方式, short sentences (head <= 22 chars, body <= 45 chars)
@@ -276,13 +277,13 @@ namespace TarkovCrosshair.Tests
             {
                 string all = string.Join("\n", W26AllTexts(g).ToArray());
                 string rl = HelpText.Body("reload", g);
-                bool r2 = rl.Contains("新的满弹匣") && rl.Contains("2400") && rl.Contains("900") && rl.Contains("常调") && !all.Contains("补满");
+                bool r2 = rl.Contains("新的满弹匣") && rl.Contains("3000") && rl.Contains("2200") && rl.Contains("常调") && !all.Contains("补满");
                 bool r3 = HelpText.Find("ammokeys") == null && !all.Contains("武器键") && !all.Contains("暂停计数");
                 bool r4 = HelpText.Body("taps", g).Contains("短按阈值") && HelpText.Body("taps", g).Contains("换向最短时间")
-                    && HelpText.Find("reversems") != null && all.Contains("120 毫秒") && all.Contains("150 毫秒");
+                    && HelpText.Find("reversems") != null && all.Contains("200 毫秒") && all.Contains("250 毫秒") /* Leo 21 Nov 2026 */;
                 bool r5 = HelpText.Body("filtertier", g).Contains("通用") && HelpText.Body("filtertier", g).Contains("黑夜模式");
                 foreach (string w in new string[] { "白天", "黄昏", "夜图预设", "室内", "实验室" }) if (all.Contains(w)) r5 = false;
-                Check("W26-14 round 2 help/FAQ: reload = new full mag, times 2400 / 900 adjustable incl. 常调; no weapon keys; 短按阈值 / 换向最短时间; filter presets 通用 + 黑夜模式 only",
+                Check("W26-14 round 2 help/FAQ: reload = new full mag, times 3000 / 2200 adjustable incl. 常调; no weapon keys; 短按阈值 / 换向最短时间; filter presets 通用 + 黑夜模式 only",
                     r2 && r3 && r4 && r5, "r2=" + r2 + " r3=" + r3 + " r4=" + r4 + " r5=" + r5);
             }
         }

@@ -182,6 +182,8 @@ namespace TarkovCrosshair.Tests
             // 总时长 0 = instant; a change mid-travel restarts from where the ring is with the full 总时长.
             {
                 Profile z = M4(); z.CurveAD.DurationMs = 0; z.CurveWS.DurationMs = 0;
+                double oldRev = g.ReverseMinMs, oldTap = g.TapThresholdMs;
+                g.ReverseMinMs = 150; g.TapThresholdMs = 120; // Leo 21 Nov 2026 new defaults (250 / 200): pin the old tunables for this block, restored after the check
                 double ax = z.Dirs[2].OffX, dx = z.Dirs[3].OffX;
                 MotionEngine e = new MotionEngine();
                 e.Update(0.001, In("A"), z, g, PreviewMode.Live, 1);
@@ -196,12 +198,15 @@ namespace TarkovCrosshair.Tests
                 // v5.1 (W21, decision 7): A->D = back to 0 in the time A took to get there (40 ms; at least MinReverseMs − 总时长
                 // = 50 ms here), then out from rest over 总时长
                 double d1 = Math.Max(40, MotionEngine.MinReverseMs - 100);
-                double first = m.MoveX, want1 = at * (1 - MotionCurve.Progress(p.CurveAD.Speeds, 1 / d1));
+                // v5.1.1 (X4, B6): a tap (not a real hold) goes back DOWN the ramp: curve position u falls linearly from ux
+                double ux = MotionCurve.ProgressInverse(p.CurveAD.Speeds, Math.Abs(at / p.Dirs[2].OffX));
+                double first = m.MoveX, want1 = at * MotionCurve.Progress(p.CurveAD.Speeds, ux * (1 - 1 / d1)) / MotionCurve.Progress(p.CurveAD.Speeds, ux);
                 Step(m, p, g, "D", (int)d1 + 98, 0.001);
                 bool still = m.Traveling(0);
                 Step(m, p, g, "D", 1, 0.001);
                 Check("C2 总时长 0 instant; change mid-travel (A 40 ms -> D): from the ring back to 0 (40 ms, min 150 ms in all), then the full 总时长", inst && Math.Abs(first - want1) < 1e-9 && still && Math.Abs(m.MoveX - dx) < 1e-9 && !m.Traveling(0),
                     "0 ms: A=" + F(x0) + " then D=" + F(e.MoveX) + "; A 40 ms at x=" + F(at) + ", D: 1st frame " + F(first) + " (= x·(1−P(1/" + F(d1) + "))), on D " + F(d1 + 100) + " ms after the press=" + (Math.Abs(m.MoveX - dx) < 1e-9));
+                g.ReverseMinMs = oldRev; g.TapThresholdMs = oldTap; // Leo 21 Nov 2026 new defaults: restore
             }
 
             // Live edits and hand blending move the target without restarting the travel.
@@ -656,7 +661,7 @@ namespace TarkovCrosshair.Tests
                                 if (Array.IndexOf(RemovedKeys, k.Name) < 0) { if (k.Value.GetInt32() == 5) used5 = true; if (k.Value.GetInt32() == 6) used6 = true; }
                             fine = fine && g.Keys.HandSwitch == 5 && g.HandEnabled == !used5 && g.HandMode == "toggle";
                             fine = fine && g.Keys.Boost == 6 && g.BoostEnabled == !used6 && g.OnlyWhenGameFocused && g.GameWindowTitle == GlobalSettings.DefaultGameWindowTitle
-                                && !g.Autostart && g.SplashOnStart;
+                                && g.Autostart /* Leo 21 Nov 2026 new defaults: these files have no Autostart -> default on */ && g.SplashOnStart;
                             if (name == "settings-v2.1.json") fine = fine && used5 && !g.HandEnabled && g.Keys.FreeLook == 5; // 自由视角 is on side button 1 there
                         }
                         string saved = SettingsIO.Serialize(g);
@@ -685,9 +690,9 @@ namespace TarkovCrosshair.Tests
                     && m.RotationDeg == 0 && m.HandColorOn && m.HandColor == "#FF9500" && m.HandColor2 == "#000000";
                 double[,] dirs = { { 0, -14.4 }, { 0, 14.4 }, { 97.2, 0 }, { -37.4, 0 }, { 68.7, -10.2 }, { -26.5, -10.2 }, { 68.7, 10.2 }, { -26.5, 10.2 } }; // v5.0: Leo's v5 file 「Leo默认 (旧)」
                 bool mv = m.CurveAD.DurationMs == 430 && m.CurveWS.DurationMs == 430 && Same(m.CurveAD.Speeds, 0, 15, 45, 75, 100) && Same(m.CurveWS.Speeds, 0, 15, 45, 75, 100)
-                    && m.StandOffsetX == 0 && m.StandOffsetY == 0;
-                for (int i = 0; i < 8; i++) if (Math.Round(m.Dirs[i].OffX, 1) != dirs[i, 0] || Math.Round(m.Dirs[i].OffY, 1) != dirs[i, 1]) mv = false;
-                bool rc = m.RecoilMaxPx == 24 && m.RecoilRiseMs == 300 && m.RecoilClickKickPx == 8 && m.RecoilFallMs == 180 && m.RecoilDelayMs == 30 && m.RecoilDriftX == 0;
+                    && m.StandAsZero && m.StandOffsetX == 24.48 && m.StandOffsetY == -25.2; // v5.1.1 (X5, Leo 21 Nov 2026): 站立 point
+                for (int i = 0; i < 8; i++) { double ax, ay; m.DirFromCentre(i, out ax, out ay); if (Math.Round(ax, 1) != dirs[i, 0] || Math.Round(ay, 1) != dirs[i, 1]) mv = false; } // same screen places
+                bool rc = m.RecoilMaxPx == 28.8 && m.RecoilRiseMs == 300 && m.RecoilClickKickPx == 8 && m.RecoilFallMs == 180 && m.RecoilDelayMs == 30 && m.RecoilDriftX == 0;
                 bool ln = Math.Abs(m.LeanQX + 11.808) < 1e-9 && m.LeanQY == -18 && Math.Abs(m.LeanEX - 11.52) < 1e-9 && Math.Abs(m.LeanEY + 16.56) < 1e-9 && m.LeanMs == 280;
                 bool hd = m.HandSwitchMs == 450 && m.SavedDefault == null && b.CurveAD.IsRecommended && b.CurveWS.IsRecommended && b.HandSwitchMs == 450; // v4.1 (BRUTE40 P1-1): 新建空白配置 = 推荐 curve, not the deleted v2.3 one; v5.0.2 (W18): its times are Leo's (450 ms)
                 JumpSettings js = m.Jump;
@@ -698,9 +703,9 @@ namespace TarkovCrosshair.Tests
                 bool bo = bs.Diameter == 15 && bs.Thickness == 1.8 && bs.OuterThickness == 2.5 && bs.OpacityPct == 90 && bs.GlowPx == 4 && bs.GlowOpacityPct == 45
                     && bs.FollowHandColor && bs.Color == "#00FF00" && bs.Color2 == "#000000";
                 KeyBindings k = d.Keys;
-                bool gl = k.Toggle == 0x7B && k.Fire == 1 && k.Ads == 2 && k.FreeLook == 4 && k.HandSwitch == 5 && k.Boost == 0x54 && k.BoostMods == KeyBindings.ModCtrl /* v5.1 (W23): 强化 = Ctrl+T */ && k.LeanLeft == 0x51 && k.LeanRight == 0x45
+                bool gl = k.Toggle == 0x7B && k.Fire == 1 && k.Ads == 2 && k.FreeLook == 4 && k.HandSwitch == 5 && k.Boost == 6 && k.BoostMods == 0 /* v5.1.1 (X5, Leo 21 Nov 2026): 强化 = 鼠标侧键2 */ && k.LeanLeft == 0x51 && k.LeanRight == 0x45
                     && k.Forward == 0x57 && k.Back == 0x53 && k.Left == 0x41 && k.Right == 0x44 && k.Jump == 0x20 && d.AdsMode == "hold" && d.LeanMode == "hold" && d.HideOnFreeLook
-                    && d.HandEnabled && d.HandMode == "toggle" && d.BoostEnabled && d.OnlyWhenGameFocused && d.GameWindowTitle == "EscapeFromTarkov" && !d.Autostart
+                    && d.HandEnabled && d.HandMode == "toggle" && d.BoostEnabled && d.OnlyWhenGameFocused && d.GameWindowTitle == "EscapeFromTarkov" && d.Autostart /* Leo 21 Nov 2026 new defaults */
                     && d.SplashOnStart && d.Enabled && d.Fps == 360 && d.ShowFadeMs == 50 && d.ResBaseH == 1440 && d.ResGameH == 1440 && d.ResBaseW == 2160 && d.ResGameW == 1920
                     && d.Profiles.Count == 1 && d.ActiveProfile == "Leo默认" && m.Name == "Leo默认";
                 string scratch = Environment.GetEnvironmentVariable("KIROCREW_SCRATCH");

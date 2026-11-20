@@ -474,14 +474,18 @@ namespace TarkovCrosshair
             {
                 try
                 {
-                    Splash splash = new Splash(RingIcon, Settings.ActiveProfile);
+                    // v5.1.1 (X2, Leo F6): the splash animates on its own UI thread, so the settings window can be built here
+                    // meanwhile (StartPrebuild) without a single dropped splash frame; when it ends, afterSplash runs here.
                     splashRunning = true;
-                    splash.Done += delegate { splashRunning = false; };
-                    splash.Done += afterSplash;
-                    splash.Show(); // animates once the message loop runs; the overlay is already running underneath
+                    settingsAfterSplash = Settings.ShowSettingsOnStart || FirstRun || !Settings.WizardDone;
+                    Splash.ShowOnOwnThread(RingIcon, Settings.ActiveProfile, delegate
+                    {
+                        try { invoker.BeginInvoke((Action)delegate { splashRunning = false; afterSplash(); }); }
+                        catch (Exception ex) { Program.Log("splash done: " + ex.Message); }
+                    });
                     splashShown = true;
                 }
-                catch (Exception ex) { Program.Log("splash: " + ex); }
+                catch (Exception ex) { splashRunning = false; Program.Log("splash: " + ex); }
             }
             if (!splashShown) afterSplash();
             StartupClock.Mark(splashShown ? "启动画面已显示" : "主窗口已显示");
@@ -492,6 +496,8 @@ namespace TarkovCrosshair
         private void AfterUiUp()
         {
             StartupClock.Done("启动完成（消息循环在运行）");
+            // v5.1.1 (X2): compile the settings window's code on a low-priority background thread (UiSpeed.cs PreJit)
+            try { PreJit.Start(typeof(App).Assembly, UiPerf.On, Program.Log); } catch (Exception ex) { Program.Log("PreJit: " + ex.Message); }
             // v5.0.2: tray menu window + layout now (the first right-click used to create both)
             try
             {
@@ -510,7 +516,7 @@ namespace TarkovCrosshair
                 if (net != null)
                 {
                     net.Start(); // background thread; first GitHub check 30 s later
-                    if (Settings.WizardDone) net.AskStatsIfNeeded(null); // users who skip the wizard (it asks itself)
+                    // v5.1 (Leo 21 Nov 2026): no 统计 question -- anonymous stats are on by default, off in 常规
                 }
             }
             catch (Exception ex) { Program.Log("net: start: " + ex.Message); }
@@ -530,6 +536,9 @@ namespace TarkovCrosshair
 
         /// <summary>True while the start-up splash animates (the background build waits for it: no hitch in its frames).</summary>
         private bool splashRunning;
+        /// <summary>v5.1.1: the settings window opens when the splash ends, so the background build starts at once (the splash
+        /// has its own thread) instead of 1.5 s later.</summary>
+        private bool settingsAfterSplash;
         private System.Windows.Forms.Timer prebuildTimer;
         private System.Diagnostics.Stopwatch prebuildClock;
 
@@ -542,12 +551,12 @@ namespace TarkovCrosshair
         private void StartPrebuild()
         {
             prebuildTimer = new System.Windows.Forms.Timer();
-            prebuildTimer.Interval = 1500;
+            prebuildTimer.Interval = settingsAfterSplash ? 1 : 1500;
             prebuildTimer.Tick += delegate
             {
                 prebuildTimer.Interval = 30;
                 if (exiting) { StopPrebuild(null); return; }
-                if (splashRunning) return;
+                if (splashRunning && !settingsAfterSplash) return; // v5.1.1: the splash has its own thread now
                 try
                 {
                     if (form == null || form.IsDisposed)

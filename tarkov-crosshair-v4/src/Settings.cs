@@ -92,11 +92,12 @@ namespace TarkovCrosshair
             LeanLeft = 0x51; LeanRight = 0x45;
             Fire = 0x01; Ads = 0x02; Toggle = 0x7B; FreeLook = 0x04; Jump = VkSpace;
             handSwitch = VkXButton1; HandSwitchPresent = true;
-            // v5.1 (Leo, decision 3 corrected): 强化准星 default = the game's 切换战术设备模式 key Ctrl+T (V51-RESEARCH §2);
-            // v3.0-v5.0.2: XButton2. Files that have a Boost key keep it.
-            boost = VkT; BoostPresent = true;
+            // v5.1.1 (X5, Leo 21 Nov 2026): 强化准星 default = mouse side button 2 (XButton2, no modifier); the player binds the
+            // game's 切换战术设备模式 to the same button (or rebinds here). v5.1: Ctrl+T; v3.0-v5.0.2: XButton2. Files that have a
+            // Boost key keep it.
+            boost = VkXButton2; BoostPresent = true;
             LeanLeftMods = LeanRightMods = FireMods = AdsMods = ToggleMods = FreeLookMods = JumpMods = HandSwitchMods = 0;
-            BoostMods = ModCtrl;
+            BoostMods = 0;
         }
 
         /// <summary>v4.0: 前后左右 are always W / S / A / D.</summary>
@@ -985,6 +986,7 @@ namespace TarkovCrosshair
             Profile p = CreateLeoDefault(name);
             p.Dirs = NewZeroDirs();
             p.StandOffsetX = 0; p.StandOffsetY = 0;
+            p.StandAsZero = false; // v5.1.1 (X5): the built-in has a 站立 point since Leo 21 Nov 2026; a blank profile has none
             p.RecoilMaxPx = 0; p.RecoilClickKickPx = 0; p.RecoilDriftX = 0;
             p.LeanQX = 0; p.LeanQY = 0; p.LeanEX = 0; p.LeanEY = 0;
             p.AllHandAuto();
@@ -1592,13 +1594,17 @@ namespace TarkovCrosshair
         /// "brackets,colour". Validate keeps known tokens in AmmoStyleIds order; empty -> "brackets".</summary>
         [DataMember(Name = "AmmoStyle")] public string AmmoStyle;
         public static readonly string[] AmmoStyleIds = new string[] { "brackets", "bottombar", "colour", "fade", "flash" };
+        // v5.1.1 (X3, Leo round B): the 弹药提示 bar (look, 只在少于 X% 时显示, warnings, reload animations) and the 准星动态
+        // amounts / firing effects (LookFxSettings.cs). Absent in an older file -> defaults (Validate).
+        [DataMember(Name = "AmmoBar")] public AmmoBarSettings AmmoBar;
+        [DataMember(Name = "AnimFx")] public AnimFxSettings AnimFx;
         /// <summary>换弹键 (virtual-key code, default R = 0x52). Press = 普通换弹, double-tap within AmmoQuickTapMs = 快速换弹.</summary>
         [DataMember(Name = "AmmoReloadKey")] public int AmmoReloadKey;
         /// <summary>双击判定 window in ms (100..800, default 300).</summary>
         [DataMember(Name = "AmmoQuickTapMs")] public int AmmoQuickTapMs;
-        /// <summary>v5.1 R2 (Leo round 2): 换弹时间 (R): a new full mag after this many ms (300..6000, default 2400).</summary>
+        /// <summary>v5.1 R2 (Leo round 2): 换弹时间 (R): a new full mag after this many ms (300..6000, default 3000; Leo 21 Nov 2026, was 2400).</summary>
         [DataMember(Name = "AmmoReloadMs")] public double AmmoReloadMs;
-        /// <summary>v5.1 R2: 快速换弹时间 (R twice): the old mag is dropped, a new full mag after this many ms (200..4000, default 900).</summary>
+        /// <summary>v5.1 R2: 快速换弹时间 (R twice): the old mag is dropped, a new full mag after this many ms (200..4000, default 2200; Leo 21 Nov 2026, was 900).</summary>
         [DataMember(Name = "AmmoQuickReloadMs")] public double AmmoQuickReloadMs;
         /// <summary>v5.1 R4: 换向最短时间 in ms (A→D: back to 0 and out again takes at least this; 0..600, default 150 =
         /// MinDirectionBlendTime, V51-RESEARCH §1).</summary>
@@ -1621,13 +1627,15 @@ namespace TarkovCrosshair
         /// <summary>丢雷键 (VK, default G = 0x47).</summary>
         [DataMember(Name = "GrenadeKey")] public int GrenadeKey;
         /// <summary>强化准星 key = Keys.Boost + Keys.BoostMods (one source of truth, saved in Keys; action ActionBoost).
-        /// v5.1 default (fresh install / unreadable key) = Ctrl+T, Tarkov's default 切换战术设备模式（红外/手电）key
-        /// (V51-RESEARCH §2). Not T alone (T = device on/off). Older files keep their own key.</summary>
+        /// v5.1.1 default (fresh install / unreadable key) = 鼠标侧键2 (XButton2; Leo 21 Nov 2026), to be bound to the game's
+        /// 切换战术设备模式（红外/手电）too (v5.1: Ctrl+T, the game's own default). Not T alone (T = device on/off). Older files
+        /// keep their own key.</summary>
         public int BoostKey { get { return Keys == null ? 0 : Keys.Boost; } set { if (Keys != null) Keys.Boost = value; } }
         public int BoostKeyMods { get { return Keys == null ? 0 : Keys.BoostMods; } set { if (Keys != null) Keys.SetMods(KeyBindings.ActionBoost, value); } }
         /// <summary>强化方式: true = 切换 (default), false = 按住.</summary>
         [DataMember(Name = "BoostToggle")] public bool BoostToggle;
-        /// <summary>准星动态 preset: "static" (静态, default) / "cs" (CS 动态) / "classic" (经典).</summary>
+        /// <summary>准星动态 preset: "static" (静态, default) / "cs" (跟随动作; id kept for old files) / "classic" (开火跳动) /
+        /// "fx" (开火特效). v5.1.1 (Leo B2): AnimLeanRotate and AnimShake are kept only so files import; no effect any more.</summary>
         [DataMember(Name = "AnimPreset")] public string AnimPreset;
         [DataMember(Name = "AnimDynGap")] public bool AnimDynGap;
         [DataMember(Name = "AnimFirePulse")] public bool AnimFirePulse;
@@ -1646,6 +1654,34 @@ namespace TarkovCrosshair
         [DataMember(Name = "ResStretched")] public bool? ResStretched;
         /// <summary>True when the game picture is stretched to the full screen (ResStretched null or true).</summary>
         public bool PictureStretched { get { return ResStretched != false; } }
+        /// <summary>v5.1.1 (X1, Leo): which black bars the game shows when the picture is NOT stretched: "none" (拉宽了，铺满屏幕),
+        /// "topbottom" (没拉宽，上下有黑边), "leftright" (没拉宽，左右有黑边). Kept in step with ResStretched (none = stretched;
+        /// the other two = ResStretched false). A file without it (v5.1 and older) gets it from ResStretched: false -> the side the
+        /// ratio itself leaves empty (a ratio narrower than the resolution -> leftright, wider -> topbottom). Set it with SetBars.</summary>
+        [DataMember(Name = "ResBars")] public string ResBars;
+        public const string BarsNone = "none", BarsTopBottom = "topbottom", BarsLeftRight = "leftright";
+        public static readonly string[] BarsIds = { BarsNone, BarsTopBottom, BarsLeftRight };
+
+        /// <summary>The bars the ratio leaves empty when it is not stretched (leftright for a narrower ratio, else topbottom).</summary>
+        public string NaturalBars()
+        {
+            return ViewScale.StretchX(ResGameW, ResGameH, ResAspect) > 1.0 + 1e-9 ? BarsLeftRight : BarsTopBottom;
+        }
+
+        /// <summary>Stores the 3-way choice and keeps ResStretched in step (none -> true, bars -> false).</summary>
+        public void SetBars(string bars)
+        {
+            ResBars = Array.IndexOf(BarsIds, bars) >= 0 ? bars : BarsNone;
+            ResStretched = ResBars == BarsNone ? (bool?)true : false;
+        }
+
+        /// <summary>ResBars made valid and consistent with ResStretched (called by Validate).</summary>
+        private void FixBars()
+        {
+            if (Array.IndexOf(BarsIds, ResBars) < 0) ResBars = ResStretched == false ? NaturalBars() : BarsNone;
+            else if (ResBars == BarsNone && ResStretched == false) ResBars = NaturalBars();
+            else if (ResBars != BarsNone && ResStretched != false) ResBars = BarsNone;
+        }
         // ---- v5.1 W33 (overlay texture-drop diagnostics), all default false ----
         /// <summary>新的显示方式（DirectComposition）.</summary>
         [DataMember(Name = "OverlayDCompMode")] public bool OverlayDCompMode;
@@ -1665,7 +1701,7 @@ namespace TarkovCrosshair
         [DataMember(Name = "TapThresholdMs")] public double TapThresholdMs;
         /// <summary>A→D 反向: "slowstart" (only mode in v5.1: from the current position, decelerate then accelerate).</summary>
         [DataMember(Name = "ReverseMode")] public string ReverseMode;
-        public static readonly string[] AnimPresetIds = new string[] { "static", "cs", "classic" };
+        public static readonly string[] AnimPresetIds = new string[] { "static", "cs", "classic", "fx", "race" };
         public static readonly string[] ReverseModeIds = new string[] { "slowstart" };
         /// <summary>Default weapon keys (V51-RESEARCH §2, Tarkov defaults): main = 2 (枪带上的主武器); other = 1 (手枪), 3 (背上的
         /// 第二把长枪), V (近战), 4-0 (快捷栏).</summary>
@@ -1742,7 +1778,7 @@ namespace TarkovCrosshair
             HandEnabled = true; HandMode = "toggle";
             ResBaseW = 2160; ResBaseH = 1440; ResGameW = 2160; ResGameH = 1440;
             OnlyWhenGameFocused = true; GameWindowTitle = DefaultGameWindowTitle;
-            Autostart = false; SplashOnStart = true; BoostEnabled = true;
+            Autostart = true; SplashOnStart = true; BoostEnabled = true; // Leo 21 Nov 2026: 开机自启 on by default
             AdsCancelTabEsc = true; AdsIgnoreAltCtrl = true; AdsCancelSprint = true;
             LeanCancelSprint = true; TutorialDone = false;
             SetV51Defaults();
@@ -1753,15 +1789,16 @@ namespace TarkovCrosshair
         /// <summary>v5.1 shared fields: defaults (also for an older file without them).</summary>
         public void SetV51Defaults()
         {
-            AmmoOn = false; AmmoMagSize = 30; AmmoRpm = 600; AmmoSemi = false; AmmoStyle = "brackets,colour";
+            AmmoOn = false; AmmoMagSize = 30; AmmoRpm = 850; AmmoSemi = false; AmmoStyle = "brackets,colour"; // v5.1.1 B3: shape words no longer matter (kept so old checks / files read the same)
+            AmmoBar = AmmoBarSettings.Defaults(); AnimFx = AnimFxSettings.Defaults();
             AmmoReloadKey = 0x52; AmmoQuickTapMs = 300;
             AmmoWeaponKeysMain = DefaultWeaponKeysMain(); AmmoWeaponKeysOther = DefaultWeaponKeysOther();
             GrenadeHideOn = true; GrenadeKey = 0x47; BoostToggle = true;
             AnimPreset = "static"; AnimDynGap = false; AnimFirePulse = false; AnimLeanRotate = false; AnimStateColour = false; AnimShake = false;
-            PerfMode = false; OverlayDCompMode = false; AdsRealHide = false; GpuDiagLog = false; ResAspectCustom = "16:9"; ResStretched = null; WizardDone = false; MustReadAck = false;
+            PerfMode = false; OverlayDCompMode = false; AdsRealHide = false; GpuDiagLog = false; ResAspectCustom = "16:9"; ResStretched = null; ResBars = BarsNone; WizardDone = false; MustReadAck = false;
             NetUpdateCheck = true; NetStatsConsent = null; NetCrashAsk = true;
-            TapThresholdMs = 120; ReverseMode = "slowstart";
-            AmmoReloadMs = 2400; AmmoQuickReloadMs = 900; ReverseMinMs = 150; ReturnTimePct = 100; ReversePauseMs = 0;
+            TapThresholdMs = 200; ReverseMode = "slowstart";
+            AmmoReloadMs = 3000; AmmoQuickReloadMs = 2200; ReverseMinMs = 250; ReturnTimePct = 100; ReversePauseMs = 0;
         }
 
         /// <summary>v5.1: clamps the shared fields; a bad value gets its SetV51Defaults value.</summary>
@@ -1771,6 +1808,8 @@ namespace TarkovCrosshair
             if (AmmoMagSize < 1 || AmmoMagSize > 200) AmmoMagSize = d.AmmoMagSize;
             if (AmmoRpm < 60 || AmmoRpm > 2000) AmmoRpm = d.AmmoRpm;
             AmmoStyle = NormalizeAmmoStyle(AmmoStyle);
+            if (AmmoBar == null) AmmoBar = AmmoBarSettings.Defaults(); else AmmoBar.Validate();
+            if (AnimFx == null) AnimFx = AnimFxSettings.Defaults(); else AnimFx.Validate();
             if (AmmoReloadKey < 1 || AmmoReloadKey > 254) AmmoReloadKey = d.AmmoReloadKey;
             if (AmmoQuickTapMs < 100 || AmmoQuickTapMs > 800) AmmoQuickTapMs = d.AmmoQuickTapMs;
             AmmoWeaponKeysMain = CleanVks(AmmoWeaponKeysMain, d.AmmoWeaponKeysMain);
@@ -1780,6 +1819,7 @@ namespace TarkovCrosshair
             int cw, ch;
             if (!ViewScale.TryParseRatio(ResAspectCustom, out cw, out ch)) ResAspectCustom = d.ResAspectCustom;
             else ResAspectCustom = cw + ":" + ch;
+            FixBars(); // v5.1.1 (X1)
             TapThresholdMs = Math.Round(Clamp.D(TapThresholdMs, TapThresholdMsMin, TapThresholdMsMax, d.TapThresholdMs));
             AmmoReloadMs = Math.Round(Clamp.D(AmmoReloadMs, AmmoReloadMsMin, AmmoReloadMsMax, d.AmmoReloadMs));
             AmmoQuickReloadMs = Math.Round(Clamp.D(AmmoQuickReloadMs, AmmoQuickReloadMsMin, AmmoQuickReloadMsMax, d.AmmoQuickReloadMs));
@@ -1823,7 +1863,7 @@ namespace TarkovCrosshair
             g.SettingsTopMost = true; g.ShowSettingsOnStart = true; g.HideOnFreeLook = true;
             g.HandEnabled = true; g.HandMode = "toggle";
             g.OnlyWhenGameFocused = true; g.GameWindowTitle = DefaultGameWindowTitle;
-            g.Autostart = false; g.SplashOnStart = true; g.BoostEnabled = true;
+            g.Autostart = true; g.SplashOnStart = true; g.BoostEnabled = true; // Leo 21 Nov 2026
             g.Profiles.Add(Profile.CreateLeoDefault(DefaultProfileName));
             g.ActiveProfile = DefaultProfileName;
             return g;
@@ -1852,6 +1892,7 @@ namespace TarkovCrosshair
             g.Keys = Keys == null ? new KeyBindings() : Keys.Clone();
             g.AmmoWeaponKeysMain = AmmoWeaponKeysMain == null ? null : (int[])AmmoWeaponKeysMain.Clone();
             g.AmmoWeaponKeysOther = AmmoWeaponKeysOther == null ? null : (int[])AmmoWeaponKeysOther.Clone();
+            g.AmmoBar = AmmoBar == null ? null : AmmoBar.Clone(); g.AnimFx = AnimFx == null ? null : AnimFx.Clone();
             g.Profiles = new List<Profile>();
             if (withProfiles && Profiles != null)
                 foreach (Profile p in Profiles) g.Profiles.Add(p.Clone());
@@ -2377,8 +2418,10 @@ namespace TarkovCrosshair
             return HalfSpan(w, h, aspect, fovType) / Math.Tan(fovDeg * Math.PI / 360.0);
         }
 
-        /// <summary>k = f_game / f_base, computed as (half span ratio) × (tan ratio) so that equal FOVs give a tan ratio of
-        /// exactly 1 and 跟随 + 垂直 gives exactly 游戏高度 / 调参高度 (bit for bit the v4.0 scale). 1 when anything is unusable.</summary>
+        /// <summary>k = the resolution / 画面比例 part of the conversion: half span ratio (跟随 + 垂直 gives exactly 游戏高度 / 调参高度,
+        /// bit for bit the v4.0 scale). v5.1.1 (X5): the old tan(baseFov / 2) / tan(gameFov / 2) FOV term is gone (Leo measured it
+        /// wrong at FOV 60 / 50); FOV now goes through FovX on the final X only. The FOV arguments are still checked (1 when
+        /// anything is unusable) so old callers keep their fallbacks.</summary>
         public static double Factor(double gameW, double gameH, string gameAspect, double gameFov,
                                     double baseW, double baseH, string baseAspect, double baseFov, string fovType)
         {
@@ -2391,8 +2434,7 @@ namespace TarkovCrosshair
         {
             double hg = HalfSpan(gameW, gameH, gameAspect, fovType, fit), hb = HalfSpan(baseW, baseH, baseAspect, fovType, fit);
             if (!(hg > 0) || !(hb > 0) || !(gameFov > 0) || !(baseFov > 0) || gameFov >= 180 || baseFov >= 180) return 1.0;
-            double tr = gameFov == baseFov ? 1.0 : Math.Tan(baseFov * Math.PI / 360.0) / Math.Tan(gameFov * Math.PI / 360.0);
-            return (hg / hb) * tr;
+            return hg / hb; // v5.1.1 (X5): no FOV term here any more; FOV is applied to the final X by FovX (Leo's measured rule)
         }
 
         public static double Factor(GlobalSettings g)
@@ -2418,6 +2460,39 @@ namespace TarkovCrosshair
             if (g == null) return 1.0;
             if (!g.PictureStretched) return Factor(g); // v5.1: 不拉伸 -> no X factor
             return FactorX(g.ResGameW, g.ResGameH, g.ResAspect, g.ResFov, g.ResBaseW, g.ResBaseH, g.ResBaseAspect, g.ResBaseFov);
+        }
+
+        /// <summary>v5.1.1 (X5, Leo's in-game measurements 21 Nov 2026, Leo 推荐 at 1920×1440 4:3, tuned at FOV 75): the FOV
+        /// ratio r = gameFov / baseFov (linear). Exactly 1 for equal FOVs and when a FOV is unusable.</summary>
+        public static double FovRatio(double gameFov, double baseFov)
+        {
+            if (!(gameFov > 0) || !(baseFov > 0) || gameFov >= 180 || baseFov >= 180 || gameFov == baseFov) return 1.0;
+            double r = gameFov / baseFov;
+            return (r > 0 && !double.IsInfinity(r) && !double.IsNaN(r)) ? r : 1.0;
+        }
+
+        public static double FovRatio(GlobalSettings g)
+        {
+            return g == null ? 1.0 : FovRatio(g.ResFov, g.ResBaseFov);
+        }
+
+        /// <summary>v5.1.1 (X5) FOV on X, applied to the FINAL on-screen X (direction + lean + stand + recoil, so diagonals and
+        /// leans follow). x in UI coords (+ = right). Offsets toward the weapon's side (screen RIGHT for the normal hand) are not
+        /// scaled; offsets to the other side are × r. hand = MotionEngine.HandBlend (0 正常手 .. 1 换手, the sides swap; in
+        /// between the factors blend linearly). r == 1 (equal FOVs) returns x unchanged, bit for bit. Y has no FOV term
+        /// (Leo, 21 Nov 2026).</summary>
+        public static double FovX(double x, double r, double hand)
+        {
+            if (r == 1.0 || x == 0 || double.IsNaN(x)) return x;
+            if (!(hand > 0)) hand = 0; else if (hand > 1) hand = 1;
+            double f = x > 0 ? 1.0 + (r - 1.0) * hand : r + (1.0 - r) * hand;
+            return x * f;
+        }
+
+        /// <summary>The X factor FovX uses for an offset of sign 'positive' (true = right) and hand 0 / 1.</summary>
+        public static double FovSide(bool positive, double r, bool switched)
+        {
+            return positive != switched ? 1.0 : r;
         }
 
         /// <summary>Converts a horizontal FOV to the vertical FOV of a picture with aspect a (= w / h), in degrees.</summary>
@@ -2817,7 +2892,7 @@ namespace TarkovCrosshair
         // ---------------- v5.1 (decision 17): an unreadable value gets Leo's v5 default ----------------
 
         /// <summary>v5.1: the reference for unreadable values: Leo's v5 settings (LeoDefaultJson), every profile path taken
-        /// from its profile 「Leo默认 (旧)」, with the v5.1 decisions on top (强化 key = the new default Ctrl+T, decision 3).
+        /// from its profile 「Leo默认 (旧)」, with the 强化 key = the KeyBindings default on top (v5.1.1: 鼠标侧键2).
         /// Null if the text cannot be read.</summary>
         internal static GlobalSettings LeoReference(out Profile profile)
         {
@@ -2848,12 +2923,12 @@ namespace TarkovCrosshair
                 if (r == null) return 0;
                 foreach (string path in dropped)
                 {
-                    if (path == "NetStatsConsent") continue; // W28: consent stays null (ask), never Leo's answer
+                    if (path == "NetStatsConsent") continue; // W28: stays null (v5.1: = the default, on), never Leo's answer
                     try
                     {
                         if (!FillPath(g, r, rp, path)) continue;
                         n++;
-                        // a key comes with its 组合键 (an unreadable 强化 key -> Ctrl+T, never plain T = 战术设备开关)
+                        // a key comes with its 组合键 (an unreadable 强化 key -> the default with its mods, never plain T = 战术设备开关)
                         if (path.StartsWith("Keys.", StringComparison.Ordinal) && !path.EndsWith("Mods", StringComparison.Ordinal)
                             && DataMemberOf(typeof(KeyBindings), path.Substring(5) + "Mods") != null)
                             FillPath(g, r, rp, path + "Mods");

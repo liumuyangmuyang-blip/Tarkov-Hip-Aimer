@@ -205,9 +205,21 @@ namespace TarkovCrosshair
 
         public bool Dragging { get { return drag >= 0; } }
 
-        /// <summary>Re-read the style and rebuild the curve (256 points: cheap on every slider change).</summary>
+        /// <summary>Re-read the style and rebuild the curve. v5.1.1 (P2): only marks the curve stale; the curve and the zone bands
+        /// are computed on the next paint / key press, so a hidden or not-yet-shown graph costs nothing and several slider
+        /// changes before one paint compute it once.</summary>
         public void Rebuild()
         {
+            stale = true;
+            Invalidate();
+        }
+
+        private bool stale = true;
+
+        private void EnsureCurve()
+        {
+            if (!stale) return;
+            stale = false;
             PilotStyle s = null;
             try { s = Style != null ? Style() : null; } catch (Exception) { s = null; }
             if (s == null) s = PilotStyle.CreateNeutral("");
@@ -218,7 +230,6 @@ namespace TarkovCrosshair
                 ZoneEdges(s, out shadowEdge, out highlightEdge);
             }
             catch (Exception ex) { Program.Log("filter: curve graph: " + ex.Message); ramp = null; }
-            Invalidate();
         }
 
         /// <summary>
@@ -334,6 +345,7 @@ namespace TarkovCrosshair
         protected override void OnKeyDown(KeyEventArgs e)
         {
             base.OnKeyDown(e);
+            EnsureCurve();
             if (shown == null || !Enabled) return;
             int step = 0;
             switch (e.KeyCode)
@@ -353,6 +365,7 @@ namespace TarkovCrosshair
 
         protected override void OnPaint(PaintEventArgs e)
         {
+            EnsureCurve();
             Graphics g = e.Graphics;
             g.Clear(Theme.ColSurface);
             Rectangle r = Plot();

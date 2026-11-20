@@ -1,4 +1,4 @@
-// v5.0.1 (W14): 开镜 never touches the overlay window (one alpha-0 present, then nothing); no per-second TOPMOST re-assert;
+﻿// v5.0.1 (W14): 开镜 never touches the overlay window (one alpha-0 present, then nothing); no per-second TOPMOST re-assert;
 // frame pacing without DwmFlush keeps ticking when the timer fails; the render loop never waits for the UI thread, the
 // log lock or a callback; stall / heartbeat lines for crash.log. Pure logic + source checks: the Windows side is UNVERIFIED.
 using System;
@@ -85,6 +85,9 @@ namespace TarkovCrosshair.Tests
             return n;
         }
 
+        [System.Runtime.InteropServices.DllImport("winmm.dll", EntryPoint = "timeBeginPeriod")] static extern uint W14TimeBeginPeriod(uint ms);
+        [System.Runtime.InteropServices.DllImport("winmm.dll", EntryPoint = "timeEndPeriod")] static extern uint W14TimeEndPeriod(uint ms);
+
         static void V501W14Tests()
         {
             // ---- W14-1/2 开镜 1000 times (按住 and 点一下切换): no window op, one alpha-0 present per hide, no allocation
@@ -130,6 +133,12 @@ namespace TarkovCrosshair.Tests
 
             // ---- W14-4 pacer: the primary wait fails / throws / returns at once -> Sleep(1) fallback, frames keep coming
             {
+                // v5.1.1 (X2): on Windows Thread.Sleep(1) sleeps 15.6 ms unless the timer resolution is 1 ms; the app sets
+                // timeBeginPeriod(1) for its Sleep(1) fallback (Overlay.cs), so this check does the same (CI run 44729023467:
+                // with 15.6 ms sleeps the "returns at once" timer was never seen as broken).
+                bool w14Period = false;
+                if (OperatingSystem.IsWindows()) { try { w14Period = W14TimeBeginPeriod(1) == 0; } catch (Exception) { } }
+                try {
                 string[] names = { "fails", "throws", "returns at once", "works" };
                 foreach (string n in names)
                 {
@@ -154,6 +163,7 @@ namespace TarkovCrosshair.Tests
                     Check("V501-W14-4 pacing when the timer " + n + ": " + ticks + " frames in 1 s at 144 Hz (limit 60..160), longest gap " + maxGap.ToString("0.0") + " ms, " + (p.UsingPrimary ? "timer kept" : "Sleep(1) fallback"),
                         ticks >= 60 && ticks <= 160 && maxGap < 60 && fell, "ticks=" + ticks + " gap=" + maxGap + " primary=" + p.UsingPrimary);
                 }
+                } finally { if (w14Period) { try { W14TimeEndPeriod(1); } catch (Exception) { } } }
             }
 
             // ---- W14-5 a 5 s UI-thread stall (window title, toggle callback, crash.log lock) + failing timer: the loop keeps ticking

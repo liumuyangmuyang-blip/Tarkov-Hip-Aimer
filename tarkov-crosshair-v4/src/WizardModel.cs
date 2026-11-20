@@ -1,6 +1,6 @@
 // WizardModel.cs -- v5.1 (W26, decision 13): the first-run 设置向导 (pure: steps, validation, apply). WizardForm.cs draws it.
 //
-// Flow: 欢迎 -> 分辨率 -> 画面比例（+ 有没有被拉宽） -> FOV -> 开镜方式 -> 游戏按键 -> 准星快捷键 -> 开机启动 -> 必读 -> 完成.
+// Flow: 欢迎 -> 分辨率 -> 画面比例 -> FOV -> 开镜方式 -> 游戏按键 -> 准星快捷键 -> 开机启动 -> 必读 -> 完成.
 // The user edits a DRAFT (GlobalSettings.Clone(false)); Apply copies only the fields the wizard owns into the live settings,
 // so profiles and everything else stay untouched. 必读 must be acknowledged (我知道了) before 完成.
 // Game keys are typed by the user (key capture); the wizard never reads Tarkov's files.
@@ -56,9 +56,6 @@ namespace TarkovCrosshair
         public const string CustomAspect = "custom";
         public const string CustomAspectLabel = "自定义…";
 
-        /// <summary>Answer to 「画面有没有被拉宽」: null = 不确定 / not asked.</summary>
-        public bool? Stretched;
-
         public readonly GlobalSettings Draft;
         private int index;
 
@@ -67,7 +64,6 @@ namespace TarkovCrosshair
             Draft = live != null ? live.Clone(false) : new GlobalSettings();
             if (Draft.Keys == null) Draft.Keys = new KeyBindings();
             if (Draft.ResFov < FovMin || Draft.ResFov > FovMax) Draft.ResFov = FovMax;
-            Stretched = ReadStretched(live);
         }
 
         public int Index { get { return index; } }
@@ -155,7 +151,8 @@ namespace TarkovCrosshair
             return true;
         }
 
-        /// <summary>The chosen ratio differs from the resolution's own ratio: the game may stretch it (ask) or show bars.</summary>
+        /// <summary>The chosen ratio differs from the resolution's own ratio (v5.1.1 F1: the wizard does not ask; it means
+        /// 拉伸 unless 常规 → 高级设置 says 有黑边).</summary>
         public bool NeedsStretchQuestion
         {
             get { return Math.Abs(ViewScale.StretchX(Draft.ResGameW, Draft.ResGameH, Draft.ResAspect) - 1.0) > 1e-6; }
@@ -169,6 +166,17 @@ namespace TarkovCrosshair
                 double sx = ViewScale.StretchX(Draft.ResGameW, Draft.ResGameH, Draft.ResAspect);
                 if (Math.Abs(sx - 1.0) <= 1e-6) return "";
                 return "横向 ×" + sx.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) + "（拉伸）";
+            }
+        }
+
+        /// <summary>v5.1.1 (F1): the one line under 画面比例 -- same / 拉伸 with the factor / 有黑边 (set in 常规).</summary>
+        public string AspectLine
+        {
+            get
+            {
+                if (!NeedsStretchQuestion) return "画面比例和分辨率一致，不会被拉宽。";
+                if (!Draft.PictureStretched) return "画面比例和分辨率不同：" + (Draft.ResBars == GlobalSettings.BarsTopBottom ? "上下" : "左右") + "有黑边（要改去「常规」页，打开高级设置）。";
+                return "画面比例和分辨率不同：" + StretchText + "。游戏会把画面拉宽铺满屏幕，左右偏移会自动跟着换算。";
             }
         }
 
@@ -219,68 +227,11 @@ namespace TarkovCrosshair
             if (d.AmmoReloadKey > 0) live.AmmoReloadKey = d.AmmoReloadKey;
             live.Autostart = d.Autostart;
             if (d.MustReadAck) live.MustReadAck = true;
-            WriteStretched(live, NeedsStretchQuestion ? Stretched : null);
+            // v5.1.1 (F1): ResStretched is not a wizard field any more (default null = 拉伸; 有黑边 only in 常规 高级设置)
             live.WizardDone = true;
         }
 
         /// <summary>「跳过向导」: keep every value as it is, only remember the wizard was offered.</summary>
         public static void Skip(GlobalSettings live) { if (live != null) live.WizardDone = true; }
-
-        // ResStretched is requested from W23 (V51-W23-REQ.md); until it exists in Settings.cs this reads / writes it by name.
-        private static System.Reflection.MemberInfo stretchMember;
-        private static bool stretchLooked;
-
-        private static System.Reflection.MemberInfo StretchMember()
-        {
-            if (stretchLooked) return stretchMember;
-            stretchLooked = true;
-            try
-            {
-                Type t = typeof(GlobalSettings);
-                System.Reflection.MemberInfo m = t.GetField("ResStretched");
-                if (m == null) m = t.GetProperty("ResStretched");
-                stretchMember = m;
-            }
-            catch (Exception) { stretchMember = null; }
-            return stretchMember;
-        }
-
-        public static bool StretchFieldExists { get { return StretchMember() != null; } }
-
-        private static bool? ReadStretched(GlobalSettings g)
-        {
-            if (g == null) return null;
-            try
-            {
-                System.Reflection.MemberInfo m = StretchMember();
-                object v = null;
-                System.Reflection.FieldInfo f = m as System.Reflection.FieldInfo;
-                System.Reflection.PropertyInfo p = m as System.Reflection.PropertyInfo;
-                if (f != null) v = f.GetValue(g);
-                else if (p != null) v = p.GetValue(g, null);
-                if (v is bool) return (bool)v;
-            }
-            catch (Exception) { }
-            return null;
-        }
-
-        private static void WriteStretched(GlobalSettings g, bool? v)
-        {
-            try
-            {
-                System.Reflection.MemberInfo m = StretchMember();
-                System.Reflection.FieldInfo f = m as System.Reflection.FieldInfo;
-                System.Reflection.PropertyInfo p = m as System.Reflection.PropertyInfo;
-                Type vt = f != null ? f.FieldType : p != null ? p.PropertyType : null;
-                if (vt == null) return;
-                object val;
-                if (vt == typeof(bool?)) val = v;
-                else if (vt == typeof(bool)) val = v ?? true;
-                else return;
-                if (f != null) f.SetValue(g, val);
-                else if (p.CanWrite) p.SetValue(g, val, null);
-            }
-            catch (Exception) { }
-        }
     }
 }

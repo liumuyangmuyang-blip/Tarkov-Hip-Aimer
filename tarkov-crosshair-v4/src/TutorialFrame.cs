@@ -1063,7 +1063,7 @@ namespace TarkovCrosshair
                         g.FillRectangle(Gx.B(Color.FromArgb(0x2F, 0x33, 0x38)), cr);
                         g.DrawRectangle(Gx.P(p.Border, 1f), cr.X, cr.Y, cr.Width, cr.Height);
                         string v = fd.Kind == TutorialField.KindCheck ? ((fd.GetCheck != null && fd.GetCheck(prof)) ? "✓" : "")
-                            : (fd.Get == null ? "" : (fd.Pct != TutorialField.PctNone ? OffsetUnits.Number(OffsetUnits.ToPct(fd.Get(prof), C.G))
+                            : (fd.Get == null ? "" : (fd.Pct != TutorialField.PctNone ? OffsetUnits.Number(OffsetUnits.ToPctAt(fd.Get(prof), fd.OriginOf(prof), fd.Axis, fd.Switched, C.G))
                             : TutorialNum.Int(fd.Get(prof))));
                         Gx.TextBg = Color.FromArgb(0x2F, 0x33, 0x38);
                         Gx.TextMid(v, Gx.F.Small, p.Text, cr.Left + S(6), cr.Top + cr.Height / 2, 0); // left, like the real box

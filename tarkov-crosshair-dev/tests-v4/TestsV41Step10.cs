@@ -127,7 +127,8 @@ namespace TarkovCrosshair.Tests
         static void S41FoePull()
         {
             TutorialStep10Peek p = new TutorialStep10Peek();
-            p.Configure(null, null);
+            Profile flat = Profile.CreateLeoDefault("演示"); flat.SetStandPoint(0, 0); /* v5.1.1 (X5, Leo 21 Nov 2026): the built-in has a 站立 point now; this case measures around the centre */
+            p.Configure(flat, null);
             int s = TutorialStep10Peek.SceneFoe;
             p.Start(s);
             double f0 = p.FoeP.X, pre0 = p.PreX, head0 = p.Foe.X[SkelJ.Head];

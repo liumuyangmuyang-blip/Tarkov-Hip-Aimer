@@ -167,6 +167,7 @@ namespace TarkovCrosshair
                 delegate(Profile p, double v) { p.Dirs[TutorialStep6Math.DirA].OffY = v; });
             dy.Optional = true; ay.Optional = true;
             dx.After = diag; ax.After = diag; dy.After = diag; ay.After = diag;
+            dx.OriginX = ax.OriginX = delegate(Profile p) { return OffsetUnits.StandOriginX(p, false); }; // v5.1.1 (X5)
             return new TutorialField[] { dx, ax, dy, ay };
         }
 
@@ -587,7 +588,8 @@ namespace TarkovCrosshair
         {
             Profile p = c.P;
             string cur = p == null || p.Dirs == null || p.Dirs.Count <= TutorialStep6Math.DirD ? "" :
-                "当前：D " + TutorialPct.X(p.Dirs[TutorialStep6Math.DirD].OffX, c.G) + "　A " + TutorialPct.X(p.Dirs[TutorialStep6Math.DirA].OffX, c.G) + "\n";
+                "当前：D " + OffsetUnits.FormatAt(p.Dirs[TutorialStep6Math.DirD].OffX, OffsetUnits.StandOriginX(p, false), OffsetAxis.X, false, c.G)
+                + "　A " + OffsetUnits.FormatAt(p.Dirs[TutorialStep6Math.DirA].OffX, OffsetUnits.StandOriginX(p, false), OffsetAxis.X, false, c.G) + "\n";
             FieldNote = cur + NoteBase;
         }
 

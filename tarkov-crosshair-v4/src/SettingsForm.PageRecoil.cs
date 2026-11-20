@@ -43,6 +43,7 @@ namespace TarkovCrosshair
             NumericUpDown delay = Num(0, 300, 10, 0, delegate { return Cur.RecoilDelayMs; }, delegate(double v) { Cur.RecoilDelayMs = v; });
             OffsetField kick = Offset(OffsetAxis.Y, OffsetKind.AlwaysPositive, 300, delegate { return Cur.RecoilClickKickPx; }, delegate(double v) { Cur.RecoilClickKickPx = v; });
             OffsetField drift = Offset(OffsetAxis.X, OffsetKind.Toggle, 500, delegate { return Cur.RecoilDriftX; }, delegate(double v) { Cur.RecoilDriftX = v; });
+            // v5.1.1 (X8, Leo 21 Nov option A): recoil counts from the screen centre, so no 站立 origin (Origin null = 0)
             advNums.Add(rise1); advNums.Add(fall); advNums.Add(delay); advNums.Add(kick.Box); advNums.Add(drift.Box);
             Row(a, "到顶时间", Line(ArrowSpacer(), rise1, Unit("ms")), Hint("按住后大约多久抬到最高", 260));
             Row(a, "每次按下额外上跳", kick.Line, Hint("每按一下开火多跳一点（点射）", 260));

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
@@ -168,7 +168,19 @@ namespace TarkovCrosshair.Tests
         {
             string e; GlobalSettings g = LoadFixture("leo-v50-1118-settings.v50", out e);
             Profile p = g == null ? null : g.FindProfile("Leo默认 (旧)");
-            return p == null ? new Profile() : p.CloneValues();
+            if (p == null) return new Profile();
+            p = p.CloneValues();
+            // v5.1.1 (X5, Leo 21 Nov 2026): his newly tuned 上抬 + 站立静止偏移 (Dirs / HandCustom stored from the 站立 point, every
+            // screen place unchanged), from his settings.json of 21 Nov (fixture leo-v511-1121-settings.v511, profile 「Leo默认」)
+            GlobalSettings n = LoadFixture("leo-v511-1121-settings.v511", out e);
+            Profile q = n == null ? null : n.FindProfile("Leo默认");
+            if (q != null)
+            {
+                p.RecoilMaxPx = q.RecoilMaxPx; p.StandAsZero = q.StandAsZero; p.StandOffsetX = q.StandOffsetX; p.StandOffsetY = q.StandOffsetY;
+                for (int i = 0; i < Profile.DirCount; i++) p.Dirs[i] = new DirSetting(q.Dirs[i].OffX, q.Dirs[i].OffY);
+                for (int i = 0; i < p.HandCustom.Count; i++) p.HandCustom[i] = q.HandCustom[i].Clone();
+            }
+            return p;
         }
 
         /// <summary>v5.0: fx's active profile gets the V50Expected values; its name and saved snapshot stay.</summary>
@@ -185,7 +197,8 @@ namespace TarkovCrosshair.Tests
             GlobalSettings fx = LoadFixture("leo-v30-1027-settings.json", out err);
             if (fx == null) { Check("H1 fixture leo-v30-1027-settings.json parses", false, err); return; }
             V50Apply(fx); // v5.0: the built-in profile values come from Leo's v5 file (globals still = the 27 Oct file)
-            fx.Keys.Boost = 0x54; fx.Keys.BoostMods = KeyBindings.ModCtrl; // v5.1 (W23, decision 3): fresh install 强化 = Ctrl+T
+            fx.Keys.Boost = 6; fx.Keys.BoostMods = 0; // v5.1.1 (X5, Leo 21 Nov 2026): fresh install 强化 = 鼠标侧键2 (v5.1: Ctrl+T)
+            fx.Autostart = true; // Leo 21 Nov 2026 new defaults: fresh install autostart on (the 27 Oct file stores false and keeps it when loaded)
 
             GlobalSettings raw = GlobalSettings.CreateDefault();
             GlobalSettings val = GlobalSettings.CreateDefault(); val.Validate();

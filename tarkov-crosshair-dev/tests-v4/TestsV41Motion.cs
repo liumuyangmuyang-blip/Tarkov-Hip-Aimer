@@ -286,7 +286,7 @@ namespace TarkovCrosshair.Tests
                 M41RingOnPath(x, out ox, out oy, out worst, out on, out blend, out lean);
                 HandView v = new HandView(); x.P.FillView(0, v);
                 double rs = g.ResolutionScale;
-                bool spot = Math.Abs(ox - rs * (v.QX + v.SX)) < 1e-9 && Math.Abs(oy + rs * (v.QY + v.SY)) < 1e-9;
+                bool spot = Math.Abs(ox - rs * v.QX) < 1e-9 && Math.Abs(oy + rs * v.QY) < 1e-9; // X8: standing + lean = from the centre (the 站立 point fades out)
                 Check("V41-MF5 开关键 x2 with 按住 Q held + 换手: 正常手 Q spot on the first frame back on, 0 px move after",
                     set && on && blend == 0 && lean == -1 && spot && worst == 0, "set=" + set + " blend=" + blend + " lean=" + lean + " spot=" + spot + " move=" + F(worst));
             }

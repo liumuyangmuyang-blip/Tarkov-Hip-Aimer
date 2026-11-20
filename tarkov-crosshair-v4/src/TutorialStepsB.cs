@@ -211,7 +211,7 @@ namespace TarkovCrosshair
             new ScriptSeg(LeanStepMath.EFrom, LeanStepMath.ETo, TKey.E),
             new ScriptSeg(LeanStepMath.EFireFrom, LeanStepMath.EFireTo, TKey.Fire));
 
-        private static readonly TutorialField[] LeanFields = new TutorialField[]
+        private static readonly TutorialField[] LeanFields = WithStandOrigin(new TutorialField[]
         {
             TutorialField.Offset("左侧身：左右", "推荐改", true, OffsetAxis.X, -500, 500,
                 delegate(Profile p) { return p.LeanQX; }, delegate(Profile p, double v) { p.LeanQX = v; }),
@@ -221,7 +221,14 @@ namespace TarkovCrosshair
                 delegate(Profile p) { return p.LeanEX; }, delegate(Profile p, double v) { p.LeanEX = v; }),
             TutorialField.Offset("右侧身：上下", "推荐改", true, OffsetAxis.Y, -500, 500,
                 delegate(Profile p) { return p.LeanEY; }, delegate(Profile p, double v) { p.LeanEY = v; }),
-        };
+        });
+
+        /// <summary>v5.1.1 (X8, Leo 21 Nov option A): lean counts from the SCREEN CENTRE (the engine fades the 站立 point out
+        /// while leaning), so the lean X % is the on-screen distance from the centre: no origin (was the 站立 X in X5).</summary>
+        private static TutorialField[] WithStandOrigin(TutorialField[] f)
+        {
+            return f;
+        }
 
         private const string TagStand = "站立不动";
         private const string TagStandWarn = "请站着不动";
@@ -315,8 +322,8 @@ namespace TarkovCrosshair
         {
             Profile p = c.P;
             string cur = p == null ? "" :
-                "当前：左 " + TutorialPct.Vec(p.LeanQX, p.LeanQY, c.G)
-                + "　右 " + TutorialPct.Vec(p.LeanEX, p.LeanEY, c.G) + "\n";
+                "当前：左 " + OffsetUnits.FormatAt(p.LeanQX, 0, OffsetAxis.X, false, c.G) + "  " + TutorialPct.Y(p.LeanQY, c.G)
+                + "　右 " + OffsetUnits.FormatAt(p.LeanEX, 0, OffsetAxis.X, false, c.G) + "  " + TutorialPct.Y(p.LeanEY, c.G) + "\n";
             FieldNote = cur + NoteBase;
         }
 

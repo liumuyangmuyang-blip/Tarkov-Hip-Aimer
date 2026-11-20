@@ -57,6 +57,35 @@ namespace TarkovCrosshair
         /// <summary>Pct fields: the direction the arrow shows while the value is 0 (+1 = → / ↑, -1 = ← / ↓).</summary>
         public int ZeroSign = 1;
 
+        /// <summary>v5.1.1 (X5): PctX fields stored relative to an X origin (a move direction from the 站立静止偏移 point);
+        /// null = 0. The % shown is the on-screen distance from it (OffsetUnits.ToPctAt).</summary>
+        public Func<Profile, double> OriginX;
+        /// <summary>v5.1.1 (X5): a 换手 value (the FOV sides swap).</summary>
+        public bool Switched;
+
+        /// <summary>v5.1.1 (X5): the box % for profile p (origin and hand applied), positive, 2 decimals.</summary>
+        public double PctOf(Profile p, GlobalSettings g)
+        {
+            return Math.Abs(OffsetUnits.Round(OffsetUnits.ToPctAt(Get(p), OriginOf(p), Axis, Switched, g)));
+        }
+
+        /// <summary>v5.1.1 (X5): typed |pct| in direction sign -> stored px (origin and hand applied), clamped to Min..Max.</summary>
+        public double PxOf(Profile p, double pct, int sign, GlobalSettings g)
+        {
+            double px = OffsetUnits.ToPxAt((sign < 0 ? -1.0 : 1.0) * Math.Abs(pct), OriginOf(p), Axis, Switched, g);
+            if (double.IsNaN(px) || double.IsInfinity(px)) px = 0;
+            if (px < Min) px = Min;
+            if (px > Max) px = Max;
+            return px;
+        }
+
+        /// <summary>The origin for profile p (0 when none / unusable).</summary>
+        public double OriginOf(Profile p)
+        {
+            if (OriginX == null || p == null) return 0;
+            try { double o = OriginX(p); return double.IsNaN(o) || double.IsInfinity(o) ? 0 : o; } catch (Exception) { return 0; }
+        }
+
         /// <summary>The OffsetAxis of a Pct field (X for PctX, else Y).</summary>
         public OffsetAxis Axis { get { return Pct == PctX ? OffsetAxis.X : OffsetAxis.Y; } }
 

@@ -96,6 +96,7 @@ namespace TarkovCrosshair
         private readonly KeyCapture capture = new KeyCapture();
         private Button capturing;
         private bool suppressClick;
+        private readonly MouseButtonPoll mousePoll = new MouseButtonPoll(); // v5.1.1 (F3): side / middle buttons anywhere
 
         public WizardForm(GlobalSettings g)
         {
@@ -467,28 +468,15 @@ namespace TarkovCrosshair
             r1.Controls.Add(HelpMark.For("aspect", Font, delegate { return live; }));
             c.Controls.Add(r1);
             Label stretch = NewLabel("", Theme.ColAccent2);
+            wraps.Add(stretch);
             c.Controls.Add(stretch);
 
-            // 「画面有没有被拉宽」 with a picture (decision 11)
-            FlowLayoutPanel q = Column();
-            q.Controls.Add(Text1("你的游戏画面有没有被拉宽？看看游戏里圆形的东西（准星圈、表盘）："));
-            StretchPicture pic = new StretchPicture(u, Font);
-            q.Controls.Add(pic);
-            RadioButton rbYes = Radio("拉宽了（圆看起来是扁的，铺满整个屏幕）");
-            RadioButton rbNo = Radio("没有拉宽（两边有黑边）");
-            RadioButton rbUnsure = Radio("不确定");
-            q.Controls.Add(rbYes); q.Controls.Add(rbNo); q.Controls.Add(rbUnsure);
-            c.Controls.Add(q);
-
+            // v5.1.1 (F1, Leo): no 「画面有没有被拉宽」 question. A ratio that differs from the resolution means the game
+            // stretches the picture (that is why players change it); 有黑边 is only in 常规 (高级设置).
             Action refresh = delegate
             {
                 custom.Visible = cb.SelectedIndex == ids.Length - 1;
-                bool ask = Model.NeedsStretchQuestion;
-                q.Visible = ask;
-                stretch.Text = ask ? "画面比例和分辨率不同：" + Model.StretchText : "画面比例和分辨率一致，不会被拉宽。";
-                rbYes.Checked = Model.Stretched == true;
-                rbNo.Checked = Model.Stretched == false;
-                rbUnsure.Checked = Model.Stretched == null;
+                stretch.Text = Model.AspectLine;
             };
             cb.SelectedIndexChanged += delegate
             {
@@ -506,9 +494,6 @@ namespace TarkovCrosshair
                 if (!Model.SetCustomAspect(custom.Text)) d.ResAspect = WizardModel.CustomAspect;
                 refresh();
             };
-            rbYes.CheckedChanged += delegate { if (rbYes.Checked) Model.Stretched = true; };
-            rbNo.CheckedChanged += delegate { if (rbNo.Checked) Model.Stretched = false; };
-            rbUnsure.CheckedChanged += delegate { if (rbUnsure.Checked) Model.Stretched = null; };
             cb.SelectedIndex = sel;
             if (ids[sel] != WizardModel.CustomAspect) d.ResAspect = ids[sel];
             refresh();
@@ -555,13 +540,18 @@ namespace TarkovCrosshair
             RadioButton tog = Radio("点一下右键开镜，再点一下退出（切换）");
             hold.Checked = d.AdsMode != "toggle";
             tog.Checked = d.AdsMode == "toggle";
+            // v5.1.1 (F2): one column for both choices + an explicit group, so picking one always clears the other
+            Theme.Exclusive(hold, tog);
             hold.CheckedChanged += delegate { if (hold.Checked) d.AdsMode = "hold"; };
             tog.CheckedChanged += delegate { if (tog.Checked) d.AdsMode = "toggle"; };
+            FlowLayoutPanel opts = Column();
+            opts.Padding = new Padding(0);
+            opts.Controls.Add(hold);
+            opts.Controls.Add(tog);
             FlowLayoutPanel r = Row();
-            r.Controls.Add(hold);
+            r.Controls.Add(opts);
             r.Controls.Add(HelpMark.For("ads", Font, delegate { return live; }));
             c.Controls.Add(r);
-            c.Controls.Add(tog);
             c.Controls.Add(Note("选错了的话，开镜时还会看到准星。"));
             return c;
         }
@@ -569,18 +559,17 @@ namespace TarkovCrosshair
         private Control StepGameKeys()
         {
             TableLayoutPanel t = KeyTable();
-            AddActionRow(t, "开火", KeyBindings.ActionFire, null);
-            AddActionRow(t, "开镜", KeyBindings.ActionAds, "ads");
+            // v5.1.1 (F3, Leo): 开火 / 开镜 / 跳跃 are not asked (left button / right button / Space; 「按键」 page can change them)
             AddActionRow(t, "左侧身", KeyBindings.ActionLeanLeft, null);
             AddActionRow(t, "右侧身", KeyBindings.ActionLeanRight, null);
-            AddActionRow(t, "跳跃", KeyBindings.ActionJump, null);
             AddActionRow(t, "自由视角（转头）", KeyBindings.ActionFreeLook, null);
             AddActionRow(t, "切换战术装置模式（= 强化键）", KeyBindings.ActionBoost, "boost");
             AddSingleRow(t, "丢雷", delegate { return Model.Draft.GrenadeKey; }, delegate(int vk) { Model.Draft.GrenadeKey = vk; }, "grenade");
             AddSingleRow(t, "换弹", delegate { return Model.Draft.AmmoReloadKey; }, delegate(int vk) { Model.Draft.AmmoReloadKey = vk; }, "ammo");
             FlowLayoutPanel c = Column();
             c.Controls.Add(t);
-            c.Controls.Add(Note("没改过游戏按键的，直接点「下一步」。战术装置的开关（T）不用填：它只负责开关装置，不影响准星。"));
+            c.Controls.Add(Note("没改过游戏按键的，直接点「下一步」。开火 = 鼠标左键，开镜 = 鼠标右键，跳跃 = 空格，不用填（要改去「按键」页）。"
+                + "战术装置的开关（T）也不用填：它只负责开关装置，不影响准星。鼠标侧键、中键都可以用：点一下按钮，再按那个鼠标键。"));
             return c;
         }
 
@@ -593,15 +582,18 @@ namespace TarkovCrosshair
             FlowLayoutPanel c = Column();
             c.Controls.Add(t);
 
-            FlowLayoutPanel rb = Row();
-            rb.Controls.Add(Text1("强化方式"));
+            // v5.1.1 (F3): both 强化方式 choices always shown (label line, then the two options one under the other)
+            c.Controls.Add(Text1("强化方式"));
             RadioButton tog = Radio("切换（按一下开，再按一下关）");
-            RadioButton hold = Radio("按住");
+            RadioButton hold = Radio("按住（按住时开，松开就关）");
+            Theme.Exclusive(tog, hold);
             tog.Checked = d.BoostToggle; hold.Checked = !d.BoostToggle;
             tog.CheckedChanged += delegate { if (tog.Checked) d.BoostToggle = true; };
             hold.CheckedChanged += delegate { if (hold.Checked) d.BoostToggle = false; };
             FlowLayoutPanel radios = Column();
+            radios.Padding = new Padding(0);
             radios.Controls.Add(tog); radios.Controls.Add(hold);
+            FlowLayoutPanel rb = Row();
             rb.Controls.Add(radios);
             rb.Controls.Add(HelpMark.For("boost", Font, delegate { return live; }));
             c.Controls.Add(rb);
@@ -667,6 +659,7 @@ namespace TarkovCrosshair
                 + (Model.StretchText.Length > 0 ? "（" + Model.StretchText + "）" : "") + " · FOV " + (int)d.ResFov));
             c.Controls.Add(Text1("开镜：" + (d.AdsMode == "toggle" ? "切换" : "按住") + " · 强化键 " + d.Keys.ComboOf(KeyBindings.ActionBoost)
                 + "（" + (d.BoostToggle ? "切换" : "按住") + "） · 开关准星 " + d.Keys.ComboOf(KeyBindings.ActionToggle)));
+            // v5.1 (Leo 21 Nov 2026): no 统计 line in the wizard (stats on by default; off in 常规 → 高级设置)
             c.Controls.Add(Note("点「完成」保存。首页顶部的状态栏会一直告诉你准星现在的状态；看不懂时去「常见问题」。"));
             return c;
         }
@@ -761,6 +754,10 @@ namespace TarkovCrosshair
                 capture.Start();
                 b.Text = capture.Shown;
                 b.ForeColor = Theme.ColAccent;
+                mousePoll.Start(delegate(int pvk)
+                {
+                    if (capturing == b && capture.Mouse(pvk, ModsOf(Control.ModifierKeys)) == KeyCapture.Result.Done) FinishCapture();
+                });
             };
             b.MouseDown += delegate(object s, MouseEventArgs e)
             {
@@ -789,6 +786,7 @@ namespace TarkovCrosshair
 
         private void CancelCapture()
         {
+            mousePoll.Stop();
             Button b = capturing;
             capturing = null;
             onCaptured = null;
@@ -802,6 +800,7 @@ namespace TarkovCrosshair
 
         private void FinishCapture()
         {
+            mousePoll.Stop();
             Button b = capturing;
             Action<int, int> done = onCaptured;
             capturing = null;
@@ -858,6 +857,7 @@ namespace TarkovCrosshair
         {
             if (disposing)
             {
+                mousePoll.Dispose();
                 if (titleFont != null) titleFont.Dispose();
                 if (boldFont != null) boldFont.Dispose();
             }

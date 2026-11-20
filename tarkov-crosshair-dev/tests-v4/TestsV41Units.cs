@@ -48,7 +48,7 @@ namespace TarkovCrosshair.Tests
             // U3 the on-screen direction is real: a profile D X > 0 (→) moves the ring RIGHT, W Y > 0 (↑) moves it UP.
             {
                 GlobalSettings g = UnitsG(2560, 1440, 75, 75);
-                Profile p = g.Active; p.Dirs[3].OffX = 30; p.Dirs[3].OffY = 0; p.Dirs[0].OffX = 0; p.Dirs[0].OffY = 20;
+                Profile p = g.Active; p.SetStandPoint(0, 0); /* v5.1.1 (X5, Leo 21 Nov 2026): the built-in has a 站立 point now; this case measures around the centre */ p.Dirs[3].OffX = 30; p.Dirs[3].OffY = 0; p.Dirs[0].OffX = 0; p.Dirs[0].OffY = 20;
                 Profile.RecomputeDiagonals(p);
                 Sim s = new Sim(p, g, 144); s.Run(2.0, In("D"));
                 double ox = s.E.OffsetX; string fx = OffsetUnits.FormatScreen(ox, OffsetAxis.X, g);
@@ -82,7 +82,7 @@ namespace TarkovCrosshair.Tests
                     for (int i = -7000; i <= 7000; i++)
                     {
                         double pct = i / 100.0;
-                        double px = OffsetUnits.ToPx(pct, g);
+                        double px = OffsetUnits.ToPx(pct, OffsetAxis.X, g); // v5.1.1 (X5): the on-screen % (FOV side on X)
                         string want = OffsetUnits.FormatPct(pct, OffsetAxis.X), got = OffsetUnits.Format(px, OffsetAxis.X, g);
                         n++;
                         if (want != got) { ok = false; if (d.Length < 200) d += want + "->" + got + " "; }
@@ -90,15 +90,19 @@ namespace TarkovCrosshair.Tests
                 Check("U5 typed 0.01 % steps survive % -> px -> % (" + n + " values)", ok, d);
             }
 
-            // U6 FOV is in the maths (the existing ViewScale conversion): 调参 FOV 75, game FOV 50 -> x tan(37.5°)/tan(25°).
+            // U6 // v5.1.1 (X5, Leo 21 Nov 2026): FOV no longer in k; X only, gun side x1, other side x gameFov/baseFov, Y unchanged.
+            // 调参 FOV 75, game FOV 50: D -30 px (left = other side) -> x 50/75 = 「← 2.78%」, A +30 px (gun side) stays 「→ 4.17%」,
+            // 换手 swaps the sides, Y never scaled.
             {
                 GlobalSettings g = UnitsG(2560, 1440, 50, 75);
-                double want = 30.0 / 720.0 * 100.0 * Math.Tan(37.5 * Math.PI / 180) / Math.Tan(25 * Math.PI / 180);
-                double got = -OffsetUnits.ToPct(-30, g);
+                double want = 30.0 / 720.0 * 100.0 * 50.0 / 75.0;
+                double got = -OffsetUnits.ToPct(-30, OffsetAxis.X, g);
                 string s = OffsetUnits.Format(-30, OffsetAxis.X, g);
                 double k = ViewScale.Factor(g);
-                bool ok = Math.Abs(got - want) < 1e-9 && s == "← 6.86%" && Math.Abs(OffsetUnits.ToPct(10, g) * OffsetUnits.HalfHeight(g) / 100.0 - 10 * k) < 1e-9;
-                Check("U6 FOV 50 vs 调参 FOV 75: -30 px -> 「← 6.86%」 via ViewScale.Factor", ok, F(got) + "% " + s + " k=" + F(k));
+                bool ok = Math.Abs(got - want) < 1e-9 && s == "← 2.78%" && OffsetUnits.Format(30, OffsetAxis.X, g) == "→ 4.17%"
+                    && OffsetUnits.Format(-30, OffsetAxis.X, true, g) == "← 4.17%" && OffsetUnits.Format(30, OffsetAxis.X, true, g) == "→ 2.78%"
+                    && OffsetUnits.Format(30, OffsetAxis.Y, g) == "↑ 4.17%" && OffsetUnits.Format(-30, OffsetAxis.Y, g) == "↓ 4.17%" && k == 1.0;
+                Check("U6 FOV 50 vs 调参 FOV 75: D -30 px -> 「← 2.78%」, A +30 px -> 「→ 4.17%」, 换手 mirrored, Y unchanged", ok, F(got) + "% " + s + " k=" + F(k));
             }
 
             // U7 parsing what people type.

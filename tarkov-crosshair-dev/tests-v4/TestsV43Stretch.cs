@@ -99,7 +99,9 @@ namespace TarkovCrosshair.Tests
                             if (Math.Abs(profX) < 1) { d += tag + " no X offset; "; continue; }
                             // the ring really moves ×stretch on the screen
                             double kY = g.ResolutionScale;
-                            if (Math.Abs(scrX - profX * kY * sx[c]) > 1e-6 * Math.Max(1, Math.Abs(scrX))) d += tag + " screen X " + scrX + " vs " + profX * kY * sx[c] + "; ";
+                            // v5.1.1 (X5, Leo 21 Nov 2026): plus the FOV side rule on X (normal hand)
+                            double wantX = ViewScale.FovX(profX * kY * sx[c], ViewScale.FovRatio(g), 0);
+                            if (Math.Abs(scrX - wantX) > 1e-6 * Math.Max(1, Math.Abs(scrX))) d += tag + " screen X " + scrX + " vs " + wantX + "; ";
                             string page = OffsetUnits.Format(profX, OffsetAxis.X, g), pageY = OffsetUnits.Format(profYUp, OffsetAxis.Y, g);
                             string tut = TutorialPct.X(profX, g), tutY = TutorialPct.Y(profYUp, g);
                             double dashPct = DashStretch.ScreenXToPct(scrX, g), dashPctC = DashStretch.ScreenXToPct(scrX, g, DashStretch.Ratio(g));
@@ -146,7 +148,8 @@ namespace TarkovCrosshair.Tests
                 g.ResAspect = "16:9"; g.ResGameW = 1440; // 4:3 resolution, 16:9 picture → ×0.75
                 if (Math.Abs(DashStretch.Ratio(g) - 0.75) > 1e-9) d += "res " + DashStretch.Ratio(g) + "; ";
                 g.ResGameW = 1920; g.ResFov = 60;
-                if (g.ResolutionScale == k0 || DashStretch.Ratio(g) != r0 || OffsetUnits.HalfHeight(g) != h0) d += "fov; ";
+                // v5.1.1 (X5, Leo 21 Nov 2026): FOV no longer changes k; it changes the FOV ratio the panel signature also mixes in
+                if (g.ResolutionScale != k0 || ViewScale.FovRatio(g) == 1.0 || DashStretch.Ratio(g) != r0 || OffsetUnits.HalfHeight(g) != h0) d += "fov; ";
                 Check("V43-S4 live: 画面比例 / resolution / FOV changes each change the dashboard's inputs (ratio, k)", d.Length == 0, d);
             }
 

@@ -398,18 +398,78 @@ internal static class Theme
 
     public static Font Mono(float pt, FontStyle style)
     {
+        if (monoName != null)
+        {
+            try { return monoName.Length == 0 ? new Font(FontFamily.GenericMonospace, pt, style) : new Font(monoName, pt, style); } catch { }
+        }
         string[] names = { "Cascadia Mono", "Consolas", "Lucida Console" };
         foreach (string n in names)
         {
             try
             {
                 Font f = new Font(n, pt, style);
-                if (string.Equals(f.Name, n, StringComparison.OrdinalIgnoreCase)) return f;
+                if (string.Equals(f.Name, n, StringComparison.OrdinalIgnoreCase)) { monoName = n; return f; } // X11: found once
                 f.Dispose();
             }
             catch { }
         }
+        monoName = "";
         return new Font(FontFamily.GenericMonospace, pt, style);
+    }
+
+    // v5.1.1 (X11): shared fonts for measuring and painting. TextNeed / GetPreferredSize / OnPaint made a new Font on every
+    // call (Mono() even tried three families each time); layout calls them many times per pass. Never dispose these.
+    private static readonly Dictionary<string, Font> sharedFonts = new Dictionary<string, Font>();
+    private static string monoName;
+
+    private static string FontKey(string fam, float pt, FontStyle st)
+    {
+        return fam + "|" + pt.ToString("R", System.Globalization.CultureInfo.InvariantCulture) + "|" + (int)st;
+    }
+
+    /// <summary>Probe / tests: fonts the shared cache has created.</summary>
+    internal static int SharedFontsMade;
+
+    internal static Font SharedFont(FontFamily family, float pt, FontStyle style)
+    {
+        string key = FontKey(family.Name, pt, style);
+        lock (sharedFonts)
+        {
+            Font f;
+            if (sharedFonts.TryGetValue(key, out f)) return f;
+            f = new Font(family, pt, style);
+            SharedFontsMade++;
+            sharedFonts[key] = f;
+            return f;
+        }
+    }
+
+    internal static Font SharedUi(float pt, FontStyle style)
+    {
+        string key = FontKey("@ui", pt, style);
+        lock (sharedFonts)
+        {
+            Font f;
+            if (sharedFonts.TryGetValue(key, out f)) return f;
+            f = Ui(pt, style);
+            SharedFontsMade++;
+            sharedFonts[key] = f;
+            return f;
+        }
+    }
+
+    internal static Font SharedMono(float pt, FontStyle style)
+    {
+        string key = FontKey("@mono", pt, style);
+        lock (sharedFonts)
+        {
+            Font f;
+            if (sharedFonts.TryGetValue(key, out f)) return f;
+            f = Mono(pt, style);
+            SharedFontsMade++;
+            sharedFonts[key] = f;
+            return f;
+        }
     }
 
     /// <summary>UI font (Microsoft YaHei UI, else the system message font). Caller disposes.</summary>
@@ -658,6 +718,7 @@ internal static class Theme
             bb.FlatAppearance.MouseOverBackColor = ColHover;
             bb.FlatAppearance.MouseDownBackColor = ColPressed;
             bb.Cursor = Cursors.Hand;
+            HookCheckGlyph(bb); // v5.1.1 (F2): owner-drawn, clearly visible on/off box and radio dot
             return;
         }
         RichTextBox rtb = c as RichTextBox;
@@ -764,8 +825,46 @@ internal static class Theme
 
     private static Color RestBorder(Button b) { return IsAccent(b) ? ColAccent : ColBorder; }
 
+    /// <summary>v5.1.1 (X6): the height a button needs for its own text in its own font (Microsoft YaHei on Windows is
+    /// taller than the Linux fonts): measured text height + vertical padding + both borders + the flat button's inner
+    /// focus inset + 4 px slack. Never a fixed px height.</summary>
+    internal static int ButtonNeedH(ButtonBase b)
+    {
+        if (b == null || b.IsDisposed) return 0;
+        string t = string.IsNullOrEmpty(b.Text) ? "Ag" : b.Text;
+        int text;
+        try { text = TarkovCrosshair.TextWidthCache.SingleLineHeight(t, b.Font); } // v5.1.1 (X11): cached per (text, font)
+        catch (Exception) { text = b.Font.Height; }
+        text = Math.Max(text, b.Font.Height);
+        int border = b.FlatStyle == FlatStyle.Flat ? 2 * Math.Max(1, b.FlatAppearance.BorderSize) : 4;
+        return text + b.Padding.Vertical + border + 2 + 4;
+    }
+
+    /// <summary>Raises a button's minimum height to ButtonNeedH (also lifts a MaximumSize that would cut the text).</summary>
+    internal static void FitButtonHeight(ButtonBase b)
+    {
+        int need = ButtonNeedH(b);
+        if (need <= 0) return;
+        if (b.MaximumSize.Height > 0 && b.MaximumSize.Height < need) b.MaximumSize = new Size(b.MaximumSize.Width, need);
+        if (b.MinimumSize.Height < need) b.MinimumSize = new Size(b.MinimumSize.Width, need);
+        if (!b.AutoSize && b.Height < need) b.Height = need;
+    }
+
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<Control, object> FitHooked =
+        new System.Runtime.CompilerServices.ConditionalWeakTable<Control, object>();
+
+    private static void OnButtonTextOrFont(object sender, EventArgs e) { FitButtonHeight(sender as ButtonBase); }
+
     private static void StyleButton(Button b)
     {
+        FitButtonHeight(b);
+        object hooked;
+        if (!FitHooked.TryGetValue(b, out hooked))
+        {
+            FitHooked.Add(b, null);
+            b.FontChanged += OnButtonTextOrFont;
+            b.TextChanged += OnButtonTextOrFont;
+        }
         Color fg = b.ForeColor;
         bool accent = IsAccent(b);
         Preserve(b, delegate
@@ -808,6 +907,141 @@ internal static class Theme
             if (b != null) b.FlatAppearance.BorderColor = RestBorder(b);
         }
         catch { }
+    }
+
+    // ---------------------------------------------------------------- CheckBox / RadioButton (v5.1.1, F2)
+    // Leo (Windows, 20 Nov): the flat system glyph was a thin grey frame with a faint mark -- on / off and the chosen option
+    // could not be told apart. Every themed check box and radio button (Appearance.Normal) is now drawn here:
+    //   check box ON  = filled accent box with a dark tick;      OFF = hollow box with a light 2 px frame
+    //   radio ON      = accent ring with a filled accent dot;    OFF = hollow ring
+    // Disabled = muted colours. Text is drawn right of the glyph with the control's own font. The glyph is about the font
+    // height, so the right padding grows once by what the system glyph did not reserve (TextFit counts font height + 3 px).
+    private static readonly ConditionalWeakTable<Control, object> GlyphHooked = new ConditionalWeakTable<Control, object>();
+
+    /// <summary>Glyph edge for a font height (px): about 0.8 of the text height, never below 12 px.</summary>
+    internal static int CheckGlyphSize(int fontHeight) { return Math.Max(12, (int)Math.Round(fontHeight * 0.8)); }
+
+    /// <summary>Gap between glyph and text (px).</summary>
+    internal static int CheckGlyphGap(int fontHeight) { return Math.Max(4, fontHeight / 4); }
+
+    private static void HookCheckGlyph(ButtonBase bb)
+    {
+        CheckBox cbx = bb as CheckBox;
+        RadioButton rb = bb as RadioButton;
+        if (cbx != null && cbx.Appearance != Appearance.Normal) return;
+        if (rb != null && rb.Appearance != Appearance.Normal) return;
+        if (!MarkOnce(GlyphHooked, bb)) return;
+        try
+        {
+            int fh = bb.Font.Height;
+            int extra = Math.Max(0, CheckGlyphSize(fh) + CheckGlyphGap(fh) - Px(bb, 13));
+            Padding p = bb.Padding;
+            bb.Padding = new Padding(p.Left, p.Top, p.Right + extra, p.Bottom);
+        }
+        catch { }
+        bb.Paint += OnCheckGlyphPaint;
+    }
+
+    private static void OnCheckGlyphPaint(object sender, PaintEventArgs e)
+    {
+        try
+        {
+            ButtonBase c = sender as ButtonBase;
+            if (c == null) return;
+            CheckBox cbx = c as CheckBox;
+            RadioButton rb = c as RadioButton;
+            bool radio = rb != null;
+            bool on = radio ? rb.Checked : cbx != null && cbx.CheckState == CheckState.Checked;
+            bool mixed = cbx != null && cbx.CheckState == CheckState.Indeterminate;
+            Graphics g = e.Graphics;
+            Rectangle cr = c.ClientRectangle;
+            using (SolidBrush back = new SolidBrush(EffectiveBackUp(c))) g.FillRectangle(back, cr);
+
+            int fh = c.Font.Height;
+            int s = Math.Min(CheckGlyphSize(fh), Math.Max(8, cr.Height - 2));
+            int gap = CheckGlyphGap(fh);
+            Padding pad = c.Padding;
+            int x = pad.Left + 1;
+            int y;
+            ContentAlignment ca = radio ? rb.CheckAlign : cbx.CheckAlign;
+            if (ca == ContentAlignment.TopLeft || ca == ContentAlignment.TopCenter || ca == ContentAlignment.TopRight)
+                y = pad.Top + Math.Max(0, (fh - s) / 2);
+            else y = pad.Top + (cr.Height - pad.Vertical - s) / 2;
+            Rectangle box = new Rectangle(x, y, s, s);
+            bool hover = false;
+            try { hover = c.Enabled && cr.Contains(c.PointToClient(Control.MousePosition)); } catch { }
+            Color frame = !c.Enabled ? ColBorder : (on || mixed) ? ColAccent : (hover || c.Focused) ? ColAccent2 : ColText;
+            Color fill = !c.Enabled ? ColMuted : ColAccent;
+            float w = Math.Max(2f, s / 9f);
+
+            SmoothingMode oldMode = g.SmoothingMode;
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            if (radio)
+            {
+                RectangleF ring = new RectangleF(box.X + w / 2f, box.Y + w / 2f, s - w, s - w);
+                using (SolidBrush inner = new SolidBrush(ColInput)) g.FillEllipse(inner, ring);
+                using (Pen p = new Pen(on ? fill : frame, w)) g.DrawEllipse(p, ring);
+                if (on)
+                {
+                    float d = s * 0.5f;
+                    using (SolidBrush dot = new SolidBrush(fill))
+                        g.FillEllipse(dot, box.X + (s - d) / 2f, box.Y + (s - d) / 2f, d, d);
+                }
+            }
+            else if (on || mixed)
+            {
+                using (SolidBrush f = new SolidBrush(fill)) g.FillRectangle(f, box);
+                using (Pen p = new Pen(ColOnAccent, Math.Max(2f, s / 7f)))
+                {
+                    p.StartCap = LineCap.Round; p.EndCap = LineCap.Round; p.LineJoin = LineJoin.Round;
+                    if (mixed) g.DrawLine(p, box.X + s * 0.25f, box.Y + s * 0.5f, box.X + s * 0.75f, box.Y + s * 0.5f);
+                    else g.DrawLines(p, new PointF[] {
+                        new PointF(box.X + s * 0.22f, box.Y + s * 0.52f),
+                        new PointF(box.X + s * 0.42f, box.Y + s * 0.72f),
+                        new PointF(box.X + s * 0.79f, box.Y + s * 0.30f) });
+                }
+            }
+            else
+            {
+                using (SolidBrush inner = new SolidBrush(ColInput)) g.FillRectangle(inner, box);
+                using (Pen p = new Pen(frame, w))
+                {
+                    p.Alignment = PenAlignment.Inset;
+                    g.DrawRectangle(p, box.X, box.Y, s - 1, s - 1);
+                }
+            }
+            g.SmoothingMode = oldMode;
+
+            int tx = box.Right + gap;
+            Rectangle tr = new Rectangle(tx, pad.Top, Math.Max(1, cr.Width - tx), cr.Height - pad.Vertical);
+            TextFormatFlags tf = TextFormatFlags.Left | TextFormatFlags.NoPadding;
+            ContentAlignment ta = c.TextAlign;
+            if (ta == ContentAlignment.TopLeft || ta == ContentAlignment.TopCenter || ta == ContentAlignment.TopRight) tf |= TextFormatFlags.Top;
+            else if (ta == ContentAlignment.BottomLeft || ta == ContentAlignment.BottomCenter || ta == ContentAlignment.BottomRight) tf |= TextFormatFlags.Bottom;
+            else tf |= TextFormatFlags.VerticalCenter;
+            tf |= c.AutoSize ? TextFormatFlags.SingleLine : TextFormatFlags.WordBreak;
+            if (!c.UseMnemonic) tf |= TextFormatFlags.NoPrefix;
+            Color tc = c.Enabled ? (on ? ColText : MapForeground(c.ForeColor, EffectiveBackUp(c))) : ColMuted;
+            TextRenderer.DrawText(g, c.Text ?? "", c.Font, tr, tc, tf);
+        }
+        catch { }
+    }
+
+    /// <summary>v5.1.1 (F2): makes radio buttons that live in DIFFERENT containers one exclusive group (WinForms only clears
+    /// siblings in the same parent). Checking one clears all the others.</summary>
+    internal static void Exclusive(params RadioButton[] group)
+    {
+        if (group == null) return;
+        foreach (RadioButton r in group)
+        {
+            if (r == null) continue;
+            RadioButton me = r;
+            me.CheckedChanged += delegate
+            {
+                if (!me.Checked) return;
+                foreach (RadioButton o in group) if (o != null && o != me && o.Checked) o.Checked = false;
+            };
+        }
     }
 
     /// <summary>Runs a style change and puts Location/Size back if the change moved them.</summary>
@@ -1426,8 +1660,8 @@ namespace TarkovCrosshair
         {
             float pt = Font.SizeInPoints * fontScale;
             double sc = TextFit.ScaleOf(this) * fontScale;
-            using (Font mono = Theme.Mono(Math.Max(11f * fontScale, pt)))
-            using (Font ui = new Font(Font.FontFamily, pt, Font.Style))
+            Font mono = Theme.SharedMono(Math.Max(11f * fontScale, pt), FontStyle.Regular); // X11: shared, never disposed
+            Font ui = Theme.SharedFont(Font.FontFamily, pt, Font.Style);
             {
                 Size a = TextFit.NeedSize("00", mono, 0, sc), b = TextFit.NeedSize(Title, ui, 0, sc);
                 int w = (int)Math.Round((16 + 12 + 4) * k * fontScale) + a.Width + b.Width;
@@ -1484,7 +1718,7 @@ namespace TarkovCrosshair
                 TextFormatFlags f = TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.SingleLine |
                                     TextFormatFlags.NoPrefix | TextFormatFlags.NoPadding | TextFormatFlags.EndEllipsis;
                 int x = (int)Math.Round(16 * k);
-                using (Font mono = Theme.Mono(Math.Max(11f, Font.SizeInPoints))) // numbers >= 11 pt (SPEC v4)
+                Font mono = Theme.SharedMono(Math.Max(11f, Font.SizeInPoints), FontStyle.Regular); // X11: shared // numbers >= 11 pt (SPEC v4)
                 {
                     int iw = TextRenderer.MeasureText(g, "00", mono, new Size(w, h), f).Width;
                     TextRenderer.DrawText(g, Index, mono, new Rectangle(x, 0, iw + 2, h),
@@ -1563,7 +1797,7 @@ namespace TarkovCrosshair
         public Size TextNeed(float fontScale)
         {
             double sc = TextFit.ScaleOf(this) * fontScale;
-            using (Font tf = Theme.Ui(TitlePt(fontScale), FontStyle.Bold))
+            Font tf = Theme.SharedUi(TitlePt(fontScale), FontStyle.Bold); // X11: shared
             {
                 Size t = TextFit.NeedSize(title, tf, 0, sc);
                 int h = t.Height + (int)Math.Round((compact ? 4 : 10) * k * fontScale);
@@ -1613,7 +1847,7 @@ namespace TarkovCrosshair
                     else g.FillRectangle(ab, 0, (int)Math.Round(8 * k), bar, lineY - (int)Math.Round(14 * k));
                 }
                 int x = bar + (int)Math.Round(10 * k);
-                using (Font tf = Theme.Ui(TitlePt(1f), FontStyle.Bold)) // page titles >= 16 pt (compact >= 13 pt)
+                Font tf = Theme.SharedUi(TitlePt(1f), FontStyle.Bold); // X11: shared // page titles >= 16 pt (compact >= 13 pt)
                 {
                     string shown = title;
                     Size ts = TextRenderer.MeasureText(g, title, tf, new Size(w, h), f);
@@ -1660,7 +1894,7 @@ namespace TarkovCrosshair
         public Size TextNeed(float fontScale)
         {
             double sc = TextFit.ScaleOf(this) * fontScale;
-            using (Font f = new Font(Font.FontFamily, Font.SizeInPoints * fontScale, Font.Style))
+            Font f = Theme.SharedFont(Font.FontFamily, Font.SizeInPoints * fontScale, Font.Style); // X11: shared
             {
                 Size t = TextFit.NeedSize(Text, f, 0, sc);
                 return new Size(t.Width + (int)Math.Round(60 * k * fontScale), t.Height + (int)Math.Round(8 * k * fontScale));
@@ -1699,7 +1933,7 @@ namespace TarkovCrosshair
                 TextFormatFlags f = TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.SingleLine | TextFormatFlags.NoPrefix | TextFormatFlags.NoPadding;
                 int x = (int)Math.Round(12 * k); // inside the frame, like a card title
                 string arrow = open ? "▾" : "▸";
-                using (Font mono = Theme.Mono(Font.SizeInPoints))
+                Font mono = Theme.SharedMono(Font.SizeInPoints, FontStyle.Regular); // X11: shared
                 {
                     TextRenderer.DrawText(g, arrow, mono, new Rectangle(x, 0, w, h), c, f);
                     x += TextRenderer.MeasureText(g, "▾", mono, new Size(w, h), f).Width + (int)Math.Round(8 * k);
@@ -1749,7 +1983,7 @@ namespace TarkovCrosshair
         public Size TextNeed(float fontScale)
         {
             double sc = TextFit.ScaleOf(this) * fontScale;
-            using (Font f = new Font(Font.FontFamily, Font.SizeInPoints * fontScale, Font.Style))
+            Font f = Theme.SharedFont(Font.FontFamily, Font.SizeInPoints * fontScale, Font.Style); // X11: shared
             {
                 Size t = TextFit.NeedSize(Text, f, 0, sc);
                 return new Size(t.Width + (int)Math.Round(24 * k * fontScale), t.Height + (int)Math.Round(8 * k * fontScale));

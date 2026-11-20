@@ -133,7 +133,7 @@ namespace TarkovCrosshair.Tests
             double mj = 0;
             if (p.Jump != null) foreach (JumpPhase ph in p.Jump.Phases) mj = Math.Max(mj, Math.Abs(ph.EndPx));
             double rs = g.ResolutionScale;
-            bx = rs * (mdx + ml + md + msx) + 1e-6;
+            bx = rs * (mdx + ml + md + msx) * Math.Max(1.0, ViewScale.FovRatio(g)) + 1e-6; // v5.1.1 (X5): the other side x gameFov / baseFov
             by = rs * (mdy + mly + Math.Max(0, p.RecoilMaxPx) + mj + msy) + 1e-6;
         }
 
@@ -432,14 +432,14 @@ namespace TarkovCrosshair.Tests
                         restChecks++;
                         double lx = 0, ly = 0;
                         bool ok = x.E.MoveX == 0 && x.E.MoveY == 0 && !x.E.Jumping && x.E.Recoil < 0.01 && x.E.CurrentDir == -1;
-                        if (x.E.LeanTarget == 0) ok &= Math.Abs(x.E.OffsetX) < 0.01 && Math.Abs(x.E.OffsetY) < 0.01;
-                        else
-                        {
-                            HandView v = new HandView(); x.P.FillView(x.E.Hand, v);
-                            lx = x.E.LeanTarget < 0 ? v.QX : v.EX; ly = x.E.LeanTarget < 0 ? v.QY : v.EY;
-                            double rs = g.ResolutionScale;
-                            if (x.E.HandBlend == 0 || x.E.HandBlend == 1) ok &= Math.Abs(x.E.OffsetX - rs * lx) < 0.01 && Math.Abs(x.E.OffsetY + rs * ly) < 0.01;
-                        }
+                        // v5.1.1 (X5, Leo 21 Nov 2026): rest = the 站立 point (+ lean), FOV side rule on the final X
+                        HandView v = new HandView(); x.P.FillView(x.E.Hand, v);
+                        if (x.E.LeanTarget != 0) { lx = x.E.LeanTarget < 0 ? v.QX : v.EX; ly = x.E.LeanTarget < 0 ? v.QY : v.EY; }
+                        // v5.1.1 (X8, Leo 21 Nov option A): a latched lean counts from the screen centre (the 站立 point fades out)
+                        double sx = x.E.LeanTarget != 0 && x.P.StandAsZero ? 0 : v.SX, sy = x.E.LeanTarget != 0 && x.P.StandAsZero ? 0 : v.SY;
+                        double rs = g.ResolutionScale, rsx = g.ResolutionScaleX;
+                        if (x.E.HandBlend == 0 || x.E.HandBlend == 1)
+                            ok &= Math.Abs(x.E.OffsetX - ViewScale.FovX(rsx * (lx + sx), ViewScale.FovRatio(g), x.E.HandBlend)) < 0.01 && Math.Abs(x.E.OffsetY + rs * (ly + sy)) < 0.01;
                         if (!ok) { rest++; if (fRest == null) fRest = BxState(x) + " off=(" + x.E.OffsetX + "," + x.E.OffsetY + ") move=(" + x.E.MoveX + "," + x.E.MoveY + ") recoil=" + x.E.Recoil + " leanT=" + x.E.LeanTarget + " lean=(" + lx + "," + ly + ")"; }
                     }
                 }
