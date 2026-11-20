@@ -11,7 +11,7 @@ namespace TarkovCrosshair.Tests
             string dir = Path.Combine(Path.GetTempPath(), "v34-" + Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(dir);
             GlobalSettings g = GlobalSettings.CreateDefault();
-            Profile p = g.Profiles[0];
+            Profile p = g.Profiles[0]; p.SetStandPoint(0, 0); /* v5.1.1 (X5, Leo 21 Nov 2026): the built-in has a 站立 point now; this case measures around the centre */
             p.StandOffsetX = 7; p.StandOffsetY = -27; p.SetHandCustom(Profile.HandStand, 5, 5);
             g.ResBaseW = 2560; g.ResBaseH = 1600; g.ResGameW = 2560; g.ResGameH = 1600;
             string f = Path.Combine(dir, "s.json");

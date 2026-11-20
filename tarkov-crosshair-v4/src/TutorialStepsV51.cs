@@ -65,7 +65,7 @@ namespace TarkovCrosshair
         }
 
         /// <summary>Reload times when the settings have none yet (R2 defaults).</summary>
-        public const double DefaultNormalMs = 2400, DefaultQuickMs = 900;
+        public const double DefaultNormalMs = 3000, DefaultQuickMs = 2200; // Leo 21 Nov 2026 (was 2400 / 900)
 
         /// <summary>Decision 5 example: a direction's offset measured from the standing point = offset from the screen
         /// centre minus the standing offset (percent of the screen). Standing right 1 %, D at -4.17 % -> -5.17 %.</summary>
@@ -348,7 +348,7 @@ namespace TarkovCrosshair
         {
             Id = "taps"; Chapter = "实战校准"; Title = "短按与反向";
             Body = "轻点 A 或 D：准星只挪一点，马上回来。\n按住 A 再换 D：准星先慢下来，\n再加速往右，不会一下跳过去。";
-            DevNote = "游戏里轻点方向键，人物只挪一小步，枪口几乎不偏，所以准星也只动一点。反向时枪口要先停下来再往另一边偏，准星按同样的节奏走，和弹孔对得上。手感不对，可以在「移动」页的高级设置里调「短按阈值」（默认 120 毫秒）和「换向最短时间」（默认 150 毫秒）。";
+            DevNote = "游戏里轻点方向键，人物只挪一小步，枪口几乎不偏，所以准星也只动一点。反向时枪口要先停下来再往另一边偏，准星按同样的节奏走，和弹孔对得上。手感不对，可以在「移动」页的高级设置里调「短按阈值」（默认 200 毫秒）和「换向最短时间」（默认 250 毫秒）。";
             Prompts = new string[] { "轻点 A、D，再按住 A 换成 D，看准星怎么走" };
             Hint = Prompts[0];
             KeysShown = TKey.A | TKey.D;
@@ -583,7 +583,7 @@ namespace TarkovCrosshair
         public override void Enter(TutorialContext c)
         {
             modeKey = c.PromptKey(KeyBindings.ActionBoost);
-            if (string.IsNullOrEmpty(modeKey) || modeKey == "?") modeKey = KeyBindings.ComboName(0x54, KeyBindings.ModCtrl);   // Tarkov default 切换战术装置模式
+            if (string.IsNullOrEmpty(modeKey) || modeKey == "?") modeKey = KeyBindings.ComboName(KeyBindings.VkXButton2, 0);   // v5.1.1 (Leo 21 Nov): default 强化 = 鼠标侧键2
             toggle = c.G.BoostToggle;
             if (toggle)
                 Body = "先按 T 打开战术装置，保持 IR 模式。\n按 " + modeKey + "：切到手电，准星同时变亮。\n再按一次：回到 IR，准星恢复。";
@@ -684,7 +684,7 @@ namespace TarkovCrosshair
             normalMs = TutorialStepsV51.Ms(g, "AmmoReloadMs", TutorialV51Math.DefaultNormalMs);
             quickMs = TutorialStepsV51.Ms(g, "AmmoQuickReloadMs", TutorialV51Math.DefaultQuickMs);
             Body = "只算主武器：按住开枪的时间 × 射速。\n只显示大概：满、大半、一半、少、快空。\n按 " + reloadKey + " 或双击 " + reloadKey + "：换上一个新的满弹匣。";
-            DevNote = "先在「外观」页打开它（默认关闭），填好弹匣容量和射速（每分钟发数）；半自动按一下算一发。两种换弹都是换上一个新的满弹匣：按 " + reloadKey + " 是普通换弹，旧弹匣退出，新弹匣装上；快速连按两下 " + reloadKey + " 是快速换弹，旧弹匣直接丢在地上，新弹匣装得更快。换弹时间在设置里和局内「常调」都能改。开镜时它和准星一起隐藏。准星本身的颜色不变，中间一直是空的。几种样式可以叠加。";
+            DevNote = "先在「外观」→「弹药提示」最上面的「先设置」里打开它（默认关闭），填好弹匣容量和射速（每分钟发数）；半自动按一下算一发。两种换弹都是换上一个新的满弹匣：按 " + reloadKey + " 是普通换弹，旧弹匣退出，新弹匣装上；快速连按两下 " + reloadKey + " 是快速换弹，旧弹匣直接丢在地上，新弹匣装得更快。换弹时间在「先设置」里和局内「常调」都能改。开镜时它和准星一起隐藏。准星本身的颜色不变，中间一直是空的。几种样式可以叠加。";
             Hint = "在画面上按住左键开枪，再点换弹";
             ChipText[0] = "按 " + reloadKey + "：换弹";
             ChipText[1] = "双击 " + reloadKey + "：快速换弹";

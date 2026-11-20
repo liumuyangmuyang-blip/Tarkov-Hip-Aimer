@@ -214,9 +214,12 @@ namespace TarkovCrosshair
 
         private static TutorialField FX(string label, string tag, bool main, int item)
         {
-            return TutorialField.Offset(label, tag, main, OffsetAxis.X, -500, 500,
+            TutorialField f = TutorialField.Offset(label, tag, main, OffsetAxis.X, -500, 500,
                 delegate(Profile p) { return HX(p, item); },
                 delegate(Profile p, double v) { p.SetHandCustom(item, v, HY(p, item)); });
+            f.Switched = true; // v5.1.1 (X5): 换手 values (FOV sides swap); directions from the 换手 站立 point
+            if (item < Profile.HandStand) f.OriginX = delegate(Profile p) { return OffsetUnits.StandOriginX(p, true); }; // X8: Q/E/drift from the centre
+            return f;
         }
 
         private static TutorialField FY(string label, string tag, bool main, int item)
@@ -279,7 +282,7 @@ namespace TarkovCrosshair
                 double x, y; p.HandValue(item, out x, out y);
                 if (n > 0) sb.Append(" · ");
                 sb.Append(TutorialStep9Math.OrderNames[i]).Append(' ');
-                if (item == TutorialStep9Math.ItemD || item == TutorialStep9Math.ItemA) sb.Append(TutorialPct.X(x, g));
+                if (item == TutorialStep9Math.ItemD || item == TutorialStep9Math.ItemA) sb.Append(OffsetUnits.FormatAt(x, OffsetUnits.StandOriginX(p, true), OffsetAxis.X, true, g));
                 else if (item == TutorialStep9Math.ItemW || item == TutorialStep9Math.ItemS) sb.Append(TutorialPct.Y(y, g));
                 else sb.Append(TutorialPct.Vec(x, y, g));
                 n++;
@@ -535,12 +538,14 @@ namespace TarkovCrosshair
             double pxPerM = TutorialGeometry.ProjectedPx(1, rig.DistanceM) * rig.Zoom * gx.K;
             if (pxPerM > 0) { rig.WallWm = 2 * wallHalfW / pxPerM; rig.WallHm = 2 * wallHalfH / pxPerM; }
             rig.ShowGun = false;   // drawn smaller and lower below, so holes and labels stay clear of it
-            // the rig's own tracers (Pal.Hot) start at a fixed bottom-right point, wrong for the switched hand: hide them
-            // for this call (every hole colour comes from KindColors, so nothing else uses Pal.Hot inside rig.Draw)
-            Color hot = pal.Hot;
-            pal.Hot = Color.Transparent;
+            // the rig's own tracers start at a fixed bottom-right point, wrong for the switched hand: switch them off for this
+            // call (DrawGun below draws the real ones from the small gun's muzzle). v5.1.1 (Leo F4): this used to set Pal.Hot to
+            // Color.Transparent, but TutorialGfx.A keeps only its RGB (255,255,255), so a stray WHITE tracer was drawn beside
+            // the yellow one.
+            bool tracers = rig.ShowTracers;
+            rig.ShowTracers = false;
             try { rig.Draw(gx, scene); }
-            finally { pal.Hot = hot; }
+            finally { rig.ShowTracers = tracers; }
 
             Graphics g = gx.G;
             g.SetClip(scene);

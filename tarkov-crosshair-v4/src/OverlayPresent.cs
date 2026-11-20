@@ -719,6 +719,7 @@ namespace TarkovCrosshair
             av.ReloadMs = eng.AmmoReloadMs;
             av.Reloading = eng.Ammo.Reloading;
             av.Progress = eng.Ammo.ReloadProgress;
+            av.Share = eng.Ammo.Fraction; // v5.1.1 (B3): thresholds only (只在少于 X% 时显示 / 警告), never shown as a number
         }
     }
 }

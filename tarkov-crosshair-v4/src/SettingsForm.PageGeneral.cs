@@ -15,18 +15,28 @@ namespace TarkovCrosshair
 {
     internal sealed partial class SettingsForm
     {
+        /// <summary>v5.1.1 (X5): the FOV line of 常规 in plain words, e.g. 「FOV 换算：枪那一侧 ×1.00，另一侧 ×0.80，上下不变」.</summary>
+        internal static string FovLineText(GlobalSettings g)
+        {
+            return FovText.Line(g);
+        }
+
         /// <summary>常规: 分辨率换算 first (SPEC v4 page 2), then display, game window, window / start-up.</summary>
-        private Control BuildGeneral()
+        private IEnumerable<Control> BuildGeneralSteps()
         {
             // 分辨率换算
-            TableLayoutPanel gr = Grid(2);
+            TableLayoutPanel gr = HeldGrid(2);
             // v4.1 画面比例 + FOV: every offset is converted through the focal length (ViewScale); v4.2: a stretched 画面比例 adds an X factor.
             Label factor = Lbl(""); // v5.0.2 (UI-C L5): Chinese text in the UI font (mono has no CJK glyphs)
             factor.ForeColor = Theme.ColAccent;
             Label stretch = Note("", 560);
+            Label fovLine = Lbl(""); // v5.1.1 (X5): 「FOV 换算：枪那一侧 ×1.00，另一侧 ×0.80，上下不变」
+            fovLine.ForeColor = Theme.ColAccent;
             ComboBox aspectBox = null;
             Control stretchRow = null;
             TextBox customBox = null;
+            // v5.1.1 (X1, Leo): 「自定义」 chosen -- the W:H box stays open even while the typed ratio is also a list ratio
+            bool customMode = AspectChoiceOf(G.ResAspect) == "custom";
             Action showFactor = delegate
             {
                 System.Globalization.CultureInfo inv = System.Globalization.CultureInfo.InvariantCulture;
@@ -43,12 +53,15 @@ namespace TarkovCrosshair
                     + (stretched ? "    上下 1% = " + onePct + " 像素 · 左右 1% = " + onePctX + " 像素" : "    1% = " + onePct + " 像素");
                 // v5.1 (decision 11): the horizontal factor is always shown in words: 「横向 ×1.20（拉伸）」 / 「横向 ×1.00（没拉伸）」
                 bool nonNative = Math.Abs(ViewScale.StretchX(G.ResGameW, G.ResGameH, G.ResAspect) - 1.0) > 1e-9;
-                stretch.Text = "横向 ×" + ratio.ToString("0.00", inv) + (stretched ? "（拉伸）" : nonNative ? "（没拉伸，有黑边）" : "（没拉伸）")
+                string bars = G.ResBars == GlobalSettings.BarsTopBottom ? "（没拉伸，上下有黑边）" : G.ResBars == GlobalSettings.BarsLeftRight ? "（没拉伸，左右有黑边）" : "（没拉伸，有黑边）";
+                stretch.Text = "横向 ×" + ratio.ToString("0.00", inv) + (stretched ? "（拉伸）" : nonNative ? bars : "（没拉伸）")
                     + (stretched ? "：" + ViewScale.DisplayAspect(G.ResAspect, G.ResGameW, G.ResGameH) + " 拉宽到 "
                     + ViewScale.DisplayAspect("auto", G.ResGameW, G.ResGameH) + " 屏，左右偏移自动 ×" + ratio.ToString("0.00", inv) + "（设置里的 % 不用改）" : "");
                 stretch.ForeColor = stretched ? Theme.ColWarn : Theme.ColMuted;
-                if (stretchRow != null) stretchRow.Visible = nonNative;
-                if (customBox != null) customBox.Visible = AspectChoiceOf(G.ResAspect) == "custom";
+                fovLine.Text = FovLineText(G);
+                // v5.1.1 (F1, Leo): 拉宽了 is the default; the 有黑边 choice is only shown in 高级设置
+                if (stretchRow != null) stretchRow.Visible = nonNative && Advanced;
+                if (customBox != null) customBox.Visible = customMode || AspectChoiceOf(G.ResAspect) == "custom";
                 // "auto" (not chosen yet) shows the resolution's ratio: follow a typed resolution without storing a choice
                 if (aspectBox != null && G.ResAspect == "auto")
                 {
@@ -64,59 +77,78 @@ namespace TarkovCrosshair
                 AutoDetectBtn(), ResPresetBtn(), HelpMark.For("resolution", Font, delegate { return G; })));
             // v5.1 (decision 12): the game's ratios + 1:1 + 自定义 (any W:H, e.g. 123:111)
             customBox = new TextBox();
-            customBox.Width = Math.Max(S(90), TextRenderer.MeasureText("12345:12345", monoFont).Width + S(12));
+            customBox.Width = Math.Max(S(90), TextW("12345:12345", monoFont) + S(12));
             customBox.Font = monoFont;
             customBox.Anchor = AnchorStyles.Left;
             customBox.Margin = P(3, 3, 3, 3);
             Tip(customBox, "任意宽:高，例如 123:111");
-            customBox.Leave += delegate
+            // v5.1.1 (X1): typed W:H applied as soon as it reads (red while it does not), checked again on leave / Enter
+            Action<bool> takeCustom = delegate(bool final)
             {
                 int cw, ch;
-                if (!ViewScale.TryParseRatio(customBox.Text, out cw, out ch)) { SetStatus("画面比例要写成 宽:高，例如 16:10", true); customBox.Text = G.ResAspectCustom; return; }
-                G.ResAspectCustom = cw + ":" + ch; G.ResAspect = G.ResAspectCustom;
-                customBox.Text = G.ResAspectCustom;
+                string t = (customBox.Text ?? "").Trim().Replace('：', ':');
+                bool okRatio = ViewScale.TryParseRatio(t, out cw, out ch) && ViewScale.NormalizeAspect(cw + ":" + ch) != "auto";
+                customBox.ForeColor = okRatio ? Theme.ColText : Theme.ColWarn;
+                if (!okRatio)
+                {
+                    if (final) { SetStatus("画面比例要写成 宽:高，例如 123:111", true); customBox.Text = G.ResAspectCustom; customBox.ForeColor = Theme.ColText; }
+                    return;
+                }
+                string n = cw + ":" + ch;
+                if (G.ResAspectCustom == n && G.ResAspect == n) { if (final) customBox.Text = n; return; }
+                G.ResAspectCustom = n; G.ResAspect = n;
+                if (final) customBox.Text = n;
                 showFactor(); app.Changed();
             };
-            refreshers.Add(delegate { if (!customBox.Focused) customBox.Text = G.ResAspectCustom ?? ""; });
+            customBox.TextChanged += delegate { if (!loading && customBox.Focused) takeCustom(false); };
+            customBox.Leave += delegate { takeCustom(true); };
+            customBox.KeyDown += delegate(object s2, KeyEventArgs e2) { if (e2.KeyCode == Keys.Enter) { e2.SuppressKeyPress = true; takeCustom(true); } };
+            refreshers.Add(delegate
+            {
+                customMode = AspectChoiceOf(G.ResAspect) == "custom" || (customMode && G.ResAspect == G.ResAspectCustom);
+                if (!customBox.Focused) customBox.Text = G.ResAspectCustom ?? "";
+            });
             aspectBox = Choice(AspectChoiceLabels, AspectChoiceIds,
-                delegate { return AspectChoiceOf(ViewScale.DisplayAspect(G.ResAspect, G.ResGameW, G.ResGameH)); },
+                delegate { return customMode ? "custom" : AspectChoiceOf(ViewScale.DisplayAspect(G.ResAspect, G.ResGameW, G.ResGameH)); },
                 delegate(string v)
                 {
-                    if (v == "custom") { int cw, ch; G.ResAspect = ViewScale.TryParseRatio(G.ResAspectCustom, out cw, out ch) ? cw + ":" + ch : "16:9"; }
+                    customMode = v == "custom";
+                    if (customMode)
+                    {
+                        int cw, ch;
+                        if (!ViewScale.TryParseRatio(G.ResAspectCustom, out cw, out ch)) { cw = 16; ch = 9; }
+                        G.ResAspectCustom = cw + ":" + ch; G.ResAspect = G.ResAspectCustom;
+                        customBox.Text = G.ResAspectCustom;
+                    }
                     else G.ResAspect = v;
                     showFactor();
+                    if (customMode) { PostRefit(); customBox.Focus(); customBox.SelectAll(); }
                 });
             Row(gr, "画面比例", Line(aspectBox, customBox, HelpMark.For("aspect", Font, delegate { return G; })));
-            // v5.1 (decision 11): 拉宽了 (stretched, default) / 有黑边 -- only asked when the ratio is not the screen's own
-            ComboBox stretchBox = Choice(new string[] { "拉宽了（铺满屏幕）", "没拉宽（有黑边）" }, new string[] { "stretch", "fit" },
-                delegate { return G.PictureStretched ? "stretch" : "fit"; },
-                delegate(string v) { G.ResStretched = v == "stretch"; showFactor(); });
+            yield return null; // v5.1.1 (X5): one background-build chunk ends here (PageChunks)
+            // v5.1 (decision 11): 拉宽了 (stretched, default) / 有黑边 -- only when the ratio is not the screen's own; v5.1.1: 高级设置 only
+            // v5.1.1 (X1, Leo): 3 choices, stored in ResBars (none / topbottom / leftright; ResStretched kept in step)
+            ComboBox stretchBox = Choice(new string[] { "拉宽了，铺满屏幕", "没拉宽，上下有黑边", "没拉宽，左右有黑边" }, GlobalSettings.BarsIds,
+                delegate { return G.ResBars ?? GlobalSettings.BarsNone; },
+                delegate(string v) { G.SetBars(v); showFactor(); });
             stretchRow = Line(stretchBox, HelpMark.For("stretch", Font, delegate { return G; }));
             Label stretchL = Lbl("画面有没有被拉宽");
             Row(gr, stretchL, stretchRow);
             refreshers.Add(delegate { stretchL.Visible = stretchRow.Visible; });
             Row(gr, "FOV", Line(Num(ViewScale.MinFov, ViewScale.MaxFov, 1, 0, delegate { return G.ResFov; }, delegate(double v) { G.ResFov = v; showFactor(); }),
                 Hint("°（游戏里能设 50–75）", 200), HelpMark.For("fov", Font, delegate { return G; })));
-            TableLayoutPanel resBox = Grid(1);
+            TableLayoutPanel resBox = HeldGrid(1);
             resBox.Controls.Add(gr);
             resBox.Controls.Add(factor);
+            resBox.Controls.Add(fovLine);
             resBox.Controls.Add(stretch);
-            resBox.Controls.Add(Note("照游戏设置里填这 3 项。偏移量会自动换算到你的画面；第一次打开时已经自动填好主显示器的分辨率。画面比例和屏幕不一样时，看一眼游戏里的圆形东西：变扁变宽＝拉宽了，两边有黑条＝有黑边。", 560));
+            resBox.Controls.Add(Note("照游戏设置里填这 3 项。偏移量会自动换算到你的画面；第一次打开时已经自动填好主显示器的分辨率。画面比例和屏幕不一样时，按游戏把画面拉宽铺满来换算；有黑条的话，打开高级设置选「没拉宽，上下有黑边」或「没拉宽，左右有黑边」。", 560));
 
-            // 调参基准 (高级设置 only; v4.2: not a game setting): the screen the offsets were tuned on. Defaults = Leo's 2160×1440, 跟随, FOV 75.
-            TableLayoutPanel gb = Grid(2);
-            Row(gb, "调参分辨率", Line(
-                Num(640, 7680, 1, 0, delegate { return G.ResBaseW; }, delegate(double v) { G.ResBaseW = v; showFactor(); }), Unit("×"),
-                Num(480, 4320, 1, 0, delegate { return G.ResBaseH; }, delegate(double v) { G.ResBaseH = v; showFactor(); })));
-            Row(gb, "调参比例", Choice(ViewScale.AspectLabels, ViewScale.AspectIds, delegate { return G.ResBaseAspect; }, delegate(string v) { G.ResBaseAspect = v; showFactor(); }));
-            Row(gb, "调参 FOV", Line(Num(ViewScale.MinFov, ViewScale.MaxFov, 1, 0, delegate { return G.ResBaseFov; }, delegate(double v) { G.ResBaseFov = v; showFactor(); }), Unit("°")));
-            TableLayoutPanel baseBox = Grid(1);
-            baseBox.Controls.Add(gb);
-            // Leo 17 Nov 2026: his FOV is 75 and 「Leo默认」 is tuned at FOV 75
-            baseBox.Controls.Add(Note("内置的「Leo默认」是在 2160×1440、FOV 75 上调的。只有你自己的数值是在别的分辨率 / FOV 上调的才改这里；游戏和调参一样时系数是 1。", 560));
-            resBox.Controls.Add(AdvOnly(Fold("调参基准（高级）", baseBox)));
+            // v5.1.1 (B5, Leo): the 调参基准 rows (调参分辨率 / 调参比例 / 调参 FOV) are gone from the UI. The stored fields
+            // ResBaseW / ResBaseH / ResBaseAspect / ResBaseFov stay (defaults 2160×1440 / 跟随 / 75), so files and imports still convert.
             Section gRes = Group("分辨率 · 画面", resBox);
-            return BuildGeneralRest(gRes);
+            yield return null; // v5.1.1 (X5): one background-build chunk ends here (PageChunks)
+            foreach (Control c in BuildGeneralRestSteps(gRes)) yield return c;
         }
 
         /// <summary>v5.1 (decision 12): 画面比例 choices: the game's list (incl. 1:1) + 自定义.</summary>
@@ -201,10 +233,10 @@ namespace TarkovCrosshair
         }
 
         /// <summary>常规 after 分辨率: display (monitor shown when there is more than one), game window, window / start-up.</summary>
-        private Control BuildGeneralRest(Section gRes)
+        private IEnumerable<Control> BuildGeneralRestSteps(Section gRes)
         {
             // 显示器 / 渐变
-            TableLayoutPanel o = Grid(2);
+            TableLayoutPanel o = HeldGrid(2);
             cbMonitor = new ComboBox();
             cbMonitor.DropDownStyle = ComboBoxStyle.DropDownList;
             cbMonitor.Width = S(250);
@@ -223,11 +255,12 @@ namespace TarkovCrosshair
             AdvRow(o, "出现渐变", Line(Num(0, 1000, 10, 0, delegate { return G.ShowFadeMs; }, delegate(double v) { G.ShowFadeMs = v; }), Unit("ms")));
             AdvRow(o, "消失渐变", Line(Num(0, 1000, 10, 0, delegate { return G.HideFadeMs; }, delegate(double v) { G.HideFadeMs = v; }), Unit("ms")));
             Section gDisp = Group("显示", o);
+            yield return null; // v5.1.1 (X5): one background-build chunk ends here (PageChunks)
             // one screen: nothing to choose, so the group is 高级设置 only; several screens: the 显示器 choice is always shown
             refreshers.Add(delegate { gDisp.Visible = Advanced || ScreenCount() > 1; });
 
             // 只在塔科夫前台时显示
-            TableLayoutPanel f = Grid(2);
+            TableLayoutPanel f = HeldGrid(2);
             TextBox title = new TextBox();
             title.Width = S(230);
             title.Anchor = AnchorStyles.Left;
@@ -251,9 +284,10 @@ namespace TarkovCrosshair
             Wide(f, onlyNote);
             AdvRow(f, "窗口标题", Line(title, pick));
             Section gGame = Group("游戏窗口", f);
+            yield return null; // v5.1.1 (X5): one background-build chunk ends here (PageChunks)
 
             // 窗口 / 开机
-            TableLayoutPanel w = Grid(1);
+            TableLayoutPanel w = HeldGrid(1);
             w.Controls.Add(AdvOnly(Line(
                 Check("设置窗口置顶", delegate { return G.SettingsTopMost; }, delegate(bool v) { G.SettingsTopMost = v; TopMost = v; if (tutorial != null && !tutorial.IsDisposed) tutorial.TopMost = v; }),
                 Check("启动时打开设置", delegate { return G.ShowSettingsOnStart; }, delegate(bool v) { G.ShowSettingsOnStart = v; }),
@@ -276,22 +310,27 @@ namespace TarkovCrosshair
             Tip(perf, "关掉设置窗口里的动画和发光，界面每秒最多 30 帧；准星不受影响");
             w.Controls.Add(Line(perf, HelpMark.For("perf", Font, delegate { return G; })));
             Section gWin = Group("窗口和开机", w);
+            yield return null; // v5.1.1 (X5): one background-build chunk ends here (PageChunks)
 
             // v5.1 (decision 16, W28): 联网
-            TableLayoutPanel n = Grid(1);
+            TableLayoutPanel n = HeldGrid(1);
             CheckBox upd = Check("自动检查更新", delegate { return G.NetUpdateCheck; }, delegate(bool v) { G.NetUpdateCheck = v; NetChanged(); });
             n.Controls.Add(Line(upd, HelpMark.For("update", Font, delegate { return G; })));
             if (UsageConfig.Enabled)
             {
-                CheckBox stats = Check(UsageConfig.SettingLabel, delegate { return G.NetStatsConsent == true; }, delegate(bool v) { G.NetStatsConsent = v; NetChanged(); });
-                n.Controls.Add(Line(stats, HelpMark.For("stats", Font, delegate { return G; })));
+                // v5.1 (Leo 21 Nov 2026): on by default (null = on); unticking stores false and stops the heartbeat at once.
+                // Leo follow-up 21 Nov: the checkbox + notice live in 高级设置 only (hidden on the normal page)
+                CheckBox stats = Check(UsageConfig.SettingLabel, delegate { return G.NetStatsConsent != false; }, delegate(bool v) { G.NetStatsConsent = v; NetChanged(); });
+                n.Controls.Add(AdvOnly(Line(stats, HelpMark.For("stats", Font, delegate { return G; }))));
+                n.Controls.Add(AdvOnly(Note(UsageConfig.Notice, 560)));
             }
             CheckBox crash = Check(UsageConfig.CrashSettingLabel, delegate { return G.NetCrashAsk; }, delegate(bool v) { G.NetCrashAsk = v; NetChanged(); });
             n.Controls.Add(Line(crash, HelpMark.For("crash", Font, delegate { return G; })));
             Section gNet = Group("联网", n);
+            yield return null; // v5.1.1 (X5): one background-build chunk ends here (PageChunks)
 
             // v5.1 (W33): 排查贴图变糊, all off by default
-            TableLayoutPanel d = Grid(1);
+            TableLayoutPanel d = HeldGrid(1);
             CheckBox realHide = Check("开镜/丢雷时真正隐藏准星窗口", delegate { return G.AdsRealHide; }, delegate(bool v) { G.AdsRealHide = v; });
             Tip(realHide, "开镜或丢雷时把准星窗口整个关掉，而不是只变透明。用来排查“开着准星游戏贴图变糊”。关掉再打开窗口会多花一点点时间。");
             CheckBox dcomp = Check("新的显示方式（DirectComposition）", delegate { return G.OverlayDCompMode; }, delegate(bool v) { G.OverlayDCompMode = v; });
@@ -305,7 +344,9 @@ namespace TarkovCrosshair
             d.Controls.Add(gpuLog);
             d.Controls.Add(Note("每秒把游戏用的显存写进 Data/crash.log，方便对比开 / 关准星时贴图是否掉档。不用时请关掉。", 560));
             Control gDiag = AdvOnly(Fold("排查贴图变糊（高级）", d));
-            return Stack(gRes, gDisp, gGame, gWin, gNet, gDiag);
+            TableLayoutPanel root = HeldStack(gRes, gDisp, gGame, gWin, gNet, gDiag);
+            ReleaseHeldOnShow(root); // v5.1.1 (P3): held through the first fill, one layout pass on the first show
+            yield return root;
         }
 
         /// <summary>v5.1 (W28): a 联网 setting changed: save and tell the network part (it may not exist when its start failed).</summary>

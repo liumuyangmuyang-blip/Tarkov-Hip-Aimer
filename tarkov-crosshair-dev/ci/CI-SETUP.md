@@ -10,7 +10,7 @@ What it does: every time you push the code to your private GitHub repo, a Window
 
 You get a green ✅ or red ❌ per run, a one-page summary, and a zip with screenshots and logs.
 
-All commands below run **on the Cloud Desktop** (SSH into it first), not in PowerShell on your laptop.
+All commands below run **on the Linux dev machine** (SSH into it first), not in PowerShell on your laptop.
 
 ## Before you start (please check)
 
@@ -29,7 +29,7 @@ All commands below run **on the Cloud Desktop** (SSH into it first), not in Powe
 3. Name: `tarkov-ci` (any name works). Select **Private**. Leave "Add a README" **unticked**.
 4. Click **Create repository**. Keep the page open. You need the address it shows in step 3.
 
-## Step 2: let the Cloud Desktop sign in to GitHub (once)
+## Step 2: let the Linux dev machine sign in to GitHub (once)
 
 Use option A. If A fails with "Connection timed out", use option B. I could not test from here which one the Cloud
 Desktop network allows.
@@ -111,6 +111,6 @@ To see what would be pushed without pushing, run it with `--dry-run`.
 - Real DPI, not simulated: DpiTool sets the scale through DisplayConfig (the Settings app's own call) and each probe
   mode runs in a new process, which gets the new system DPI (Windows 10 1803+ per-process system DPI,
   `EnablePerProcessSystemDPI=1`). The probe fails when its DPI is not the requested one.
-- The tests use the Cloud Desktop's absolute paths. `tests.ps1` links `<drive>:\local\home\dev\...` and
+- The tests use the Linux dev machine's absolute paths. `tests.ps1` links `<drive>:\local\home\dev\...` and
   `<drive>:\home\dev` to the checkout with junctions. `.gitattributes` turns off CRLF conversion.
 - Local check before pushing: `PWSH=... ACTIONLINT=... bash /home/dev/tarkov-crosshair-dev/ci/local-check.sh`.

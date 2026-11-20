@@ -64,18 +64,20 @@ namespace TarkovCrosshair.Tests
                 if (!ok) d = "parse " + err;
                 else
                 {
-                    if (g.AmmoOn || g.AmmoMagSize != 30 || g.AmmoRpm != 600 || g.AmmoSemi || g.AmmoStyle != "brackets,colour") d += "ammo; ";
+                    if (g.AmmoOn || g.AmmoMagSize != 30 || g.AmmoRpm != 850 || g.AmmoSemi || g.AmmoStyle != "brackets,colour") d += "ammo; ";
                     if (g.AmmoReloadKey != 0x52 || g.AmmoQuickTapMs != 300) d += "reload; ";
                     if (string.Join(",", g.AmmoWeaponKeysMain) != "50" || string.Join(",", g.AmmoWeaponKeysOther) != "49,51,86,52,53,54,55,56,57,48") d += "weapon keys; ";
                     if (!g.GrenadeHideOn || g.GrenadeKey != 0x47 || !g.BoostToggle) d += "grenade/boost mode; ";
                     if (g.AnimPreset != "static" || g.AnimDynGap || g.AnimFirePulse || g.AnimLeanRotate || g.AnimStateColour || g.AnimShake) d += "anim; ";
                     if (g.PerfMode || g.ResAspectCustom != "16:9" || g.ResStretched != null || g.WizardDone || g.MustReadAck) d += "misc; ";
                     if (!g.NetUpdateCheck || g.NetStatsConsent != null || !g.NetCrashAsk) d += "net; ";
-                    if (g.TapThresholdMs != 120 || g.ReverseMode != "slowstart") d += "tap; ";
+                    if (g.TapThresholdMs != 200 || g.ReverseMode != "slowstart") d += "tap; "; // Leo 21 Nov 2026
                     if (g.Profiles.Count != 2 || g.Keys.Boost != 6 || g.Keys.BoostMods != 0) d += "kept: profiles=" + g.Profiles.Count + " boost=" + g.Keys.Boost + "; ";
-                    foreach (Profile p in g.Profiles) if (p.StandAsZero || p.StandOffsetX != 0 || p.StandOffsetY != 0) d += "stand " + p.Name + "; ";
+                    // v5.1.1 (X5, Leo 21 Nov 2026): the built-in 「Leo默认 (旧)」 has Leo's 站立 point 24.48 / -25.2; the other stays 0
+                    foreach (Profile p in g.Profiles)
+                        if (p.Name == LeoDefaultJson.ProfileName ? !(p.StandAsZero && p.StandOffsetX == 24.48 && p.StandOffsetY == -25.2) : (p.StandAsZero || p.StandOffsetX != 0 || p.StandOffsetY != 0)) d += "stand " + p.Name + "; ";
                 }
-                Check("W23-1 v5.0.2 file imports: v5.1 fields default (ammo off 30/600 R 300 ms, main 2 / other 1 3 V 4-0, grenade G on, boost 切换, anim static, net ask once, tap 120, slowstart), profiles + Boost key kept", d.Length == 0, d);
+                Check("W23-1 v5.0.2 file imports: v5.1 fields default (ammo off 30/850 R 300 ms, main 2 / other 1 3 V 4-0, grenade G on, boost 切换, anim static, net ask once, tap 200, slowstart), profiles + Boost key kept", d.Length == 0, d);
             }
             // W23-2 round trip + Clone deep-copies the key lists + CopyFrom (导入旧版设置 merge) copies them
             {
@@ -109,9 +111,9 @@ namespace TarkovCrosshair.Tests
                 g.AnimPreset = "wobble"; g.ResAspectCustom = "0:5"; g.TapThresholdMs = double.NaN; g.ReverseMode = "jump"; 
                 g.Validate();
                 string d = "";
-                if (g.AmmoMagSize != 30 || g.AmmoRpm != 600 || g.AmmoStyle != "brackets" || g.AmmoReloadKey != 0x52 || g.AmmoQuickTapMs != 300) d += "ammo " + g.AmmoStyle + "; ";
+                if (g.AmmoMagSize != 30 || g.AmmoRpm != 850 || g.AmmoStyle != "brackets" || g.AmmoReloadKey != 0x52 || g.AmmoQuickTapMs != 300) d += "ammo " + g.AmmoStyle + "; ";
                 if (string.Join(",", g.AmmoWeaponKeysMain) != "50" || string.Join(",", g.AmmoWeaponKeysOther) != "49,50" || g.GrenadeKey != 0x47) d += "keys; ";
-                if (g.AnimPreset != "static" || g.ResAspectCustom != "16:9" || g.TapThresholdMs != 120 || g.ReverseMode != "slowstart" || g.ResStretched != null) d += "misc; ";
+                if (g.AnimPreset != "static" || g.ResAspectCustom != "16:9" || g.TapThresholdMs != 200 || g.ReverseMode != "slowstart" || g.ResStretched != null) d += "misc; ";
                 GlobalSettings h = GlobalSettings.CreateDefault(); h.TapThresholdMs = 10; h.Validate();
                 GlobalSettings i = GlobalSettings.CreateDefault(); i.TapThresholdMs = 900; i.AmmoStyle = "COLOR"; i.Validate();
                 if (h.TapThresholdMs != 60 || i.TapThresholdMs != 250 || i.AmmoStyle != "colour") d += "clamp " + h.TapThresholdMs + "/" + i.TapThresholdMs + "/" + i.AmmoStyle;
@@ -121,8 +123,9 @@ namespace TarkovCrosshair.Tests
             {
                 KeyBindings k = new KeyBindings();
                 GlobalSettings n = GlobalSettings.CreateDefault();
-                bool def = k.Boost == 0x54 && k.BoostMods == KeyBindings.ModCtrl && n.BoostKey == 0x54 && n.BoostKeyMods == KeyBindings.ModCtrl
-                    && n.Keys.ComboOf(KeyBindings.ActionBoost) == "Ctrl+T";
+                // v5.1.1 (X5, Leo 21 Nov 2026): default = 鼠标侧键2 (no modifier); the game's 切换战术设备模式 is bound to it too
+                bool def = k.Boost == 6 && k.BoostMods == 0 && n.BoostKey == 6 && n.BoostKeyMods == 0
+                    && n.Keys.ComboOf(KeyBindings.ActionBoost) == "鼠标侧键2（XButton2）";
                 // T alone (战术设备 on/off) is not the boost combo
                 bool tAlone = n.Keys.FindOtherCombo(0x54, 0, -1) < 0;
                 GlobalSettings g; string err;
@@ -159,7 +162,7 @@ namespace TarkovCrosshair.Tests
             {
                 string d = "";
                 GlobalSettings g = W23G(2160, 1440, "auto", 75, "stretch");
-                Profile p = Profile.CreateLeoDefault("t");
+                Profile p = Profile.CreateLeoDefault("t"); p.SetStandPoint(0, 0); /* v5.1.1 (X5, Leo 21 Nov 2026): the built-in has a 站立 point now; this case measures around the centre */
                 double ppp = OffsetUnits.PxPerPct(g); // 7.2 px per 1 %
                 // Leo's example: D ← 4.17 % from centre, stand → 1 % -> D ← 5.17 % from the stand point
                 p.Dirs[3].OffX = -4.17 * ppp; Profile.RecomputeDiagonals(p);
@@ -207,7 +210,7 @@ namespace TarkovCrosshair.Tests
                 string oldJson = SettingsIO.Serialize(gs).Replace("\"StandAsZero\":true,", "").Replace("\"StandAsZero\": true,", "");
                 GlobalSettings o;
                 bool oldZero = SettingsIO.TryParse(oldJson, out o, out err) && !o.Active.StandAsZero && o.Active.StandOffsetX == 0 && o.Active.StandOffsetY == 0;
-                Profile big = Profile.CreateLeoDefault("b"); big.SetStandPoint(999, double.NaN);
+                Profile big = Profile.CreateLeoDefault("b"); big.SetStandPoint(0, 0); /* v5.1.1: the built-in has a 站立 point */ big.SetStandPoint(999, double.NaN);
                 bool nan = !big.StandAsZero;
                 big.SetStandPoint(999, -999);
                 bool clamp = big.StandOffsetX == Profile.StandLimitPx && big.StandOffsetY == -Profile.StandLimitPx;
@@ -224,7 +227,7 @@ namespace TarkovCrosshair.Tests
                     double k = g.ResolutionScale, kx = g.ResolutionScaleX;
                     double wantX = mode == "stretch" ? 1.2 : 1.0;
                     if (Math.Abs(kx / k - wantX) > 1e-9) d += mode + " ratio " + W23F(kx / k) + "; ";
-                    Profile p = Profile.CreateLeoDefault("a");
+                    Profile p = Profile.CreateLeoDefault("a"); p.SetStandPoint(0, 0); /* v5.1.1 (X5, Leo 21 Nov 2026): the built-in has a 站立 point now; this case measures around the centre */
                     // deliberately asymmetric: A far (13.5 %), D near (5.2 %), different lean sides
                     double ppp = 7.2;
                     p.Dirs[2].OffX = 13.5 * ppp; p.Dirs[2].OffY = 1 * ppp; p.Dirs[3].OffX = -5.2 * ppp; p.Dirs[3].OffY = -2 * ppp;
@@ -240,7 +243,8 @@ namespace TarkovCrosshair.Tests
                             {
                                 MotionEngine e = W23Hold(p, g, hand == 1, W23Keys(dir, lean));
                                 double lx = lean < 0 ? v.QX : lean > 0 ? v.EX : 0, ly = lean < 0 ? v.QY : lean > 0 ? v.EY : 0;
-                                double ex = kx * (v.DX[dir] + lx + v.SX), ey = -k * (v.DY[dir] + ly + v.SY); // screen y down
+                                // v5.1.1 (X5, Leo 21 Nov 2026): FOV 70 vs 75 on the final X: gun side x1, other side x 70/75; Y none
+                                double ex = ViewScale.FovX(kx * (v.DX[dir] + lx + v.SX), 70.0 / 75.0, hand), ey = -k * (v.DY[dir] + ly + v.SY); // screen y down
                                 if (Math.Abs(e.OffsetX - ex) > 0.06 || Math.Abs(e.OffsetY - ey) > 0.06)
                                     d += mode + " hand" + hand + " " + Profile.DirNames[dir] + " lean" + lean + " got " + W23F(e.OffsetX) + "," + W23F(e.OffsetY) + " want " + W23F(ex) + "," + W23F(ey) + "; ";
                             }
@@ -248,7 +252,7 @@ namespace TarkovCrosshair.Tests
                     // the two sides scale by the same factor: |A| / |D| on screen == |A| / |D| in the profile
                     MotionEngine ea = W23Hold(p, g, false, W23Keys(2, 0)), ed = W23Hold(p, g, false, W23Keys(3, 0));
                     double rs = Math.Abs(ea.OffsetX / ed.OffsetX), rp = Math.Abs(p.Dirs[2].OffX / p.Dirs[3].OffX);
-                    if (Math.Abs(rs - rp) > 1e-3) d += mode + " A/D ratio " + W23F(rs) + " vs " + W23F(rp) + "; ";
+                    if (Math.Abs(rs - rp * 75.0 / 70.0) > 1e-3) d += mode + " A/D ratio " + W23F(rs) + " vs " + W23F(rp * 75.0 / 70.0) + "; "; // D (other side) x 70/75
                 }
                 Check("W23-7 FOV / 拉伸 chain: X × the same factor left and right (A 13.5 % / D 5.2 %), both hands, Q / E lean, all 8 directions incl. diagonals; Y × the plain factor; 16:10 + 4:3 拉伸 = ×1.20, 不拉伸 = ×1",
                     d.Length == 0, d);
@@ -300,7 +304,7 @@ namespace TarkovCrosshair.Tests
                 // an unreadable 强化 key gets the v5.1 default Ctrl+T (decision 3 over Leo's old XButton2)
                 string j3 = LeoDefaultJson.Text.Replace("\"Boost\": 6,", "\"Boost\": \"side\",");
                 GlobalSettings g3;
-                if (!SettingsIO.TryParse(j3, out g3, out err, out dropped) || g3.Keys.Boost != 0x54 || g3.Keys.BoostMods != KeyBindings.ModCtrl) d += "boost " + (g3 == null ? err : g3.Keys.ComboOf(12)) + "; ";
+                if (!SettingsIO.TryParse(j3, out g3, out err, out dropped) || g3.Keys.Boost != 6 || g3.Keys.BoostMods != 0) d += "boost " /* v5.1.1 (X5, Leo 21 Nov 2026): default 鼠标侧键2 */ + (g3 == null ? err : g3.Keys.ComboOf(12)) + "; ";
                 Check("W23-9 an unreadable value gets Leo's v5 default (Fps 360, 出现渐变 50 ms, profile Diameter) not the class default; unreadable 强化 key -> Ctrl+T", d.Length == 0, d);
             }
             // W23-10 弹药提示 weapon keys as text (the 按键 page box)
@@ -315,15 +319,15 @@ namespace TarkovCrosshair.Tests
             {
                 string d = "";
                 GlobalSettings n = GlobalSettings.CreateDefault();
-                if (n.AmmoReloadMs != 2400 || n.AmmoQuickReloadMs != 900 || n.TapThresholdMs != 120 || n.ReverseMinMs != 150 || n.ReturnTimePct != 100 || n.ReversePauseMs != 0) d += "defaults; ";
+                if (n.AmmoReloadMs != 3000 || n.AmmoQuickReloadMs != 2200 || /* Leo 21 Nov 2026 */ n.TapThresholdMs != 200 || n.ReverseMinMs != 250 || n.ReturnTimePct != 100 || n.ReversePauseMs != 0) d += "defaults; ";
                 GlobalSettings o; string err;
-                if (!SettingsIO.TryParse(LeoDefaultJson.Text, out o, out err) || o.AmmoReloadMs != 2400 || o.ReverseMinMs != 150 || o.ReturnTimePct != 100) d += "old file; ";
+                if (!SettingsIO.TryParse(LeoDefaultJson.Text, out o, out err) || o.AmmoReloadMs != 3000 || o.ReverseMinMs != 250 || o.ReturnTimePct != 100) d += "old file; ";
                 GlobalSettings c = GlobalSettings.CreateDefault();
                 c.AmmoReloadMs = 1; c.AmmoQuickReloadMs = 99999; c.TapThresholdMs = 1000; c.ReverseMinMs = -5; c.ReturnTimePct = 1; c.ReversePauseMs = 900; c.Validate();
                 if (c.AmmoReloadMs != 300 || c.AmmoQuickReloadMs != 4000 || c.TapThresholdMs != 250 || c.ReverseMinMs != 0 || c.ReturnTimePct != 25 || c.ReversePauseMs != 300) d += "clamp; ";
                 GlobalSettings b = GlobalSettings.CreateDefault();
                 b.AmmoReloadMs = double.NaN; b.ReversePauseMs = double.PositiveInfinity; b.Validate();
-                if (b.AmmoReloadMs != 2400 || b.ReversePauseMs != 0) d += "nan; ";
+                if (b.AmmoReloadMs != 3000 || b.ReversePauseMs != 0) d += "nan; ";
                 GlobalSettings r = GlobalSettings.CreateDefault();
                 r.AmmoReloadMs = 3100; r.AmmoQuickReloadMs = 1200; r.TapThresholdMs = 90; r.ReverseMinMs = 220; r.ReturnTimePct = 150; r.ReversePauseMs = 40; r.Validate();
                 GlobalSettings rr;
@@ -331,10 +335,10 @@ namespace TarkovCrosshair.Tests
                     || rr.ReverseMinMs != 220 || rr.ReturnTimePct != 150 || rr.ReversePauseMs != 40) d += "round trip; ";
                 string bad = System.Text.RegularExpressions.Regex.Replace(SettingsIO.Serialize(r), "\"AmmoReloadMs\":\\s*3100", "\"AmmoReloadMs\": \"slow\"");
                 if (bad.IndexOf("\"slow\"", StringComparison.Ordinal) < 0) d += "replace did not apply; ";
-                if (!SettingsIO.TryParse(bad, out rr, out err) || rr.AmmoReloadMs != 2400 || rr.AmmoQuickReloadMs != 1200) d += "unreadable; ";
+                if (!SettingsIO.TryParse(bad, out rr, out err) || rr.AmmoReloadMs != 3000 || rr.AmmoQuickReloadMs != 1200) d += "unreadable; ";
                 r.ResetKeys();
-                if (r.AmmoReloadMs != 2400 || r.AmmoQuickReloadMs != 900) d += "reset keys; ";
-                Check("W23-12 R2 / R4 tunables: 换弹 2400 / 快换 900 ms, 短按 120, 换向最短 150, 回程 100 %, 换向停顿 0; clamped, bad -> default, saved, 按键恢复初始 resets the reload times", d.Length == 0, d);
+                if (r.AmmoReloadMs != 3000 || r.AmmoQuickReloadMs != 2200) d += "reset keys; ";
+                Check("W23-12 R2 / R4 tunables: 换弹 3000 / 快换 2200 ms, 短按 200, 换向最短 250, 回程 100 %, 换向停顿 0; clamped, bad -> default, saved, 按键恢复初始 resets the reload times", d.Length == 0, d);
             }
             // W23-11 W28 / W33 / W26 fields: consent never filled from Leo's file; W33 bools default off and survive a round trip
             {

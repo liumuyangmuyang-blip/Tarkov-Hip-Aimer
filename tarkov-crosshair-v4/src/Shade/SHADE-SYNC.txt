@@ -1,4 +1,4 @@
-Copied from /home/dev/tarkov-shade-module/src by sync-shade.sh at 2026-11-20 09:29:23 UTC. Do not edit these files: edit the module, then re-run the script.
+Copied from /home/dev/tarkov-shade-module/src by sync-shade.sh at 2026-11-20 17:06:22 UTC. Do not edit these files: edit the module, then re-run the script.
 9d87f537a4452ca13f9897a7963a20f49e31c764eeec8349d8d097d68fceeca4  DdcCiController.cs
 25689dc795f2939ca220b00d27d2c10ed00e856131201a9205407ed040b97290  GammaRampController.cs
 25dfbeaaeda3f79afddf5e0ec7c69fb600eed1819aca8b8544e3e795dcc55e6b  Hotkeys.cs

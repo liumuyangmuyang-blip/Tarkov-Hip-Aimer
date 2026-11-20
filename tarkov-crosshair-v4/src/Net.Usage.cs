@@ -1,6 +1,6 @@
 // v4.4 (W9) NET: 统计. v5.1 (W28): sessions (how long each run lasts), cumulative users, total hours.
 //   downloads  GitHub releases API (public, no token): sum of asset download_count per release
-//   online     OPT-IN only (asked once, default 不用; changeable in 常规). While running and opted in: POST {id, s, v} to Leo's
+//   online     v5.1 (Leo 21 Nov 2026): ON by default (opt-out in 常规 / wizard; no question). While running and on: POST {id, s, v} to Leo's
 //              personal worker every 15 min (id = random GUID made once, s = random GUID made per app run, v = app
 //              version) and {id, s, v, end:true} once at exit. Nothing else is sent; the worker stores no IP.
 //              WorkerUrl empty = the whole online feature is hidden and nothing is ever sent.
@@ -17,7 +17,7 @@ namespace TarkovCrosshair
     {
         /// <summary>Leo's PERSONAL Cloudflare worker, e.g. "https://thaim-usage.&lt;name&gt;.workers.dev" (no trailing slash).
         /// Empty = 在线统计 hidden: no question, no heartbeat, the monitor shows downloads only.</summary>
-        public const string WorkerUrl = "";
+        public const string WorkerUrl = "https://thaim.dev.workers.dev"; // Leo deployed 21 Nov 2026
 
         public static readonly TimeSpan HeartbeatEvery = TimeSpan.FromMinutes(15);
         public const int TimeoutMs = 5000;
@@ -34,10 +34,12 @@ namespace TarkovCrosshair
         public const string AskText = "只发送：随机编号、版本号、每次用了多久。\r\n不发送用户名、电脑名、文件、IP 或游戏数据。以后可以在「常规」里改。";
         public const string AskYes = "可以";
         public const string AskNo = "不用";
-        public const string SettingLabel = "匿名统计使用人数和时长（只发送随机编号、版本号、使用时长）";
+        public const string SettingLabel = "发送匿名统计（随机编号、版本号、使用时长）";
+        /// <summary>v5.1 (Leo 21 Nov 2026): the one-line notice next to the checkbox (常规 联网 and the wizard's last page).</summary>
+        public const string Notice = "默认发送匿名统计（随机编号、版本号、使用时长），不含个人信息，可在这里关闭。";
         public const string CrashSettingLabel = "程序出错后，问我要不要把错误记录发给作者";
         /// <summary>Safety line for README / guide (W25): what the app sends and when.</summary>
-        public const string SafetyLine = "只在检查更新时联网；你同意后，还会发送匿名统计（随机编号、版本号、使用时长）。不上传个人信息，反馈和错误记录由你自己用邮件发给作者。";
+        public const string SafetyLine = "只在检查更新和发送匿名统计（随机编号、版本号、使用时长，默认开，可在「常规」关闭）时联网。不上传个人信息，反馈和错误记录由你自己用邮件发给作者。";
     }
 
     /// <summary>The heartbeat. Tick is called once a minute by a pool timer (Start) or directly by tests. One session id per

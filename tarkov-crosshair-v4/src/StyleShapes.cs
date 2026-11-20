@@ -416,7 +416,7 @@ namespace TarkovCrosshair
         public static readonly string[] Kinds = new string[]
         {
             "chevron", "chevron2", "xcross", "hbars", "corners", "brackets", "dotring", "arcs", "smile",
-            "fourdots", "ringticks", "diamond", "triangle", "custom"
+            "fourdots", "ringticks", "diamond", "triangle", "race", "custom"
         };
 
         public const string ParamSize = "size", ParamThick = "thick", ParamGap = "gap", ParamLen = "len",
@@ -442,6 +442,8 @@ namespace TarkovCrosshair
             new StyleTile("ringticks", "圆环 + 刻度", 0, "圆环外面再加四个短刻度", ParamSize, ParamLen, ParamThick),
             new StyleTile("diamond", "空心菱形", 0, "菱形边框", ParamSize, ParamThick),
             new StyleTile("triangle", "空心三角", 0, "三角形边框，中心在里面空着", ParamSize, ParamThick),
+            // v5.1.1 (X3, Leo): the 竞速 look -- angular slanted segments left and right of an empty centre (shift-light style)
+            new StyleTile("race", "竞速", 0, "左右两排斜切的短格子，像赛车的换挡灯，中间完全空出来", ParamGap, ParamLen, ParamCount, ParamSpread, ParamThick),
             new StyleTile("ring", "经典圆环", 1, "默认样式", ParamSize, ParamThick),
             new StyleTile("dashring", "虚线圆环", 1, "圆环分成几段", ParamSize, ParamThick, ParamDashes, ParamDashGap),
             new StyleTile("square", "方框", 1, "正方形边框", ParamSize, ParamThick),
@@ -519,6 +521,7 @@ namespace TarkovCrosshair
                     case "ringticks": p.Diameter = 12; s.Length = 4; p.Thickness = 1.2; break;
                     case "diamond": p.Diameter = 16; p.Thickness = 1.4; break;
                     case "triangle": p.Diameter = 18; p.Thickness = 1.4; break;
+                    case "race": s.Gap = 5; s.Length = 6; s.Count = 3; s.Spread = 25; p.Thickness = 1.8; break;
                     case "custom": p.Diameter = 32; break;
                 }
             }
@@ -767,6 +770,20 @@ namespace TarkovCrosshair
                 case "hbars":
                     Box(l, G, 0, G + L, 0, h); Box(l, -G, 0, -G - L, 0, h);
                     break;
+                case "race":
+                    {
+                        // per side: Count slanted segments (thickness T, height L, slant = Spread degrees from vertical), from
+                        // G outward; mirrored on the left so both rows lean forward like "// \\". The centre stays empty.
+                        int n = Math.Min(N, 8);
+                        double ang = Clamp(s.SSpread, 0, 60) * Math.PI / 180.0, dx = Math.Tan(ang) * L / 2.0, step = T + Math.Max(1.5, T);
+                        for (int side = -1; side <= 1; side += 2)
+                            for (int i = 0; i < n; i++)
+                            {
+                                double cx = side * (G + h + Math.Abs(dx) + i * step);
+                                Box(l, cx - side * dx, L / 2.0, cx + side * dx, -L / 2.0, h);
+                            }
+                        break;
+                    }
                 case "corners":
                     {
                         double len = Math.Min(L, R);

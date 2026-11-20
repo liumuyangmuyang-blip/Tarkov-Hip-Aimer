@@ -15,7 +15,7 @@ namespace TarkovCrosshair
         /// <summary>Lower fraction bound of bands 4..1 (rounds / mag). Below Low = 快空.</summary>
         public const double FullFrom = 0.9, MostFrom = 0.6, HalfFrom = 0.35, LowFrom = 0.15;
         /// <summary>Default reload times (R2, Leo's numbers; settings AmmoReloadMs / AmmoQuickReloadMs override them).</summary>
-        public const double DefaultNormalReloadMs = 2400, DefaultQuickReloadMs = 900;
+        public const double DefaultNormalReloadMs = 3000, DefaultQuickReloadMs = 2200; // Leo 21 Nov 2026 (was 2400 / 900)
         public const double MinReloadMs = 100, MaxReloadMs = 10000;
 
         // ---- configuration (Configure each frame; cheap) ----

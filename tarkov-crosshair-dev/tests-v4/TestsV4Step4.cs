@@ -126,7 +126,7 @@ namespace TarkovCrosshair.Tests
                 i.Fwd = d == 0; i.Back = d == 1; i.Left = d == 2; i.Right = d == 3;
                 i.Fire = true;
                 for (int f = 0; f < 90; f++) e.Update(1.0 / 60, i, p, g, PreviewMode.Live, 1.0);
-                double x = e.OffsetX, y = -e.OffsetY, ex = p.Dirs[d].OffX, ey = p.Dirs[d].OffY;
+                double x = e.OffsetX, y = -e.OffsetY, ex, ey; p.DirFromCentre(d, out ex, out ey); // v5.1.1 (X5, Leo 21 Nov 2026): stored from the 站立 point
                 if (Math.Abs(x - ex) > 1.5 || Math.Abs(y - ey) > 1.5) { dirs = false; why += names[d] + " got " + F(x) + "," + F(y) + " want " + ex + "," + ey + "; "; }
                 if (Math.Abs(x) + Math.Abs(y) < 5) { dirs = false; why += names[d] + " no visible offset; "; }
             }

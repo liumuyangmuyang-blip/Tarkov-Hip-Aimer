@@ -29,14 +29,20 @@ namespace TarkovCrosshair.Tests
             // V50-2 the embedded text is exactly Leo's file; copies are independent; fallback exists
             {
                 string file = File.ReadAllText(Fixture("leo-v50-1118-settings.v50")).TrimStart('\uFEFF').Replace("\r\n", "\n");
-                bool same = LeoDefaultJson.Text == file;
+                // v5.1.1 (X5, Leo 21 Nov 2026): Leo's file except 「Leo默认 (旧)」's 上抬 / 站立 / Dirs / HandCustom (his 21 Nov values)
+                System.Text.Json.Nodes.JsonNode jt = System.Text.Json.Nodes.JsonNode.Parse(LeoDefaultJson.Text), jf = System.Text.Json.Nodes.JsonNode.Parse(file);
+                foreach (System.Text.Json.Nodes.JsonNode j in new System.Text.Json.Nodes.JsonNode[] { jt, jf })
+                    foreach (System.Text.Json.Nodes.JsonNode pr in j["Profiles"].AsArray())
+                        if ((string)pr["Name"] == "Leo默认 (旧)")
+                            foreach (string key in new string[] { "RecoilMaxPx", "StandAsZero", "StandOffsetX", "StandOffsetY", "Dirs", "HandCustom" }) pr.AsObject().Remove(key);
+                bool same = System.Text.Json.Nodes.JsonNode.DeepEquals(jt, jf) && LeoDefaultJson.Text != file;
                 Profile a = Profile.CreateLeoDefault("a"), b = Profile.CreateLeoDefault("b");
                 a.Dirs[2].OffX = 1; a.Boost.Diameter = 99; a.Jump.TotalMs = 1234;
-                bool indep = b.Dirs[2].OffX == 97.2 && b.Boost.Diameter == 15 && b.Jump.TotalMs == 800;
+                bool indep = b.Dirs[2].OffX == 72.72 /* v5.1.1: from the 站立 point */ && b.Boost.Diameter == 15 && b.Jump.TotalMs == 800;
                 Profile legacy = Profile.CreateLeoDefaultLegacy("l");
                 bool leg = legacy.Dirs[2].OffX == 75 && legacy.Shape == "ring" && legacy.HandSwitchMs == 400;
                 GlobalSettings g = GlobalSettings.CreateDefault();
-                bool screen = g.ResAspect == "auto" && g.ResFov == 75 && !g.Autostart && g.ResBaseW == 2160 && g.ResBaseH == 1440 && g.ResBaseFov == 75
+                bool screen = g.ResAspect == "auto" && g.ResFov == 75 && g.Autostart /* Leo 21 Nov 2026 new defaults: autostart on */ && g.ResBaseW == 2160 && g.ResBaseH == 1440 && g.ResBaseFov == 75
                     && g.MonitorIndex == -1 && g.GameWindowTitle == GlobalSettings.DefaultGameWindowTitle && !g.TutorialDone;
                 Check("V50-2 LeoDefaultJson = Leo's file byte for byte; each call a deep copy; legacy fallback = v3.1 values; screen settings keep the first-run rules (画面比例 auto, FOV 75, autostart off, base 2160×1440 / 75)",
                     same && indep && leg && screen, "same=" + same + " indep=" + indep + " legacy=" + leg + " screen=" + screen);

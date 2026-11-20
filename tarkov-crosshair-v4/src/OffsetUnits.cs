@@ -20,7 +20,11 @@ namespace TarkovCrosshair
     ///   X + = right, Y + = DOWN. Use ScreenToPct / FormatScreen.
     /// pct = 100 · k · px / h, with k = ViewScale.Factor(g) (调参 px → game px) and h = half the game picture height
     /// (ViewScale.HalfSpan(game, 垂直) = 游戏高度 / 2 for 跟随分辨率). For 「Leo默认」 at FOV 75 (调参 FOV 75): k · 1/h = 1/720,
-    /// so D X −30 px → 「← 4.17%」 on every resolution; at FOV 50 the same px shows 6.86 % (tan(37.5°) / tan(25°)).
+    /// so D X −30 px → 「← 4.17%」 on every resolution.
+    /// v5.1.1 (X5): FOV is applied on X only, per side (ViewScale.FovX): an X offset toward the gun side (right for the normal
+    /// hand, left for 换手) is not scaled, one to the other side is × gameFov / baseFov; Y has no FOV term. The axis-aware
+    /// overloads (ToPct / ToPx with an OffsetAxis, Format, FormatVector) apply it so every box shows the on-screen %; the
+    /// axis-less ToPct(px, g) / ToPx(pct, g) are the resolution part only. At FOV 50 (调参 75) D −30 px shows 「← 2.78%」.
     /// </summary>
     public static class OffsetUnits
     {
@@ -69,6 +73,42 @@ namespace TarkovCrosshair
         {
             if (double.IsNaN(pct) || double.IsInfinity(pct)) return 0;
             return pct * PxPerPct(g);
+        }
+
+        /// <summary>v5.1.1 (X5): the FOV factor of a signed PROFILE offset on this axis: Y 1; X 1 toward the gun side (px > 0
+        /// for the normal hand, px < 0 for 换手), gameFov / baseFov on the other side; 1 for 0 px and equal FOVs.</summary>
+        public static double FovFactor(double px, OffsetAxis axis, bool switched, GlobalSettings g)
+        {
+            if (axis != OffsetAxis.X || !(px > 0 || px < 0)) return 1.0;
+            double r = ViewScale.FovRatio(g);
+            return r == 1.0 ? 1.0 : ViewScale.FovSide(px > 0, r, switched);
+        }
+
+        /// <summary>The largest FOV factor any offset can get (max(1, gameFov / baseFov)): box ranges use it.</summary>
+        public static double MaxFovFactor(GlobalSettings g)
+        {
+            double r = ViewScale.FovRatio(g);
+            return r > 1.0 ? r : 1.0;
+        }
+
+        /// <summary>PROFILE px → the % shown on screen for this axis, normal hand (FOV side rule on X).</summary>
+        public static double ToPct(double px, OffsetAxis axis, GlobalSettings g) { return ToPct(px, axis, false, g); }
+
+        /// <summary>PROFILE px → the on-screen % for this axis; switched = the value is a 换手 value (the sides swap).</summary>
+        public static double ToPct(double px, OffsetAxis axis, bool switched, GlobalSettings g)
+        {
+            double p = ToPct(px, g), f = FovFactor(px, axis, switched, g);
+            return f == 1.0 ? p : p * f;
+        }
+
+        /// <summary>On-screen % (signed) → PROFILE px for this axis, normal hand. Inverse of ToPct(px, axis, g).</summary>
+        public static double ToPx(double pct, OffsetAxis axis, GlobalSettings g) { return ToPx(pct, axis, false, g); }
+
+        /// <summary>On-screen % (signed) → PROFILE px; switched = a 换手 value. The sign of pct is the sign of px.</summary>
+        public static double ToPx(double pct, OffsetAxis axis, bool switched, GlobalSettings g)
+        {
+            double px = ToPx(pct, g), f = FovFactor(px, axis, switched, g);
+            return f == 1.0 ? px : px / f;
         }
 
         /// <summary>SCREEN px (game screen, after 分辨率换算, e.g. MotionEngine.OffsetX/Y) → % of half the picture height.</summary>
@@ -128,7 +168,49 @@ namespace TarkovCrosshair
         /// <summary>PROFILE px → 「← 4.17%」.</summary>
         public static string Format(double px, OffsetAxis axis, GlobalSettings g)
         {
-            return FormatPct(ToPct(px, g), axis);
+            return FormatPct(ToPct(px, axis, g), axis);
+        }
+
+        /// <summary>v5.1.1 (X5): a value stored relative to an origin (a move direction stored from the 站立静止偏移 point):
+        /// the box shows the on-screen distance from the origin, i.e. screen%(origin + px) - screen%(origin), so the FOV side
+        /// rule follows the FINAL on-screen X like the overlay. Y, origin 0 or equal FOVs: exactly ToPct(px, axis, switched, g).</summary>
+        public static double ToPctAt(double px, double origin, OffsetAxis axis, bool switched, GlobalSettings g)
+        {
+            if (axis != OffsetAxis.X || origin == 0 || double.IsNaN(origin) || double.IsInfinity(origin) || ViewScale.FovRatio(g) == 1.0)
+                return ToPct(px, axis, switched, g);
+            if (double.IsNaN(px) || double.IsInfinity(px)) return 0;
+            return ToPct(origin + px, axis, switched, g) - ToPct(origin, axis, switched, g);
+        }
+
+        /// <summary>Inverse of ToPctAt: the shown % → the stored (origin-relative) PROFILE px.</summary>
+        public static double ToPxAt(double pct, double origin, OffsetAxis axis, bool switched, GlobalSettings g)
+        {
+            if (axis != OffsetAxis.X || origin == 0 || double.IsNaN(origin) || double.IsInfinity(origin) || ViewScale.FovRatio(g) == 1.0)
+                return ToPx(pct, axis, switched, g);
+            if (double.IsNaN(pct) || double.IsInfinity(pct)) return 0;
+            return ToPx(pct + ToPct(origin, axis, switched, g), axis, switched, g) - origin;
+        }
+
+        /// <summary>ToPctAt as 「← 4.17%」.</summary>
+        public static string FormatAt(double px, double origin, OffsetAxis axis, bool switched, GlobalSettings g)
+        {
+            return FormatPct(ToPctAt(px, origin, axis, switched, g), axis);
+        }
+
+        /// <summary>The X origin of a move direction (W / S / A / D) of profile p: the 站立静止偏移 X of that hand while
+        /// StandAsZero is on (换手: its 站立 item, normally the mirror), else 0.</summary>
+        public static double StandOriginX(Profile p, bool switched)
+        {
+            if (p == null || !p.StandAsZero) return 0;
+            if (!switched) return p.StandOffsetX;
+            double x, y; p.HandValue(Profile.HandStand, out x, out y);
+            return x;
+        }
+
+        /// <summary>PROFILE px → 「← 4.17%」 for a 换手 value (switched = true swaps the FOV sides).</summary>
+        public static string Format(double px, OffsetAxis axis, bool switched, GlobalSettings g)
+        {
+            return FormatPct(ToPct(px, axis, switched, g), axis);
         }
 
         /// <summary>A size with no direction: PROFILE px → 「4.17%」.</summary>
@@ -141,7 +223,7 @@ namespace TarkovCrosshair
         public static string FormatVector(double pxX, double pxYUp, GlobalSettings g)
         {
             string x = Format(pxX, OffsetAxis.X, g), y = Format(pxYUp, OffsetAxis.Y, g);
-            bool zx = Round(ToPct(pxX, g)) == 0, zy = Round(ToPct(pxYUp, g)) == 0;
+            bool zx = Round(ToPct(pxX, OffsetAxis.X, g)) == 0, zy = Round(ToPct(pxYUp, OffsetAxis.Y, g)) == 0;
             if (zx && zy) return Number(0) + Unit;
             if (zx) return y;
             if (zy) return x;
@@ -224,7 +306,7 @@ namespace TarkovCrosshair
             double pct;
             px = 0;
             if (!TryParse(text, axis, out pct)) return false;
-            px = ToPx(pct, g);
+            px = ToPx(pct, axis, g);
             return true;
         }
 
@@ -298,6 +380,22 @@ namespace TarkovCrosshair
         {
             double k = g == null ? 1.0 : ViewScale.Factor(g);
             return (k > 0 && !double.IsInfinity(k) && !double.IsNaN(k)) ? k : 1.0;
+        }
+    }
+
+    /// <summary>v5.1.1 (X5): the plain-Chinese FOV line (常规 page, tests): 「FOV 换算：枪那一侧 ×1.00，另一侧 ×0.80，上下不变」.</summary>
+    public static class FovText
+    {
+        public static string Line(GlobalSettings g)
+        {
+            double r = ViewScale.FovRatio(g);
+            return "FOV 换算：枪那一侧 ×1.00，另一侧 ×" + r.ToString("0.00", CultureInfo.InvariantCulture) + "，上下不变";
+        }
+
+        /// <summary>The short dashboard line (≤ 25 chars, no English: the dashboard rule): 「视野换算 枪侧×1.00 另侧×0.80」.</summary>
+        public static string Short(double r)
+        {
+            return "视野换算 枪侧×1.00 另侧×" + r.ToString("0.00", CultureInfo.InvariantCulture);
         }
     }
 }

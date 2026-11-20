@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using System.Threading;
 using System.Windows.Forms;
 
 namespace TarkovCrosshair
@@ -18,7 +19,7 @@ namespace TarkovCrosshair
         private const double FadeStartMs = 1550, EndMs = 1800;
 
         private readonly Stopwatch clock = new Stopwatch();
-        private readonly Timer timer = new Timer();
+        private readonly System.Windows.Forms.Timer timer = new System.Windows.Forms.Timer();
         private readonly float k;
         private readonly string[] lines;
         private bool finished;
@@ -95,8 +96,48 @@ namespace TarkovCrosshair
             double t = clock.Elapsed.TotalMilliseconds;
             if (t >= EndMs) { Finish(); return; }
             double o = t <= FadeStartMs ? 1.0 : 1.0 - (t - FadeStartMs) / (EndMs - FadeStartMs);
-            try { Opacity = Math.Max(0.0, Math.Min(1.0, o)); } catch (Exception) { }
+            // v5.1.1 (X2): Opacity only when it changes (each set is a layered-window update; 1.0 -> < 1 also changes the
+            // window style), so the 1.5 s before the fade only repaint
+            o = Math.Max(0.0, Math.Min(1.0, Math.Round(o, 2)));
+            if (o != lastOpacity) { lastOpacity = o; try { Opacity = o; } catch (Exception) { } }
             Invalidate();
+        }
+
+        private double lastOpacity = 1.0;
+
+        /// <summary>
+        /// v5.1.1 (X2, Leo F6 「启动画面还是卡」): the splash runs on its OWN UI thread (own message loop), so nothing the main
+        /// UI thread does meanwhile (building the settings window, the tray, the filter) can hold up a frame. done runs once
+        /// on the splash thread when the splash ends (or could not be shown); the caller marshals it to its own thread.
+        /// The icon is copied for the splash thread (GDI+ objects are not shared between threads).
+        /// </summary>
+        public static void ShowOnOwnThread(Icon icon, string profileName, Action done)
+        {
+            Icon copy = null;
+            try { if (icon != null) copy = (Icon)icon.Clone(); } catch (Exception) { copy = null; }
+            int once = 0;
+            Action fire = delegate { if (Interlocked.Exchange(ref once, 1) == 0 && done != null) { try { done(); } catch (Exception ex) { Program.Log("splash done: " + ex); } } };
+            Thread t = new Thread(delegate()
+            {
+                try
+                {
+                    using (Splash s = new Splash(copy, profileName))
+                    {
+                        s.Done += fire;
+                        Application.Run(s);
+                    }
+                }
+                catch (Exception ex) { Program.Log("splash thread: " + ex.Message); }
+                finally
+                {
+                    fire(); // also when the splash could not run at all: the app goes on
+                    if (copy != null) { try { copy.Dispose(); } catch (Exception) { } }
+                }
+            });
+            t.SetApartmentState(ApartmentState.STA);
+            t.IsBackground = true;
+            t.Name = "Splash";
+            t.Start();
         }
 
         private void Finish()

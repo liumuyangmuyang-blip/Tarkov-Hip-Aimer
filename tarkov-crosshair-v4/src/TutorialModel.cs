@@ -339,6 +339,27 @@ namespace TarkovCrosshair
         /// <summary>Input box of a 百分比偏移 field: the positive size in % (2 decimals) for a PROFILE px value.</summary>
         public static double FieldPct(double px, GlobalSettings g) { return Math.Abs(OffsetUnits.Round(OffsetUnits.ToPct(px, g))); }
 
+        /// <summary>v5.1.1 (X5): FieldPct on an axis (the on-screen %: FOV side rule on X, normal hand).</summary>
+        public static double FieldPct(double px, OffsetAxis axis, GlobalSettings g) { return Math.Abs(OffsetUnits.Round(OffsetUnits.ToPct(px, axis, g))); }
+
+        /// <summary>v5.1.1 (X5): FieldPx on an axis (inverse of FieldPct(px, axis, g)).</summary>
+        public static double FieldPx(double pct, int sign, double minPx, double maxPx, OffsetAxis axis, GlobalSettings g)
+        {
+            double px = OffsetUnits.ToPx((sign < 0 ? -1.0 : 1.0) * Math.Abs(pct), axis, g);
+            if (double.IsNaN(px) || double.IsInfinity(px)) px = 0;
+            if (px < minPx) px = minPx;
+            if (px > maxPx) px = maxPx;
+            return px;
+        }
+
+        /// <summary>v5.1.1 (X5): FieldLimit on an axis (each end of the range on its own FOV side).</summary>
+        public static double FieldLimit(double minPx, double maxPx, OffsetAxis axis, GlobalSettings g)
+        {
+            double m = Math.Max(Math.Abs(OffsetUnits.ToPct(minPx, axis, g)), Math.Abs(OffsetUnits.ToPct(maxPx, axis, g)));
+            if (!(m > 0) || double.IsInfinity(m)) return 100;
+            return Math.Floor(m * 100.0 + 1e-9) / 100.0;
+        }
+
         /// <summary>Typed / spun size |pct| in direction sign (-1 = ← / ↓) -> PROFILE px (double, not rounded), clamped to
         /// the field's px range. Not finite -> 0 (then clamped).</summary>
         public static double FieldPx(double pct, int sign, double minPx, double maxPx, GlobalSettings g)
@@ -384,7 +405,7 @@ namespace TarkovCrosshair
         /// <summary>The label for a PROFILE / demo UI px value.</summary>
         public string Of(double px, GlobalSettings g)
         {
-            double pct = OffsetUnits.Round(OffsetUnits.ToPct(px, g));
+            double pct = OffsetUnits.Round(OffsetUnits.ToPct(px, axis, g)); // v5.1.1: on-screen % (FOV side on X)
             if (mode == Magnitude) pct = Math.Abs(pct);
             long k = Key(pct);
             if (k != key || text == null)
@@ -414,8 +435,8 @@ namespace TarkovCrosshair
 
         public string Of(double px, double pxUp, GlobalSettings g)
         {
-            long a = (long)Math.Round(Clip(OffsetUnits.Round(OffsetUnits.ToPct(px, g))) * 100.0);
-            long b = (long)Math.Round(Clip(OffsetUnits.Round(OffsetUnits.ToPct(pxUp, g))) * 100.0);
+            long a = (long)Math.Round(Clip(OffsetUnits.Round(OffsetUnits.ToPct(px, OffsetAxis.X, g))) * 100.0);
+            long b = (long)Math.Round(Clip(OffsetUnits.Round(OffsetUnits.ToPct(pxUp, OffsetAxis.Y, g))) * 100.0);
             if (a != kx || b != ky || text == null) { kx = a; ky = b; text = prefix + OffsetUnits.FormatVector(px, pxUp, g) + suffix; }
             return text;
         }

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# W29 (v5.1) check the CI files on the Cloud Desktop before pushing (no network, nothing pushed):
+# W29 (v5.1) check the CI files on the Linux dev machine before pushing (no network, nothing pushed):
 #   1 every ci/*.ps1 parses (PowerShell 7)          2 the workflow passes actionlint
 #   3 build.ps1 builds the exe + probe + DpiTool from a source snapshot (0 errors / 0 warnings gate)
 #   4 push-to-github.sh --dry-run assembles the repo folder in scratch and runs its safety scan

@@ -1,5 +1,6 @@
 // v5.1 (W28) NET: the consent rules NetHub follows (pure, tested). Settings (INetSettings) are the source of truth.
-//   统计       NetStatsConsent null = never asked = nothing sent; true = heartbeat; false = nothing. Asked once, default 不用.
+//   统计       v5.1 (Leo 21 Nov 2026): ON by default (opt-out). NetStatsConsent null (fresh install / never answered) or true =
+//              heartbeat; false (the user turned it off, or answered 不用 earlier) = nothing. No question any more.
 //   错误记录    asked after a crash when NetCrashAsk is on (v5.1 R3: no worker needed, nothing uploaded; 打开邮箱 opens the
 //              user's own mail program + the folder with crash.log).
 //   检查更新    NetUpdateCheck on = check at start + every 6 h (GitHub only).
@@ -58,14 +59,21 @@ namespace TarkovCrosshair
 
     internal static class NetRules
     {
+        /// <summary>v5.1 (Leo 21 Nov 2026): never -- the one-time question is gone (stats are on by default, off in 常规).</summary>
         public static bool NeedsStatsQuestion(INetSettings s, string workerUrl)
         {
-            return s != null && UsageConfig.IsValidWorkerUrl(workerUrl) && !s.StatsConsent.HasValue;
+            return false;
+        }
+
+        /// <summary>Stats are on unless the user turned them off (StatsConsent false). null = default = on.</summary>
+        public static bool StatsOn(INetSettings s)
+        {
+            return s != null && s.StatsConsent != false;
         }
 
         public static bool WantHeartbeat(INetSettings s, string workerUrl)
         {
-            return s != null && UsageConfig.IsValidWorkerUrl(workerUrl) && s.StatsConsent == true;
+            return s != null && UsageConfig.IsValidWorkerUrl(workerUrl) && StatsOn(s);
         }
 
         public static bool MayAskCrash(INetSettings s)
@@ -79,8 +87,8 @@ namespace TarkovCrosshair
             if (s == null || p == null) return;
             p.AutoCheck = s.UpdateCheck;
             bool? c = s.StatsConsent;
-            p.UsageAsked = c.HasValue;
-            p.UsageOptIn = c.HasValue && c.Value;
+            p.UsageAsked = true;           // v5.1: opt-out, nothing to ask
+            p.UsageOptIn = c != false;     // null (default) or true = on
         }
     }
 }

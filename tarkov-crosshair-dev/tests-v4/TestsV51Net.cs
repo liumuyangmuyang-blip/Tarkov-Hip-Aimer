@@ -135,8 +135,9 @@ namespace TarkovCrosshair.Tests
                 DelegateNetSettings st = new DelegateNetSettings();
                 NetPrefs p = new NetPrefs();
                 NetRules.Mirror(st, p);
-                bool fresh = st.UpdateCheck && st.CrashAsk && !st.StatsConsent.HasValue && !p.UsageAsked && !p.UsageOptIn && p.AutoCheck
-                    && NetRules.NeedsStatsQuestion(st, url) && !NetRules.WantHeartbeat(st, url) && !NetRules.NeedsStatsQuestion(st, "");
+                // v5.1 (Leo 21 Nov 2026): opt-out -- never answered (null) = on, no question; no worker = nothing
+                bool fresh = st.UpdateCheck && st.CrashAsk && !st.StatsConsent.HasValue && p.UsageAsked && p.UsageOptIn && p.AutoCheck
+                    && !NetRules.NeedsStatsQuestion(st, url) && NetRules.WantHeartbeat(st, url) && !NetRules.WantHeartbeat(st, "") && !NetRules.NeedsStatsQuestion(st, "");
                 st.StatsConsent = false; NetRules.Mirror(st, p);
                 bool no = p.UsageAsked && !p.UsageOptIn && !NetRules.WantHeartbeat(st, url) && !NetRules.NeedsStatsQuestion(st, url);
                 st.StatsConsent = true; st.UpdateCheck = false; NetRules.Mirror(st, p);
@@ -153,9 +154,9 @@ namespace TarkovCrosshair.Tests
                 bool parse = o != null && o.UsersTotal == 120 && o.Sessions7d == 40 && Math.Abs(o.AvgSessionMin7d - 52.5) < 1e-9 && Math.Abs(o.TotalHours - 1234.5) < 1e-9;
                 OnlineStats old = OnlineStats.Parse("{\"online_now\":1,\"online_24h\":2,\"total_hours\":-5}");
                 parse &= old != null && old.UsersTotal == 0 && old.TotalHours == 0;
-                bool texts = UsageConfig.AskText.Contains("随机编号") && UsageConfig.AskNo == "不用" && UsageConfig.SafetyLine.StartsWith("只在检查更新时联网；你同意后，还会发送匿名统计", StringComparison.Ordinal)
-                    && !UsageConfig.SafetyLine.Contains("发送匿名统计、");
-                Check("V51-X5 consent: not asked = question pending and nothing sent; 不用 = nothing; 可以 = heartbeat; no worker = never asked; crash question whenever the switch is on (R3: no worker needed); settings -> net-prefs mirror; bridge writes the settings fields; /stats v5.1 fields parsed (old reply still reads, negatives = 0)",
+                bool texts = UsageConfig.Notice == "默认发送匿名统计（随机编号、版本号、使用时长），不含个人信息，可在这里关闭。"
+                    && UsageConfig.SafetyLine.Contains("默认开") && !UsageConfig.SafetyLine.Contains("你同意后") && !UsageConfig.SafetyLine.Contains("发送匿名统计、");
+                Check("V51-X5 consent (v5.1 opt-out, Leo 21 Nov): never answered = on, no question; 不用 / off = nothing; on = heartbeat; no worker = never asked; crash question whenever the switch is on (R3: no worker needed); settings -> net-prefs mirror; bridge writes the settings fields; /stats v5.1 fields parsed (old reply still reads, negatives = 0)",
                     fresh && no && yes && crash && bridge && parse && texts,
                     "fresh=" + fresh + " no=" + no + " yes=" + yes + " crash=" + crash + " bridge=" + bridge + " parse=" + parse + " texts=" + texts);
             }

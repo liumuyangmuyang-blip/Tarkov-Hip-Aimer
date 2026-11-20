@@ -114,7 +114,7 @@ namespace TarkovCrosshair.Tests
             // the arrows follow the real ring: hold D / A / W / S on the real engine with 「Leo默认」 and compare the shown
             // arrow with the side the ring sits on (dashboard UI coords: x = OffsetX, y = -OffsetY)
             GlobalSettings g = GlobalSettings.CreateDefault();
-            Profile pr = g.Active;
+            Profile pr = g.Active; pr.SetStandPoint(0, 0); /* v5.1.1 (X5, Leo 21 Nov 2026): the built-in has a 站立 point now; this case measures around the centre */
             string why = "";
             bool arrows = true;
             string[] keys = { "D", "A", "W", "S" };
@@ -379,20 +379,21 @@ namespace TarkovCrosshair.Tests
             a = a && pctA;
             bool b = mt.UpdateB(-30, 3, OffsetUnits.ScreenToPct(-30, null), OffsetUnits.ScreenToPct(3, null), 1.0, 720, 75, 75)
                 && mt.B[0].Text == DashMathText.BFormula && mt.B[1].Text == "  = ← 4.17%  ↑ 0.42%" && mt.B[2].Text == "v = (-30.00, +3.00)"
-                && mt.B[3].Text == "k = 1.000  H/2 = 720" && mt.B[4].Text == "τ=tan37.5°/tan37.5°=1.00" && mt.B[5].Text.StartsWith("|v| = 4.19%  θ = 174°")
+                && mt.B[3].Text == "k = 1.000  H/2 = 720" && mt.B[4].Text == "视野换算 枪侧×1.00 另侧×1.00" && mt.B[5].Text.StartsWith("|v| = 4.19%  θ = 174°")
                 && !mt.UpdateB(-30, 3, OffsetUnits.ScreenToPct(-30, null), OffsetUnits.ScreenToPct(3, null), 1.0, 720, 75, 75);
-            bool zero = mt.UpdateB(0, 0, 0, 0, 1, 720, 75, 50) && mt.B[5].Text == "|v| = 0.00%  θ = —" && mt.B[4].Text == "τ=tan37.5°/tan25.0°=1.65";
+            bool zero = mt.UpdateB(0, 0, 0, 0, 1, 720, 75, 50) && mt.B[5].Text == "|v| = 0.00%  θ = —" && mt.B[4].Text == "视野换算 枪侧×1.00 另侧×0.67"; // v5.1.1 (X5, Leo 21 Nov 2026): FOV no longer in k; X only, gun side x1, other side x gameFov/baseFov, Y unchanged.
             // DASH41G: τ's value is ViewScale.Factor's FOV part (same resolution both sides -> Factor == τ exactly), every FOV pair
             // in the allowed range stays at <= 24 chars (the widget is 25 wide), unusable FOVs read 1.00 like Factor's fallback
             bool tau = true;
             for (double fb = ViewScale.MinFov; fb <= ViewScale.MaxFov && tau; fb += 0.5)
                 for (double fg = ViewScale.MinFov; fg <= ViewScale.MaxFov && tau; fg += 0.5)
                 {
+                    // v5.1.1 (X5, Leo 21 Nov 2026): k has no FOV part any more; the line shows the FOV side factors
                     double k = ViewScale.Factor(2560, 1440, "auto", fg, 2560, 1440, "auto", fb, "v");
-                    if (DashMathText.TanRatio(fb, fg) != k) tau = false;
+                    if (k != 1.0) tau = false;
                     DashMathText tm = new DashMathText();
                     tm.UpdateB(0, 0, 0, 0, k, 720, fb, fg);
-                    if (tm.B[4].Text.Length > 24 || !tm.B[4].Text.EndsWith("=" + DashFormat.Fixed(k, 2))) tau = false;
+                    if (tm.B[4].Text.Length > 24 || tm.B[4].Text != FovText.Short(ViewScale.FovRatio(fg, fb))) tau = false;
                 }
             tau = tau && DashMathText.TanRatio(75, 0) == 1.0 && DashMathText.TanRatio(double.NaN, 60) == 1.0 && DashMathText.TanRatio(180, 60) == 1.0
                 && Math.Abs(DashMathText.TanRatio(50, 75) - 0.6077039716577575) < 1e-12;

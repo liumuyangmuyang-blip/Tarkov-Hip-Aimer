@@ -552,7 +552,7 @@ namespace TarkovCrosshair
                 m = Max(m, v.Drift);
             }
             m = Max(m, p.RecoilMaxPx);
-            double pct = Math.Abs(OffsetUnits.ToPct(m, g));
+            double pct = Math.Abs(OffsetUnits.ToPct(m, g)) * OffsetUnits.MaxFovFactor(g); // v5.1.1: largest FOV side
             return double.IsNaN(pct) || double.IsInfinity(pct) ? 0 : pct;
         }
 
@@ -1610,11 +1610,17 @@ namespace TarkovCrosshair
         /// changed.</summary>
         public bool UpdateA(char axis, DashTravel t, GlobalSettings g)
         {
+            return UpdateA(axis, t, g, false);
+        }
+
+        /// <summary>v5.1.1 (X5): UpdateA with the hand shown (switched = 换手: the X FOV sides swap).</summary>
+        public bool UpdateA(char axis, DashTravel t, GlobalSettings g, bool switched)
+        {
             bool ch = false;
             long ex = t.Exact ? 1 : 0;
             long ax = axis == 'Y' ? 1 : 0;
             OffsetAxis oa = axis == 'Y' ? OffsetAxis.Y : OffsetAxis.X;
-            double pm = OffsetUnits.ToPct(t.Move, g), p0 = OffsetUnits.ToPct(t.Start, g), pt = OffsetUnits.ToPct(t.Target, g);
+            double pm = OffsetUnits.ToPct(t.Move, oa, switched, g), p0 = OffsetUnits.ToPct(t.Start, oa, switched, g), pt = OffsetUnits.ToPct(t.Target, oa, switched, g);
             if (!A[0].Same(ex, 0, 0)) { A[0].Text = t.Exact ? AFormula : AFormulaInexact; ch = true; }
             if (!A[1].Same(DashFormat.PctKey(pm), ax, 0)) { A[1].Text = "  = " + OffsetUnits.FormatPct(pm, oa); ch = true; }
             if (!A[2].Same(ax, DashFormat.Hundredths(t.U), 0)) { A[2].Text = (axis == 'Y' ? "Y" : "X") + ": u = t/T = " + DashFormat.Fixed(t.U, 2); ch = true; }
@@ -1663,9 +1669,9 @@ namespace TarkovCrosshair
             }
             long fb = (long)Math.Round((double.IsNaN(baseFov) ? 0 : baseFov) * 10.0), fg = (long)Math.Round((double.IsNaN(gameFov) ? 0 : gameFov) * 10.0);
             if (!B[4].Same(fb, fg, 0))
-            {   // v4.1 (DASH41G): the ratio's value too, e.g. 「τ=tan37.5°/tan25.0°=1.65」: no spaces, 24 chars for every FOV pair in
-                // ViewScale's range (50..75), so the line stays inside the widget's 25-char width even where τ is drawn wider than one cell
-                B[4].Text = "τ=tan" + DashFormat.Fixed(baseFov / 2.0, 1) + "°/tan" + DashFormat.Fixed(gameFov / 2.0, 1) + "°=" + DashFormat.Fixed(TanRatio(baseFov, gameFov), 2);
+            {   // v5.1.1 (X5): the FOV rule in words, e.g. 「视野换算 枪侧×1.00 另侧×0.80」 (the old tan ratio τ is gone: Leo measured it
+                // wrong); at most 25 chars
+                B[4].Text = FovText.Short(ViewScale.FovRatio(gameFov, baseFov));
                 ch = true;
             }
             double mag = Math.Sqrt(pctX * pctX + pctY * pctY);
@@ -1676,8 +1682,8 @@ namespace TarkovCrosshair
             return ch;
         }
 
-        /// <summary>The FOV part τ of ViewScale.Factor: tan(baseFov / 2) / tan(gameFov / 2), exactly 1 for equal FOVs and 1 when a
-        /// FOV is unusable (the same expression and fallback as ViewScale.Factor; used only for the 换算 read-out).</summary>
+        /// <summary>v4.1 tan(baseFov / 2) / tan(gameFov / 2). v5.1.1 (X5): no longer used by the conversion or the read-out (the
+        /// FOV rule is ViewScale.FovX); kept for old callers.</summary>
         public static double TanRatio(double baseFov, double gameFov)
         {
             if (!(gameFov > 0) || !(baseFov > 0) || gameFov >= 180 || baseFov >= 180) return 1.0;

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
@@ -17,7 +17,7 @@ namespace TarkovCrosshair.Tests
         internal static void V4PerfInit() { V4PerfTests(); }
 
         // Golden trace of OffsetX/OffsetY/Alpha + every MotionDebug field + resolver output, produced by the pre-PERF code.
-        const string PerfGoldenTrace = "3e602675905a8c83"; // v5.1 (W21): re-recorded for decision 7 (A->D / mid-travel changes go back to 0 first, then out; mirrored return) with the v5.1 settings defaults of 20 Nov (强化 = Ctrl+T); v4.1 hash 8b78821b1b30f825. v4.1 MOTION41F: re-recorded for BRUTE40 P2-1 (开关键 x2 keeps the A/D W/S press order) + P2-3 (Tab and Esc cancel on their own); the trace toggles g.Enabled with keys held and presses Tab/Esc. Only those two: reverting both gives e422e310d9e622ac again (P2-1 alone 6dde2d2dc10c71ec, P2-3 alone dfb0b85bfb465565; P2-2 / P2-4 do not change it). Before:
+        const string PerfGoldenTrace = "512693f19f7a0a82"; // v5.1.1 (X2): same trace with every double rounded to 6 decimals (see R), so Linux and Windows give one hash; the exact Linux hash of this code is still 3e602675905a8c83 (Windows gave cfc98f838ee048b8). v5.1 (W21): re-recorded for decision 7 (A->D / mid-travel changes go back to 0 first, then out; mirrored return) with the v5.1 settings defaults of 20 Nov (强化 = Ctrl+T); v4.1 hash 8b78821b1b30f825. v4.1 MOTION41F: re-recorded for BRUTE40 P2-1 (开关键 x2 keeps the A/D W/S press order) + P2-3 (Tab and Esc cancel on their own); the trace toggles g.Enabled with keys held and presses Tab/Esc. Only those two: reverting both gives e422e310d9e622ac again (P2-1 alone 6dde2d2dc10c71ec, P2-3 alone dfb0b85bfb465565; P2-2 / P2-4 do not change it). Before:
         // v4.1 CORE41b: e422e310d9e622ac, re-recorded for the 开关键 x2 snap (BRUTE40, Leo 17 Nov; only that change, checked by removing the snap: db92ddaab3cc3680 again); before: // v4.0 PERF: was 32bcc5081ebe7a7c (pre-PERF code, identical after PERF); re-recorded after the
         // 开关键 double press began clearing a latched 切换 lean (the trace toggles g.Enabled every 5000 frames; focus option off here)
 
@@ -66,9 +66,14 @@ namespace TarkovCrosshair.Tests
             if (p.Jump != null) p.Jump.Enabled = true;
             // combo bindings on W/A/S/D so ReadInput's 组合键 suppression path runs
             if (g.Keys != null && (variant & 1) != 0) g.Keys.SetCombo(KeyBindings.ActionLeanRight, 0x44, KeyBindings.ModCtrl);
+            // v5.1.1 (X5, Leo 21 Nov 2026): the default 强化 key became 鼠标侧键2; the trace keeps the v5.1 Ctrl+T binding so the
+            // golden hash still compares the engine itself
+            if (g.Keys != null) g.Keys.SetCombo(KeyBindings.ActionBoost, KeyBindings.VkT, KeyBindings.ModCtrl);
         }
 
-        static string R(double d) { return d.ToString("R", CultureInfo.InvariantCulture); }
+        // v5.1.1 (X2): rounded to 6 decimals before hashing. The exact "R" text differs between Linux (glibc) and Windows
+        // (MSVC CRT) in the last bits of Math.Exp / Pow, so the exact hash only ever matched one OS (CI run 44729023467).
+        static string R(double d) { return Math.Round(d, 6).ToString("R", CultureInfo.InvariantCulture); }
 
         /// <summary>One frame of exactly what the render thread does with keys and engine (Overlay.Run minus Win32).</summary>
         static void PerfFrame(MotionEngine e, LiveInputFilter f, KeyBindings k, Func<int, bool> isDown, Profile p, GlobalSettings g,

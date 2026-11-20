@@ -448,7 +448,7 @@ namespace TarkovCrosshair.Tests
                     if (p.Boost.OwnLook && W18SamePixels(RingStyle.From(p, 0, false), RingStyle.From(v, 0, false), out why)) ok++;
                     Profile c = Profile.CreateLeoDefault("y");
                     c.CopyAppearanceFrom(p);
-                    if (c.AppearanceKey() == p.AppearanceKey() && c.RecoilMaxPx == 24) copyOk++;
+                    if (c.AppearanceKey() == p.AppearanceKey() && c.RecoilMaxPx == 28.8) copyOk++; // v5.1.1 (X5, Leo 21 Nov 2026): 上抬 4.00 %
                 }
                 Check("W18-7 「和正常准星一样」 makes the 强化 look draw exactly like the normal one; CopyAppearanceFrom copies every 外观 value (incl. 强化 and style) and nothing else",
                     ok == n && copyOk == n, "copy " + ok + "/" + n + " appearance " + copyOk + "/" + n);

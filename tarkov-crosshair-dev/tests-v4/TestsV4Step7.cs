@@ -113,7 +113,7 @@ namespace TarkovCrosshair.Tests
                 && TutorialStep7Math.MaxAbs(null) == 0, "");
 
             // S7-12 the reference (Leo默认) W / S: Y set, X 0 (X 不推荐改), so the demo shows a pure vertical shift
-            Profile leo = Profile.CreateLeoDefault("x");
+            Profile leo = Profile.CreateLeoDefault("x"); leo.SetStandPoint(0, 0); /* v5.1.1 (X5, Leo 21 Nov 2026): the built-in has a 站立 point now; this case measures around the centre */
             Check("S7-12 Leo默认 W/S have Y offsets and X = 0", leo.Dirs[0].OffX == 0 && leo.Dirs[1].OffX == 0 && leo.Dirs[0].OffY != 0 && leo.Dirs[1].OffY != 0,
                 "W=" + F(leo.Dirs[0].OffY) + " S=" + F(leo.Dirs[1].OffY));
 

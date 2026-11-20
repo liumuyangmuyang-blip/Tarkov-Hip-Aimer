@@ -216,9 +216,22 @@ namespace TarkovCrosshair
         /// Size a box needs to show text in font f (margin included). wrapWidth &gt; 0: wrapped at that width (height grows);
         /// 0: one line per \n. scale = the screen scale the font is used at (ScaleOf(control)).
         /// </summary>
+        private static readonly Dictionary<string, Size> needCache = new Dictionary<string, Size>();
+
+        /// <summary>v5.1.1 (X11): NeedSize measured once per (text, font, wrap width, scale); layout asks it many times.</summary>
         internal static Size NeedSize(string text, Font f, int wrapWidth, double scale)
         {
             if (f == null) return Size.Empty;
+            string key = (text ?? "") + "\u0001" + f.Name + "|" + f.SizeInPoints.ToString("R", CultureInfo.InvariantCulture) + "|" + (int)f.Style + "|" + wrapWidth + "|" + scale.ToString("R", CultureInfo.InvariantCulture);
+            Size r;
+            lock (needCache) { if (needCache.TryGetValue(key, out r)) return r; }
+            r = NeedSizeCore(text, f, wrapWidth, scale);
+            lock (needCache) { if (needCache.Count > 8000) needCache.Clear(); needCache[key] = r; }
+            return r;
+        }
+
+        private static Size NeedSizeCore(string text, Font f, int wrapWidth, double scale)
+        {
             text = text ?? "";
             double em = EmPx(f, scale);
             Size m;

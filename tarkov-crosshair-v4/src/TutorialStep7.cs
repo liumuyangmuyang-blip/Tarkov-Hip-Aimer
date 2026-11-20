@@ -197,6 +197,7 @@ namespace TarkovCrosshair
             TutorialField sx = TutorialField.Offset("S：左右", "左右不推荐改", false, OffsetAxis.X, -500, 500,
                 delegate(Profile p) { return p.Dirs[1].OffX; }, delegate(Profile p, double v) { p.Dirs[1].OffX = v; });
             wx.Optional = true; sx.Optional = true;
+            wx.OriginX = sx.OriginX = delegate(Profile p) { return OffsetUnits.StandOriginX(p, false); }; // v5.1.1 (X5)
             TutorialField[] all = new TutorialField[] { wy, sy, wx, sx };
             foreach (TutorialField f in all) f.After = Diagonals;
             return all;

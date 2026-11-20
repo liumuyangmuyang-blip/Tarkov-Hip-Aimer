@@ -73,6 +73,7 @@ internal sealed class UiC
                 case "tutorial": p.RunTutorial(); break;
                 case "filtertut": p.RunFilterTutorial(); break;
                 case "timing": p.RunTiming(); break;
+                case "timingjit": p.RunPreJit(); p.RunTiming(); break; // v5.1.1: the same after the app's background pre-compile
                 case "windows": p.RunWindows(); break;
                 default: throw new ArgumentException("mode " + mode);
             }
@@ -98,7 +99,7 @@ internal sealed class UiC
 
     private void Time(string key, Stopwatch sw)
     {
-        times.Add(key + " " + sw.Elapsed.TotalMilliseconds.ToString("0.0", CultureInfo.InvariantCulture) + " ms");
+        times.Add(jitTag + key + " " + sw.Elapsed.TotalMilliseconds.ToString("0.0", CultureInfo.InvariantCulture) + " ms");
     }
 
     /// <summary>Settings window: build, first show, every page's first open and second open (open = ShowPage + a full
@@ -146,7 +147,56 @@ internal sealed class UiC
         Time("settings.second-window-build-show", sw);
         f2.Close();
         f2.Dispose();
+        // v5.1.1 (X2): the app's background build (PrebuildStep, one call per idle slot): every step is a UI freeze, so the
+        // longest one is what a user clicking meanwhile feels (goal < 100 ms)
+        Form f3 = NewSettings();
+        MethodInfo step = f3.GetType().GetMethod("PrebuildStep", All);
+        if (step != null)
+        {
+            double worst = 0, total = 0; int n = 0; string worstAt = "";
+            Stopwatch all = Stopwatch.StartNew();
+            while (n < 2000)
+            {
+                sw = Stopwatch.StartNew();
+                bool more = (bool)step.Invoke(f3, null);
+                double ms = sw.Elapsed.TotalMilliseconds;
+                total += ms; n++;
+                if (ms > worst) { worst = ms; worstAt = "step " + n; }
+                Application.DoEvents();
+                if (!more) break;
+            }
+            times.Add(jitTag + "prebuild.steps " + n + " total " + total.ToString("0.0", CultureInfo.InvariantCulture) + " ms, longest "
+                + worst.ToString("0.0", CultureInfo.InvariantCulture) + " ms (" + worstAt + ")");
+            object pm = f3.GetType().GetField("PrebuildMs", All).GetValue(f3);
+            foreach (KeyValuePair<string, long> kv in (Dictionary<string, long>)pm) times.Add(jitTag + "prebuild." + kv.Key + " " + kv.Value + " ms");
+            sw = Stopwatch.StartNew();
+            f3.Show(); f3.Refresh(); Application.DoEvents();
+            Time("settings.show-after-prebuild", sw);
+            string[] ids2 = (string[])T("UiPages").GetField("Ids", All).GetValue(null);
+            MethodInfo show2 = f3.GetType().GetMethod("ShowPage", All, null, new[] { typeof(int) }, null);
+            for (int idx = 0; idx < ids2.Length; idx++)
+            {
+                sw = Stopwatch.StartNew();
+                show2.Invoke(f3, new object[] { idx }); f3.Refresh(); Application.DoEvents();
+                Time("prebuilt-page." + (idx + 1).ToString("00") + "-" + ids2[idx], sw);
+            }
+        }
+        f3.Close();
+        f3.Dispose();
     }
+
+    /// <summary>v5.1.1: what the app's PreJit thread does, here synchronously (its ms is logged as TIME prejit).</summary>
+    private void RunPreJit()
+    {
+        Type pj = T("PreJit");
+        if (pj == null) { times.Add("prejit missing"); return; }
+        Stopwatch sw = Stopwatch.StartNew();
+        pj.GetMethod("Run", All).Invoke(null, new object[] { asm, false, null });
+        times.Add("prejit " + pj.GetField("Compiled", All).GetValue(null) + " methods " + sw.Elapsed.TotalMilliseconds.ToString("0.0", CultureInfo.InvariantCulture) + " ms");
+        jitTag = "jit.";
+    }
+
+    private string jitTag = "";
 
     private static readonly string[] Covered = { "SettingsForm", "TutorialForm", "FilterTutorialForm", "ThemedDialog", "NameDialog" };
 

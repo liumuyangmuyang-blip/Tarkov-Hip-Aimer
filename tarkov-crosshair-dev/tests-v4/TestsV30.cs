@@ -462,18 +462,18 @@ namespace TarkovCrosshair.Tests
         {
             KeyBindings k = new KeyBindings();
             bool table = KeyBindings.ActionCount == 13 && KeyBindings.ActionNames.Length == 13 /* v4.3: the v4.1 转一圈校准 key (13) is gone */ && KeyBindings.ActionNames[12] == "强化准星"
-                && k.Get(12) == 0x54 && k.GetMods(12) == KeyBindings.ModCtrl // v5.1 (W23, decision 3): default Ctrl+T (切换战术设备模式)
-                && KeyBindings.ActionBoost == 12 && k.FindOtherCombo(0x54, KeyBindings.ModCtrl, -1) == 12 && k.FindOtherCombo(0x54, KeyBindings.ModCtrl, 12) == -1;
+                && k.Get(12) == 6 && k.GetMods(12) == 0 // v5.1.1 (X5, Leo 21 Nov 2026): default 鼠标侧键2 (v5.1: Ctrl+T)
+                && KeyBindings.ActionBoost == 12 && k.FindOtherCombo(6, 0, -1) == 12 && k.FindOtherCombo(6, 0, 12) == -1;
             KeyBindings r = new KeyBindings(); r.SetCombo(12, 0x47, 0);
             HashSet<int> held = new HashSet<int>(); held.Add(0x47);
             bool read = r.Boost == 0x47 && MotionEngine.ReadInput(r, delegate(int vk) { return held.Contains(vk); }).Boost
-                && !MotionEngine.ReadInput(new KeyBindings(), delegate(int vk) { return vk == 5; }).Boost;
+                && !MotionEngine.ReadInput(new KeyBindings(), delegate(int vk) { return vk == 5; }).Boost && MotionEngine.ReadInput(new KeyBindings(), delegate(int vk) { return vk == 6; }).Boost;
             GlobalSettings c; string err;
             bool conflict = SettingsIO.TryParse("{\"Keys\":{\"FreeLook\":6,\"HandSwitch\":5}}", out c, out err) && c.Keys.Boost == 6 && !c.BoostEnabled;
             GlobalSettings c2; bool present = SettingsIO.TryParse("{\"BoostEnabled\":false,\"Keys\":{\"Boost\":7,\"HandSwitch\":5}}", out c2, out err) && c2.Keys.Boost == 7 && !c2.BoostEnabled;
-            GlobalSettings c3; bool badVk = SettingsIO.TryParse("{\"Keys\":{\"Boost\":999,\"HandSwitch\":5}}", out c3, out err) && c3.Keys.Boost == 0x54 && c3.Keys.BoostMods == KeyBindings.ModCtrl && c3.BoostEnabled; // v5.1: bad vk -> default Ctrl+T
+            GlobalSettings c3; bool badVk = SettingsIO.TryParse("{\"Keys\":{\"Boost\":999,\"HandSwitch\":5}}", out c3, out err) && c3.Keys.Boost == 6 && c3.Keys.BoostMods == 0 && c3.BoostEnabled; // v5.1.1 (Leo 21 Nov): bad vk -> default 鼠标侧键2
             GlobalSettings rk = G(); rk.Keys.Boost = 0x48; rk.BoostEnabled = false; rk.ResetKeys();
-            bool reset = rk.Keys.Boost == 0x54 && rk.Keys.BoostMods == KeyBindings.ModCtrl && rk.BoostEnabled;
+            bool reset = rk.Keys.Boost == 6 && rk.Keys.BoostMods == 0 && rk.BoostEnabled; // v5.1.1 (Leo 21 Nov): 鼠标侧键2
             bool pm = (int)PreviewMode.BoostStand == 17 && (int)PreviewMode.JumpStand == 16 && (int)PreviewMode.HandFlip == 15 && (int)PreviewMode.Live == 0
                 && Enum.GetValues(typeof(PreviewMode)).Length == 18;
             MotionDebug d = new MotionDebug(1, 0, 0, 0, 0, true, false, true);

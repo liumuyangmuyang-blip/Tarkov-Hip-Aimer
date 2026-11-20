@@ -87,8 +87,9 @@ namespace TarkovCrosshair.Tests
                 decimal m500 = UiNum.MaxPct(500, g), m1000 = UiNum.MaxPct(1000, g);
                 GlobalSettings g50 = UnitsG(2560, 1440, 50, 75);
                 decimal m50 = UiNum.MaxPct(500, g50);
+                // v5.1.1 (X5, Leo 21 Nov 2026): FOV 50 shrinks only the other side, so the box maximum is the gun side's (= FOV 75)
                 bool ok = m500 == 69.44m && m1000 == 138.88m
-                    && OffsetUnits.ToPx((double)m500, g) <= 500 && OffsetUnits.ToPx((double)m50, g50) <= 500 && m50 > m500;
+                    && OffsetUnits.ToPx((double)m500, g) <= 500 && OffsetUnits.ToPx((double)m50, OffsetAxis.X, g50) <= 500 && m50 == m500;
                 Check("UI2 UiNum.MaxPct: 500 px = 69.44 % (Leo默认 FOV 75), never past the px range", ok, m500 + " " + m1000 + " fov50 " + m50);
             }
 

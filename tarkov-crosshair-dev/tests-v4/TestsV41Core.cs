@@ -153,16 +153,18 @@ namespace TarkovCrosshair.Tests
                 }
                 Check("V41-R1b game == base (5000 random resolutions / aspects / FOVs / types): k == 1 exactly", bad == 0, bad + " not 1");
             }
-            // R2 FOV 75 -> 50 enlarges by tan(37.5°)/tan(25°); smaller FOV always bigger k.
+            // R2 // v5.1.1 (X5, Leo 21 Nov 2026): FOV no longer in k; X only, gun side x1, other side x gameFov/baseFov, Y unchanged.
+            // k stays 1 at 2160x1440 for every FOV; the FOV ratio is gameFov / baseFov (50 -> 0.6667, 75 -> exactly 1).
             {
-                GlobalSettings g = V41G(); g.ResFov = 50;
-                double want = Tand(37.5) / Tand(25);
-                bool mono = true; double prev = double.MaxValue;
-                for (int f = 50; f <= 75; f++) { g.ResFov = f; double k = g.ResolutionScale; if (!(k < prev)) mono = false; prev = k; }
+                GlobalSettings g = V41G();
+                bool flat = true;
+                for (int f = 50; f <= 75; f++) { g.ResFov = f; if (g.ResolutionScale != 1.0 || g.ResolutionScaleX != 1.0) flat = false; }
                 g.ResFov = 50;
-                bool ok = Math.Abs(g.ResolutionScale - want) < 1e-12 && want > 1.6 && prev == 1.0 && mono;
-                Check("V41-R2 FOV 75 -> 50 at 2160x1440: k = tan(37.5°)/tan(25°) = " + want.ToString("0.0000") + " (> 1), k falls with FOV, FOV 75 -> 1",
-                    ok, "k50=" + g.ResolutionScale.ToString("0.000000") + " mono=" + mono);
+                double r50 = ViewScale.FovRatio(g);
+                g.ResFov = 75;
+                bool ok = flat && Math.Abs(r50 - 50.0 / 75.0) < 1e-15 && ViewScale.FovRatio(g) == 1.0;
+                Check("V41-R2 FOV 75 -> 50 at 2160x1440: k = 1 for every FOV (no tan term), FOV ratio 50/75 = 0.6667, FOV 75 -> exactly 1",
+                    ok, "flat=" + flat + " r50=" + r50.ToString("0.000000") + " " + Tand(45).ToString("0"));
             }
             // R3 angle math == linear factor (px_new = f_new·tan(atan(px/f_base))) for random screens, aspects, FOVs, both FOV types.
             {
@@ -174,11 +176,14 @@ namespace TarkovCrosshair.Tests
                     string ga = ViewScale.AspectIds[r.Next(ViewScale.AspectIds.Length)], ba = ViewScale.AspectIds[r.Next(ViewScale.AspectIds.Length)];
                     double gf = 50 + r.Next(26), bf = 50 + r.Next(26);
                     string t = r.Next(2) == 0 ? "v" : "h";
-                    double fg = ViewScale.FocalPx(gw, gh, ga, gf, t), fb = ViewScale.FocalPx(bw, bh, ba, bf, t);
+                    // v5.1.1 (X5, Leo 21 Nov 2026): k = the half span ratio only (no FOV); with the FOV held equal that is the
+                    // old focal-length conversion f_new·tan(atan(px/f_base)) exactly
+                    double fg = ViewScale.FocalPx(gw, gh, ga, bf, t), fb = ViewScale.FocalPx(bw, bh, ba, bf, t);
                     double k = ViewScale.Factor(gw, gh, ga, gf, bw, bh, ba, bf, t);
                     double px = -300 + r.NextDouble() * 600;
                     double viaAngle = fg * Math.Tan(Math.Atan(px / fb));
                     worst = Math.Max(worst, Math.Abs(viaAngle - px * k) / Math.Max(1.0, Math.Abs(px * k)));
+                    if (k != ViewScale.HalfSpan(gw, gh, ga, t) / ViewScale.HalfSpan(bw, bh, ba, t)) worst = 1;
                     n++;
                 }
                 Check("V41-R3 angle conversion f_new·tan(atan(px/f_base)) == px·k (" + n + " random screens / aspects / FOVs / types)", worst < 1e-9, "worst rel " + worst.ToString("E1"));
@@ -265,7 +270,8 @@ namespace TarkovCrosshair.Tests
                         string keys = c.Replace("J", "").Replace("K", f < 3 ? "K" : "");
                         InputState i = In(keys); i.Jump = c.Contains("J") && f < 3;
                         sb.Step(i); sg.Step(i);
-                        double e = Math.Abs(sg.E.OffsetX - kx * sb.E.OffsetX) + Math.Abs(sg.E.OffsetY - k * sb.E.OffsetY);
+                        // v5.1.1 (X5, Leo 21 Nov 2026): X then gets the FOV side rule (FOV 60 vs 75: other side x0.8), Y does not
+                        double e = Math.Abs(sg.E.OffsetX - ViewScale.FovX(kx * sb.E.OffsetX, 60.0 / 75.0, sg.E.HandBlend)) + Math.Abs(sg.E.OffsetY - k * sb.E.OffsetY);
                         if (e > worst) { worst = e; where = c + "@" + f; }
                     }
                 }

@@ -210,75 +210,9 @@ namespace TarkovCrosshair.Tests
                     ok && still && offOk && gyr && AmmoDisplay.BandNames.Length == 5, d + " still=" + still + " off=" + offOk + " gyr=" + gyr);
             }
 
-            // ---- W22-4 reload animations: R = slow refill from the current band; RR = empty then fast refill; follows the model
-            {
-                bool ok = true; string d = "";
-                // R2: reload = MAG SWAP for R and R R: old bar leaves, empty moment, NEW FULL bar slides in; quick faster, old dropped
-                foreach (int kind in new int[] { 1, 2 })
-                {
-                    AmmoDisplay a = new AmmoDisplay();
-                    AmmoView v = new AmmoView(); v.Active = true; v.Band = 2; v.Progress = double.NaN;
-                    a.Update(v, 0, AmmoDisplay.DefaultStyle);
-                    v.ReloadSeq = 1; v.ReloadKind = kind;
-                    double len = kind == 2 ? AmmoDisplay.QuickReloadMs : AmmoDisplay.NormalReloadMs;
-                    double oe = kind == 2 ? AmmoDisplay.QuickOutEnd : AmmoDisplay.OutEnd, ins = kind == 2 ? AmmoDisplay.QuickInStart : AmmoDisplay.InStart;
-                    a.Update(v, 0, AmmoDisplay.DefaultStyle);
-                    a.Update(v, len * oe * 0.5, AmmoDisplay.DefaultStyle);
-                    double leaving = a.Fill; bool swapping = a.Animating && a.SwapKind == kind;
-                    a.Update(v, len * (oe + ins) / 2, AmmoDisplay.DefaultStyle);
-                    double gap = a.Fill;
-                    a.Update(v, len * (ins + 1) / 2, AmmoDisplay.DefaultStyle);
-                    double arriving = a.Fill;
-                    double prev = -1; bool mono = true;
-                    for (double t = len * ins; t < len; t += 5) { a.Update(v, t, AmmoDisplay.DefaultStyle); if (a.Fill < prev - 1e-9) mono = false; prev = a.Fill; }
-                    double nearEnd = a.Fill; // the model may still report the old band: the hint already shows the new full mag
-                    v.Band = 4; a.Update(v, len + 1, AmmoDisplay.DefaultStyle);
-                    bool end = a.Fill == 1 && !a.Animating;
-                    if (!(swapping && leaving >= 0 && leaving < 0.5 && gap == 0 && arriving > 0 && arriving < 1 && mono && nearEnd > 0.99 && end))
-                    { ok = false; d += "kind" + kind + " leave=" + F(leaving) + " gap=" + F(gap) + " arrive=" + F(arriving) + " mono=" + mono + " near=" + F(nearEnd) + " end=" + end + "; "; }
-                }
-                // normal: the old bar slides out INSIDE its track; quick: it is DROPPED below the track
-                {
-                    int st = AmmoDisplay.Brackets;
-                    double inner = AmmoDisplay.Inner(8); int S = AmmoDisplay.CanvasNeed(inner, st) + 40; double c0 = S / 2.0;
-                    double bot = c0 + AmmoDisplay.BracketHalfH(inner) + AmmoDisplay.Line;
-                    int[] below = new int[3];
-                    for (int kind = 1; kind <= 2; kind++)
-                    {
-                        AmmoDisplay a = new AmmoDisplay(); AmmoView v = new AmmoView(); v.Active = true; v.Band = 4; v.Progress = double.NaN;
-                        a.Update(v, 0, st); v.ReloadSeq = 1; v.ReloadKind = kind;
-                        double len = kind == 2 ? AmmoDisplay.QuickReloadMs : AmmoDisplay.NormalReloadMs, oe = kind == 2 ? AmmoDisplay.QuickOutEnd : AmmoDisplay.OutEnd;
-                        a.Update(v, 0, st); a.Update(v, len * oe * 0.6, st);
-                        int[] buf = new int[S * S]; a.Draw(buf, S, c0, c0, inner, st, 255);
-                        for (int k = 0; k < S * S; k++) if (buf[k] != 0 && k / S > bot + 1) below[kind]++;
-                    }
-                    if (below[1] != 0 || below[2] == 0) { ok = false; d += "below normal=" + below[1] + " quick=" + below[2] + "; "; }
-                }
-                // the quick swap ends sooner than the normal one (absolute time)
-                if (!(AmmoDisplay.QuickReloadMs < AmmoDisplay.NormalReloadMs)) { ok = false; d += "quick not faster; "; }
-                // with the engine's AmmoModel: R and R R both end on a full mag
-                {
-                    W22Sim s = new W22Sim(144); s.G.AmmoOn = true; s.G.AmmoMagSize = 30; s.G.AmmoRpm = 600;
-                    InputState fire = new InputState(), rk = new InputState(); fire.Fire = true; rk.Reload = true;
-                    for (int i = 0; i < 20; i++) s.Step(idle);
-                    for (int i = 0; i < 144 * 2; i++) s.Step(fire); // 20 rounds at 600 RPM -> 少 / 快空
-                    s.Step(idle);
-                    double low = s.X.Ammo.Fill;
-                    s.Step(rk); s.Step(idle);
-                    bool started = s.X.Ammo.Animating && s.X.Ammo.SwapKind == 1;
-                    for (int i = 0; i < 144 * 4; i++) s.Step(idle);
-                    bool full1 = s.X.Ammo.Fill == 1 && !s.X.Ammo.Animating;
-                    for (int i = 0; i < 144; i++) s.Step(fire);
-                    s.Step(idle);
-                    s.Step(rk); s.Step(idle); s.Step(rk); s.Step(idle);
-                    bool quick = s.X.Ammo.SwapKind == 2;
-                    for (int i = 0; i < 144 * 3; i++) s.Step(idle);
-                    bool full2 = s.X.Ammo.Fill == 1 && !s.X.Ammo.Animating;
-                    if (!(low <= 0.25 && started && full1 && quick && full2)) { ok = false; d += "model low=" + F(low) + " started=" + started + " full1=" + full1 + " quick=" + quick + " full2=" + full2 + "; "; }
-                }
-                Check("V51-W22-4 (R2) reload = mag swap: R and R R both move the old bar out (R inside its track, R R dropped below it and faster), an empty moment, then a NEW FULL bar slides in (monotone) and ends full; with the engine's AmmoModel both reloads end on a full mag",
-                    ok, d);
-            }
+            // ---- W22-4 (R2 mag swap) is superseded by v5.1.1 (Leo B3): the reload animation is now user-set per kind and is
+            // checked by V511-X3-7 (every type x kind animates and ends on exactly 满).
+
 
             // ---- W22-5 快空 flash (4 Hz) only with the flash style; fade dims with fewer rounds
             {
@@ -322,7 +256,7 @@ namespace TarkovCrosshair.Tests
             {
                 bool ok = true; string d = "";
                 Random r = new Random(7); int holeBad = 0, grow = 0, sizes = 0;
-                AnimOptions all = new AnimOptions(); all.DynGap = all.FirePulse = all.LeanRotate = all.StateColour = all.Shake = true;
+                AnimOptions all = new AnimOptions(); all.DynGap = all.FirePulse = all.StateColour = all.Ripple = all.Gradient = true; // v5.1.1: lean / shake removed
                 for (int i = 0; i < 120; i++)
                 {
                     Profile p = W22Look(r, i);
@@ -370,7 +304,7 @@ namespace TarkovCrosshair.Tests
                 GlobalSettings g = GlobalSettings.CreateDefault();
                 foreach (string p in CrosshairAnim.Presets) { CrosshairAnim.ApplyPreset(p, g); if (CrosshairAnim.PresetOf(CrosshairAnim.From(g)) != p || g.AnimPreset != p) { ok = false; d += p + " "; } }
                 CrosshairAnim.ApplyPreset("bogus", g); if (g.AnimPreset != "static" || CrosshairAnim.From(g).Any) { ok = false; d += "bogus "; }
-                bool shakeOff = true; foreach (string p in CrosshairAnim.Presets) if (CrosshairAnim.PresetOptions(p).Shake) shakeOff = false;
+                bool shakeOff = true; // v5.1.1 (Leo B2): shake no longer exists
                 GlobalSettings def = GlobalSettings.CreateDefault();
                 bool defaults = def.AnimPreset == "static" && !CrosshairAnim.From(def).Any && !def.AmmoOn;
                 for (int f = 1; f <= AmmoDisplay.AllStyles; f++)
@@ -423,14 +357,15 @@ namespace TarkovCrosshair.Tests
         static void V51W22UiChecks()
         {
             string sp = File.ReadAllText(W22Src("StylePanel.cs"));
-            bool sections = sp.Contains("\"准星动态（CS 风格）\", BuildAnim()") && sp.Contains("\"弹药提示\", BuildAmmo()");
+            // v5.1.1 (Leo B1-B3): 准星动态 / 弹药提示 are sub-pages; the ammo hint is one bar (V511-X3-1 / X3-14 check the rest)
+            bool sections = sp.Contains("subAnim = (TableLayoutPanel)BuildAnim();") && sp.Contains("subAmmo = (TableLayoutPanel)BuildAmmo();");
             bool presets = sp.Contains("CrosshairAnim.ApplyPreset(id, g)") && sp.Contains("CrosshairAnim.PresetNames[i]");
-            bool styles = sp.Contains("AmmoDisplay.FormatStyle(cur)") && sp.Contains("AmmoDisplay.Brackets, AmmoDisplay.BottomBar, AmmoDisplay.Colour, AmmoDisplay.Fade, AmmoDisplay.Flash");
+            bool styles = sp.Contains("AmmoDisplay.FormatStyle(v ? c | AmmoDisplay.Colour") && sp.Contains("AmmoBarSettings.ApplyPreset(Bar, AmmoBarSettings.Presets[i])");
             bool preview = sp.Contains("previewExtras.Ammo.Draw(px");
             bool noWords = !sp.Contains("慢启动") && !sp.Contains("未实测") && !sp.Contains("示意") && !sp.Contains("估计");
             bool flat = !sp.Contains("LinearGradientBrush lg") && !sp.Contains("DashStyle.Dot") && !sp.Contains("FromArgb(0x2A, 0x33, 0x2E)");
             bool fit = sp.Contains("TextFit.NeedSize(lblSub.Text");
-            Check("V51-W22-11 外观 page: 准星动态 (presets 静态 / CS 动态 / 经典 + 5 options) and 弹药提示 (on/off + 5 combinable styles, at least one shape kept) sections, preview draws the hint, no 慢启动 / disclaimer words, flat leftovers gone, lblSub height from TextFit",
+            Check("V51-W22-11 外观 page: 准星动态 and 弹药提示 sub-pages (presets, bar presets, 变色 / 变淡), preview draws the hint, no 慢启动 / disclaimer words, flat leftovers gone, lblSub height from TextFit",
                 sections && presets && styles && preview && noWords && flat && fit,
                 "sections=" + sections + " presets=" + presets + " styles=" + styles + " preview=" + preview + " words=" + noWords + " flat=" + flat + " fit=" + fit);
             string ov = File.ReadAllText(W22Src("Overlay.cs"));

@@ -22,7 +22,13 @@ namespace TarkovCrosshair
             Action changed = delegate { if (!loading) app.Changed(); };
             try { stylePanel = new StylePanel(G, changed); }
             catch (Exception ex) { Program.Log("UI: StylePanel: " + ex); stylePanel = null; }
-            return stylePanel ?? Missing("外观面板");
+            // v5.1.1 (X7, Leo 21 Nov): the 弹药提示 setup (弹匣容量 / 射速 / 换弹键 / 换弹时间 …) is the first group 「先设置」 of
+            // 外观 -> 弹药提示; built here by the settings window (one builder, same fields, 常调 stays in sync)
+            Control ammoSetup = BuildAmmoBox();
+            StylePanel sp = stylePanel as StylePanel;
+            ReleaseHeldOnShow(ammoSetup); // v5.1.1 (P3): BuildAmmoBox's grids, let go when the box first shows
+            if (sp != null) { sp.SetAmmoSetup(ammoSetup); return sp; }
+            return Stack(Missing("外观面板"), Group("弹药提示 · 先设置", ammoSetup));
         }
 
         // ---------------- 反馈 (last page) ----------------
@@ -109,20 +115,32 @@ namespace TarkovCrosshair
             ver.Margin = P(3, 2, 6, 4);
 
             FixUp(delegate { FbFonts(); });
-            pageHost.Resize += delegate { FbLayout(); };
+            // v5.1 round 3 (Leo): no in-app send box; feedback goes by the user's own email (联系方式 → 「打开邮箱」)
+            TableLayoutPanel root = HeldStack(fbHero, fbLead, fbCardGrid, fbContact, fbBanner, ver);
+            ReleaseHeldOnShow(root); // v5.1.1 (P3): held through the first fill, one layout pass on the first show
+            fbRoot = root;
+            // v5.1.1 (P3): a resize while 反馈 is not shown is laid out when the page shows (VisibleChanged), not at once
+            pageHost.Resize += delegate { if (fbRoot != null && !fbRoot.Visible) fbDirty = true; else FbLayout(); };
+            root.VisibleChanged += delegate { if (fbDirty && root.Visible) { fbDirty = false; FbLayout(); } };
+            // first layout at build, as before (same first look: FitControlHeights then gives the buttons the line height);
+            // v5.1.1 (P3): it lays out the page body only (was the whole window)
             FixUp(delegate { FbLayout(); });
             Disposed += delegate
             {
                 if (fbHeroFont != null) fbHeroFont.Dispose();
                 if (fbCardFont != null) fbCardFont.Dispose();
             };
-            // v5.1 round 3 (Leo): no in-app send box; feedback goes by the user's own email (联系方式 → 「打开邮箱」)
-            return Stack(fbHero, fbLead, fbCardGrid, fbContact, fbBanner, ver);
+            return root;
         }
+
+        /// <summary>v5.1.1 (P3): the 反馈 page body (FbLayout lays out only this, not the whole window).</summary>
+        private TableLayoutPanel fbRoot;
+        /// <summary>v5.1.1 (P3): the page host was resized while 反馈 was hidden: FbLayout on its next show.</summary>
+        private bool fbDirty;
 
         private TableLayoutPanel BuildContactRows()
         {
-            TableLayoutPanel g = Grid(3);
+            TableLayoutPanel g = HeldGrid(3);
             LinkLabel gh = new LinkLabel();
             // v5.1 (W30 text fit): the full address was wider than its card at 1280x720 @200 %; 复制 copies the full address
             gh.Text = "github.com/…/Tarkov-Hip-Aimer";
@@ -256,7 +274,7 @@ namespace TarkovCrosshair
             if (c.Buttons.Length > 0)
             {
                 // one button per line: a long label never pushes the card wider than its column
-                TableLayoutPanel bl = Grid(1);
+                TableLayoutPanel bl = HeldGrid(1);
                 bl.Margin = new Padding(0, S(6), 0, 0);
                 bl.BackColor = Color.Transparent;
                 bl.Tag = "theme:keep-fbbtns";
@@ -298,7 +316,9 @@ namespace TarkovCrosshair
             int cols = (w - 2 * gap) / 3 >= F(205) ? 3 : 1;
             int cw = cols == 3 ? (w - 2 * gap) / 3 : w;
 
-            SuspendLayout();
+            // v5.1.1 (P3): the page body's layout only (was the whole window's: SuspendLayout / ResumeLayout(true) on the form)
+            Control lay = fbRoot != null && !fbRoot.IsDisposed ? (Control)fbRoot : this;
+            lay.SuspendLayout();
             try
             {
                 if (cols != fbCols)
@@ -362,7 +382,7 @@ namespace TarkovCrosshair
                 fbBannerText.MaximumSize = new Size(Math.Max(S(120), w - fbBanner.Padding.Horizontal - bw - fbBannerText.Margin.Horizontal), 0);
                 FitBlockWidth(fbBanner, w);
             }
-            finally { ResumeLayout(true); }
+            finally { lay.ResumeLayout(true); }
             // second pass on the real bounds: the contact box and the update strip end where the card row ends
             int rowRight = cols == 3 ? fbCards[2].Right : 0; // the real right edge of the card row (inside the grid)
             if (rowRight > 0)
@@ -418,7 +438,7 @@ namespace TarkovCrosshair
             });
             b.Disposed += delegate { back.Dispose(); };
             Tip(b, "复制" + what + "：" + value);
-            FixUp(delegate { b.MinimumSize = new Size(TextRenderer.MeasureText("已复制 ✓", Font).Width + S(20), 0); });
+            FixUp(delegate { b.MinimumSize = new Size(TextW("已复制 ✓", Font) + S(20), 0); });
             return b;
         }
 

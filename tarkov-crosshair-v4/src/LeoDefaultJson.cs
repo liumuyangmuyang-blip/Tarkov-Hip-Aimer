@@ -1,6 +1,9 @@
 // v5.0 (W12, Leo 18 Nov 2026): Leo's own tuned settings.json, the source of the built-in default profile
 // (Profile.CreateLeoDefault takes the values of its profile 「Leo默认 (旧)」). Generated from
 // tarkov-crosshair-dev/v4-requests/LEO-DEFAULT-v5-settings.json; do not edit by hand.
+// v5.1.1 (X5, Leo 21 Nov 2026): profile 「Leo默认 (旧)」 updated to Leo's newly tuned values: 上抬 RecoilMaxPx 28.8 (4.00 %),
+// 站立静止偏移 StandAsZero true / StandOffsetX 24.48 / StandOffsetY -25.2 with Dirs and HandCustom stored relative to it
+// (every screen position unchanged), from his settings.json of 21 Nov. FOV stays 75. Nothing else changed.
 namespace TarkovCrosshair
 {
     internal static class LeoDefaultJson
@@ -278,36 +281,36 @@ namespace TarkovCrosshair
       ""Diameter"": 12,
       ""Dirs"": [
         {
-          ""OffX"": 0,
-          ""OffY"": -14.4
+          ""OffX"": -24.48,
+          ""OffY"": 10.800000000000004
         },
         {
-          ""OffX"": 0,
-          ""OffY"": 14.4
+          ""OffX"": -24.48,
+          ""OffY"": 39.600000000000016
         },
         {
-          ""OffX"": 97.2,
-          ""OffY"": 0
+          ""OffX"": 72.72,
+          ""OffY"": 25.200000000000006
         },
         {
-          ""OffX"": -37.440000000000005,
-          ""OffY"": 0
+          ""OffX"": -61.91999999999999,
+          ""OffY"": 25.200000000000006
         },
         {
-          ""OffX"": 68.73012,
-          ""OffY"": -10.18224
+          ""OffX"": 44.25011999999998,
+          ""OffY"": 15.017760000000012
         },
         {
-          ""OffX"": -26.473824,
-          ""OffY"": -10.18224
+          ""OffX"": -50.95382399999999,
+          ""OffY"": 15.017760000000012
         },
         {
-          ""OffX"": 68.73012,
-          ""OffY"": 10.18224
+          ""OffX"": 44.25011999999998,
+          ""OffY"": 35.38224000000002
         },
         {
-          ""OffX"": -26.473824,
-          ""OffY"": 10.18224
+          ""OffX"": -50.95382399999999,
+          ""OffY"": 35.38224000000002
         }
       ],
       ""Feather"": 1,
@@ -330,13 +333,13 @@ namespace TarkovCrosshair
         },
         {
           ""Custom"": true,
-          ""X"": 28.8,
-          ""Y"": 1.08
+          ""X"": 53.27999999999999,
+          ""Y"": 26.28000000000002
         },
         {
           ""Custom"": true,
-          ""X"": -72,
-          ""Y"": 0
+          ""X"": -47.52000000000001,
+          ""Y"": 25.200000000000006
         },
         {
           ""Custom"": false,
@@ -346,7 +349,7 @@ namespace TarkovCrosshair
         {
           ""Custom"": true,
           ""X"": -25.92,
-          ""Y"": 5.7600000000000007
+          ""Y"": 5.760000000000001
         },
         {
           ""Custom"": true,
@@ -393,7 +396,7 @@ namespace TarkovCrosshair
       ""RecoilDelayMs"": 30,
       ""RecoilDriftX"": 0,
       ""RecoilFallMs"": 180,
-      ""RecoilMaxPx"": 24,
+      ""RecoilMaxPx"": 28.8,
       ""RecoilRiseMs"": 300,
       ""RotationDeg"": 0,
       ""SavedDefault"": {
@@ -576,8 +579,9 @@ namespace TarkovCrosshair
       },
       ""SavedDefaultAt"": ""2026-11-17 23:58"",
       ""Shape"": ""cross"",
-      ""StandOffsetX"": 0,
-      ""StandOffsetY"": 0,
+      ""StandAsZero"": true,
+      ""StandOffsetX"": 24.48,
+      ""StandOffsetY"": -25.2,
       ""Style"": {
         ""Count"": 3,
         ""Gap"": 4,

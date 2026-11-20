@@ -31,6 +31,7 @@ namespace TarkovCrosshair
             AutoSizeMode = AutoSizeMode.GrowAndShrink;
             Margin = new Padding(0);
             Padding = new Padding(0);
+            SuspendLayout(); // v5.1.1 (X11): one layout for all the rows (was one per added row, O(n²))
             bold = Theme.Ui(Font.SizeInPoints, FontStyle.Bold);
             int u = Math.Max(10, Font.Height);
 
@@ -77,16 +78,25 @@ namespace TarkovCrosshair
                 }
             }
             SetWrapWidth(u * 36);
+            ResumeLayout(false);
         }
 
         /// <summary>Re-reads the answers (the user's keys may have changed). Cheap: text only.</summary>
         public void RefreshTexts()
         {
-            for (int i = 0; i < FaqText.Items.Length && i < answers.Count; i++)
+            // v5.1.1 (X11): set only what changed, all in one layout (this ran on every show of the page)
+            SuspendLayout();
+            bool changed = false;
+            try
             {
-                questions[i].Text = "问：" + FaqText.Question(i, g);
-                answers[i].Text = FaqText.Answer(i, g);
+                for (int i = 0; i < FaqText.Items.Length && i < answers.Count; i++)
+                {
+                    string q = "问：" + FaqText.Question(i, g), a = FaqText.Answer(i, g);
+                    if (questions[i].Text != q) { questions[i].Text = q; changed = true; }
+                    if (answers[i].Text != a) { answers[i].Text = a; changed = true; }
+                }
             }
+            finally { ResumeLayout(changed); }
         }
 
         public void SetWrapWidth(int px)
@@ -94,7 +104,9 @@ namespace TarkovCrosshair
             px = Math.Max(Font.Height * 8, px);
             if (px == wrapW) return;
             wrapW = px;
-            foreach (Label l in wraps) l.MaximumSize = new Size(px - l.Margin.Left, 0);
+            SuspendLayout(); // v5.1.1 (X11): one layout for every label's new wrap width
+            try { foreach (Label l in wraps) l.MaximumSize = new Size(px - l.Margin.Left, 0); }
+            finally { ResumeLayout(true); }
         }
 
         protected override void OnParentChanged(EventArgs e)

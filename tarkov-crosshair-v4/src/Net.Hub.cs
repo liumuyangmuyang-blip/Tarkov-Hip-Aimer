@@ -7,10 +7,10 @@
 //   settings change (常规 checkboxes):        net.SettingsChanged();
 //   反馈 page:                               net.CreateFeedbackPanel() (email box; v5.1 R3 no send box)
 //   统计 view:                               new MonitorPanel(net.CreateMonitorSource())
-//   wizard (W26):                           if (net.NeedsStatsQuestion) ... net.SetStatsConsent(answer)
+//   统计 (v5.1, Leo 21 Nov 2026):           on by default; 常规 / wizard checkbox -> settings + net.SettingsChanged()
 // Settings are the source of truth (GlobalSettings NetUpdateCheck / NetStatsConsent / NetCrashAsk via INetSettings);
 // net-prefs.json keeps only machine state (install id, skipped version, last check time) plus a mirror of the two switches.
-// Consent: NetStatsConsent null = not asked = nothing sent. Default answer 不用. Crash logs / feedback: the user's own email.
+// Stats: opt-out. NetStatsConsent null / true = heartbeat, false = nothing (stops at once). Crash logs / feedback: own email.
 using System;
 using System.Diagnostics;
 using System.Threading;
@@ -74,8 +74,7 @@ namespace TarkovCrosshair
             SettingsChanged();
         }
 
-        /// <summary>The standalone 统计 question for when the wizard did not ask it (old users updating to v5.1). Default 不用.
-        /// Returns the answer, or null when nothing was asked.</summary>
+        /// <summary>v5.1 (Leo 21 Nov 2026): no question any more (stats on by default); always returns null, asks nothing.</summary>
         public bool? AskStatsIfNeeded(IWin32Window owner)
         {
             if (!NeedsStatsQuestion) return null;

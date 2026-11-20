@@ -199,7 +199,7 @@ namespace TarkovCrosshair
         /// <summary>The largest % (2 decimals, rounded DOWN) whose px stays within maxPx: the 百分比偏移 box maximum.</summary>
         public static decimal MaxPct(double maxPx, GlobalSettings g)
         {
-            double p = Math.Abs(OffsetUnits.ToPct(maxPx, g));
+            double p = Math.Abs(OffsetUnits.ToPct(maxPx, g)) * OffsetUnits.MaxFovFactor(g); // v5.1.1: either FOV side fits
             if (double.IsNaN(p) || double.IsInfinity(p) || p > 99999) p = 99999;
             return (decimal)(Math.Floor(p * 100.0 + 1e-6) / 100.0);
         }
@@ -654,6 +654,14 @@ namespace TarkovCrosshair
             public Func<Control> Build;
             public bool Scroll, Built;
             public long BuildMs = -1, ApplyMs = -1;
+            // v5.1.1 (X11): chunked builder (null between chunks, body last), advanced one chunk per idle slot by PrebuildStep
+            public Func<IEnumerable<Control>> Steps;
+            public IEnumerator<Control> Iter;
+            public Control Pending;
+            public bool IterDone;
+            public int R0, A0, F0;
+            public long ChunkMs, LastChunk, MaxChunk;
+            public long LastChunkMs() { return LastChunk; }
         }
 
         /// <summary>v5.0.2: true once the constructor is done (a page built later themes, fills and fits itself).</summary>
@@ -717,6 +725,7 @@ namespace TarkovCrosshair
 
         private KeyButton capturing;
         private readonly KeyCapture capture = new KeyCapture();
+        private readonly MouseButtonPoll mousePoll = new MouseButtonPoll(); // v5.1.1 (X1, F3): side / middle buttons for key boxes
         private bool suppressNextClick;
         public bool AllowClose;
 
@@ -816,6 +825,11 @@ namespace TarkovCrosshair
             AddPage(10, BuildGuide, false);
             AddPage(11, BuildFeedback, true);
             AddPage(12, BuildFaq, true); // v5.1 (W26's FaqPage): a bottom link before 反馈 (NavModel.AddLink)
+            // v5.1.1 (X11): the chunked builders are run one chunk per idle slot in the background (PrebuildStep)
+            pages[1].Steps = BuildKeysSteps;
+            pages[2].Steps = BuildGeneralSteps;
+            pages[6].Steps = BuildHandSteps;
+            pages[9].Steps = BuildFilterSteps;
             advLazy = new LazyPageState(pages.Count);
             EnsureBuilt(0);
             BuildNav();
@@ -854,15 +868,41 @@ namespace TarkovCrosshair
             System.Diagnostics.Stopwatch sw = System.Diagnostics.Stopwatch.StartNew();
             int r0 = refreshers.Count, a0 = advOnly.Count, f0 = folds.Count;
             Control content;
-            try { content = pg.Build(); }
-            catch (Exception ex) { Program.Log("UI: page " + pg.Id + ": " + ex); content = Missing("「" + pg.Title + "」页"); }
+            if (pg.Iter != null)
+            {
+                // v5.1.1 (X11): started in the background: the ranges begin where its first chunk began; finish the rest now
+                r0 = pg.R0; a0 = pg.A0; f0 = pg.F0;
+                while (!pg.IterDone) AdvanceChunk(pg);
+                content = pg.Pending;
+                pg.Iter = null; pg.Pending = null;
+            }
+            else
+            {
+                SyncOffsetOwners(-1); // v5.1.1 (X9): boxes registered before this build belong to the shell
+                try { content = pg.Build(); }
+                catch (Exception ex) { Program.Log("UI: page " + pg.Id + ": " + ex); content = Missing("「" + pg.Title + "」页"); }
+            }
+            SyncOffsetOwners(index); // v5.1.1 (X9): ShowPage refreshes only this page's 百分比偏移 boxes
             pg.RefStart = r0; pg.RefEnd = refreshers.Count;
             pg.AdvStart = a0; pg.AdvEnd = advOnly.Count;
             pg.FoldStart = f0; pg.FoldEnd = folds.Count;
+            long tBody = sw.ElapsedMilliseconds;
+            // v5.1.1 (X11, measured on Mono: 「挂上主题」 100-960 ms, 控件高度 up to 200 ms per page): theming (font, colours,
+            // flat style) and the height / value fill set properties on hundreds of controls, and each set laid out its live
+            // AutoSize parents again. Every container of the body is held (suspended) through attach + fill and resumed once,
+            // children first (ReleaseLayouts(held, true)), so each container lays out once.
+            long tHeights = -1, tApply = -1, tAttach = tBody;
+            List<Control> held = HoldLayouts(content);
+            if (content != null && (content.Controls.Count > 0 || content is ScrollableControl)) { content.SuspendLayout(); held.Insert(0, content); }
+            if (pg.Scroller != null) { pg.Scroller.SuspendLayout(); held.Insert(0, pg.Scroller); }
+            bool released = false;
+            try
+            {
             pg.Host.SuspendLayout();
             try { AttachContent(pg, index, content); }
             finally { pg.Host.ResumeLayout(false); }
-            pg.BuildMs = sw.ElapsedMilliseconds;
+            tAttach = sw.ElapsedMilliseconds;
+            pg.BuildMs = sw.ElapsedMilliseconds + pg.ChunkMs;
             if (pg.Id == "style")
             {
                 if (stylePanel is StylePanel) ((StylePanel)stylePanel).ScrollPause = ScrollPaused;
@@ -878,6 +918,7 @@ namespace TarkovCrosshair
                 {
                     FitControlHeights();
                     FitComboHeights(pg.Host);
+                    tHeights = sw.ElapsedMilliseconds;
                     ApplyAdvancedPage(index); // values + 高级设置 rows and folds of this page
                     if (pg.Id == "hand") PaintHandRows();
                     if (stylePanel != null && pg.Id == "style") { StylePanel sp = stylePanel as StylePanel; if (sp != null) { bool was = loading; loading = true; try { sp.RefreshValues(); } finally { loading = was; } } }
@@ -888,11 +929,21 @@ namespace TarkovCrosshair
                     pg.Host.ResumeLayout(false);
                     ResumeLayout(false);
                 }
+                tApply = sw.ElapsedMilliseconds;
+                released = true;
+                ReleaseLayouts(held, true);
                 pg.Host.PerformLayout();
             }
+            }
+            finally { if (!released) ReleaseLayouts(held, true); }
+            long tLayout = sw.ElapsedMilliseconds;
             // v5.1 (W30, decision 9): every label / button / box fits its text (real font metrics + margin), no CJK in mono
             try { TextFit.FitPage(pg.Host, pg.Id); } catch (Exception ex) { Program.Log("UI: text fit " + pg.Id + ": " + ex.Message); }
-            pg.ApplyMs = sw.ElapsedMilliseconds - pg.BuildMs;
+            pg.ApplyMs = sw.ElapsedMilliseconds + pg.ChunkMs - pg.BuildMs;
+            // v5.1.1 (X11): where a page build spends its time (one crash.log line per page, once)
+            Program.Log("启动耗时 设置页「" + pg.Title + "」明细: 内容 " + (tBody + pg.ChunkMs) + " ms，挂上主题 " + (tAttach - tBody) + " ms，控件高度 " +
+                (tHeights >= 0 ? tHeights - tAttach : 0) + " ms，填值 " + (tApply >= 0 ? tApply - tHeights : 0) + " ms，排版 " +
+                (tApply >= 0 ? tLayout - tApply : 0) + " ms，文字适配 " + (sw.ElapsedMilliseconds - tLayout) + " ms");
             PageBuildTimes.Add(pg.Id, sw.ElapsedMilliseconds);
             Program.Log(PageBuildTimes.Line(pg.Title, pg.BuildMs, pg.ApplyMs));
         }
@@ -1046,6 +1097,7 @@ namespace TarkovCrosshair
             finally { ResumeLayout(true); } // the one relayout
             FitCompact();
             FitTopBar();
+            ScheduleResizeRefit(); // v5.1.1 (X11): the shown page refits once at the final size
             SyncPause();
             if (!background && lblSave != null && lblSave.ForeColor != Theme.ColWarn && lblSave.ForeColor != Theme.ColMuted) saveFlash.Start();
         }
@@ -1100,6 +1152,7 @@ namespace TarkovCrosshair
             if (body == null || body.ColumnStyles.Count == 0) return;
             if (LayoutSkip.Minimised(WindowState == FormWindowState.Minimized, ClientSize.Width, ClientSize.Height)) return; // v4.3.1
             if (frozen) return; // dragging: nothing is laid out or rescaled until ResizeEnd (Unfreeze)
+            ScheduleResizeRefit(); // v5.1.1 (X11): maximise / restore / monitor move (no ResizeEnd): refit after 150 ms idle
             FitCompact();
             int nw = NavWidth;
             if ((int)body.ColumnStyles[0].Width != nw) body.ColumnStyles[0].Width = nw;
@@ -1216,6 +1269,24 @@ namespace TarkovCrosshair
             return -1;
         }
 
+        /// <summary>v5.1.1 (X6): the right edge (page-host px) where a label is cut: the nearest parents that do not grow
+        /// with their content (a card of the shared content width, a docked panel) clip it at their client width minus
+        /// their padding and the label's own right margin. int.MaxValue when no such parent.</summary>
+        private int ClipRight(Control l)
+        {
+            int limit = int.MaxValue;
+            for (Control p = l.Parent; p != null && p != pageHost; p = p.Parent)
+            {
+                if (p.AutoSize && p.Dock == DockStyle.None) continue;
+                if (p.ClientSize.Width <= S(160)) continue; // not laid out yet: the next FitWrapping pass sees it
+                int px = LeftInPageHost(p);
+                if (px < 0) break;
+                int r = px + p.ClientSize.Width - p.Padding.Right;
+                if (r < limit) limit = r;
+            }
+            return limit == int.MaxValue ? limit : limit - l.Margin.Right - S(4);
+        }
+
         /// <summary>
         /// Wrap width = min(preferred, what is left of the visible page to the right of the label), so long notes and the
         /// hint columns never run off the page (brute-ui F2: 1280x720 at 200 % scrolled sideways and cut the hints).
@@ -1228,17 +1299,26 @@ namespace TarkovCrosshair
             // right edge a label may reach: page padding (10) + the section's padding / margin (14 + 12) + label margin + slack
             int right = pageHost.ClientSize.Width - SystemInformation.VerticalScrollBarWidth - S(10 + 14 + 12 + 6 + 6);
             bool changed = false;
+            Control shown = current >= 0 && current < pages.Count ? pages[current].Host : null;
+            // v5.1.1 (X11, R2 #1; Mono: 滤镜 refit after a width change 473 ms): every size set below laid out the page's AutoSize
+            // panels up the chain at once. Phase a (wrap widths) and phase b (card widths + label column) each run with the
+            // page's containers held and lay them out once on release (children first).
+            List<Control> held = shown != null && pages[current].Content != null ? HoldLayouts(pages[current].Content) : null;
+            try
+            {
             foreach (KeyValuePair<Label, int> kv in wrapping)
             {
+                if (!OnShownPage(kv.Key, shown)) continue; // v5.1.1 (X11): other pages are fitted when they show
                 int avail = flat;
                 int x = LeftInPageHost(kv.Key);
-                if (x > 0) avail = Math.Max(S(120), right - x);
+                if (x > 0) avail = Math.Max(S(120), Math.Min(right, ClipRight(kv.Key)) - x);
                 int w = Math.Min(F(kv.Value), avail);
                 if (kv.Key.MaximumSize.Width != w) { kv.Key.MaximumSize = new Size(w, 0); changed = true; }
             }
             // drawn controls (跳跃 plot) narrower than their preferred width on a narrow page (F2: no sideways scrolling)
             foreach (KeyValuePair<Control, int> kv in fitWidth)
             {
+                if (!OnShownPage(kv.Key, shown)) continue;
                 int x = LeftInPageHost(kv.Key);
                 int avail = x > 0 ? Math.Max(S(200), right - x) : flat;
                 int w = Math.Min(F(kv.Value), avail);
@@ -1248,7 +1328,11 @@ namespace TarkovCrosshair
             {
                 try { if (fix(right)) changed = true; } catch (Exception) { }
             }
-            if (FitWidths()) changed = true;
+            }
+            finally { ReleaseLayouts(held, true); }
+            held = shown != null && pages[current].Content != null ? HoldLayouts(pages[current].Content) : null;
+            try { if (FitWidths()) changed = true; }
+            finally { ReleaseLayouts(held, true); }
             // brute-ui F7: notes that got shorter must also shrink the scroll range (no scroll bar when the page fits)
             if (changed && current >= 0 && current < pages.Count && pages[current].Scroller != null)
             {
@@ -1281,7 +1365,7 @@ namespace TarkovCrosshair
             Dictionary<FoldHeader, int> inCard = new Dictionary<FoldHeader, int>();
             foreach (FoldHeader f in folds)
             {
-                if (f.IsDisposed || !InsideSection(f)) continue;
+                if (f.IsDisposed || !InsideSection(f) || !OnShownPage(f, pg.Host)) continue; // X11 (R2 #2): shown page only
                 inCard[f] = f.Width;
                 int pref = f.GetPreferredSize(Size.Empty).Width;
                 if (f.Width != pref) f.Width = pref;
@@ -1290,7 +1374,7 @@ namespace TarkovCrosshair
             // so every card still ends at one x (it is wider than its minimum = its own content decides its width)
             foreach (Section sec in sections)
             {
-                if (sec.IsDisposed || !sec.Visible) continue;
+                if (sec.IsDisposed || !sec.Visible || InsideSection(sec)) continue; // X11 (R2 #3): the outer card contains it
                 int x = LeftInPageHost(sec);
                 if (x < 0) continue;
                 bool onPage = false;
@@ -1360,7 +1444,20 @@ namespace TarkovCrosshair
             return changed;
         }
 
-        private static int LabelTextWidth(Label l) { return TextRenderer.MeasureText(l.Text, l.Font).Width + l.Padding.Horizontal; }
+        private static int LabelTextWidth(Label l) { return TextWidthCache.Width(l.Text, l.Font) + l.Padding.Horizontal; }
+
+        /// <summary>v5.1.1 (X11): true for a control on the shown page, or on no page at all (the shell). Pages that are not
+        /// shown keep their old fit until their own (first) show.</summary>
+        private bool OnShownPage(Control c, Control shown)
+        {
+            for (Control p = c; p != null; p = p.Parent)
+            {
+                if (p == shown) return true;
+                if (p == pageHost) break;
+                foreach (Page pg in pages) if (pg.Host == p) return false;
+            }
+            return true;
+        }
 
         /// <summary>A card's width from its own content (title + body), not from the MinimumSize FitWidths gave it.</summary>
         private static int NaturalWidth(Section sec)
@@ -1633,6 +1730,9 @@ namespace TarkovCrosshair
             public OffsetKind Kind;
             public double MaxPx;
             public bool Positive = true;     // arrow state (kept while the value is 0)
+            public bool Switched;            // v5.1.1 (X5): a 换手 value (the FOV sides swap)
+            public Func<double> Origin;      // v5.1.1 (X5): stored relative to this X (站立静止偏移); null = 0
+            public double O() { if (Origin == null) return 0; try { double o = Origin(); return double.IsNaN(o) || double.IsInfinity(o) ? 0 : o; } catch (Exception) { return 0; } }
             public ArrowToggle Arrow;        // Toggle only
             public ArrowToggle FixedArrow;   // AlwaysPositive only (上抬 = ↑, not clickable)
             public PctUpDown Box;
@@ -1697,7 +1797,13 @@ namespace TarkovCrosshair
                     f.Positive = !f.Positive;
                     ShowArrow(f);
                     double cur = f.Get();
-                    if (cur != 0 && !double.IsNaN(cur)) { f.Set(-cur); app.Changed(); } // exact: no rounding on a flip
+                    if (cur != 0 && !double.IsNaN(cur))
+                    {
+                        // exact: no rounding on a flip. v5.1.1 (X5): when the two X sides have different FOV factors the shown %
+                        // is kept instead (the box number stays, the px follow the new side)
+                        if (f.Axis != OffsetAxis.X || ViewScale.FovRatio(G) == 1.0) { f.Set(-cur); app.Changed(); }
+                        else WriteOffset(f);
+                    }
                 };
                 Tip(b, axis == OffsetAxis.X ? "点一下换方向：← 往左 / → 往右" : "点一下换方向：↑ 往上 / ↓ 往下");
                 f.Arrow = b;
@@ -1805,7 +1911,9 @@ namespace TarkovCrosshair
             lineControls.RemoveAll(delegate(Control c) { return c.IsDisposed; });
             foreach (Control c in lineControls)
             {
-                Size mn = new Size(c.MinimumSize.Width, h), mx = new Size(c.MaximumSize.Width, h);
+                // v5.1.1 (X6): a button is never cut to the line height: it gets at least its own measured text height
+                int ch = c is ButtonBase ? Math.Max(h, Theme.ButtonNeedH((ButtonBase)c)) : h;
+                Size mn = new Size(c.MinimumSize.Width, ch), mx = new Size(c.MaximumSize.Width, ch);
                 try
                 {
                     if (c.MinimumSize != mn) c.MinimumSize = mn;
@@ -1828,14 +1936,14 @@ namespace TarkovCrosshair
             f.Arrow.Positive = f.Positive;
             double px = 0;
             try { px = f.Get(); } catch (Exception) { }
-            f.Arrow.Dim = OffsetUnits.Round(OffsetUnits.ToPct(px, G)) == 0;
+            f.Arrow.Dim = OffsetUnits.Round(OffsetUnits.ToPctAt(px, f.O(), f.Axis, f.Switched, G)) == 0;
         }
 
         /// <summary>Box -> model: px = ±ToPx(box %), never rounded.</summary>
         private void WriteOffset(OffsetField f)
         {
-            double mag = OffsetUnits.ToPx((double)f.Box.Value, G);
-            double px = (f.Kind == OffsetKind.Toggle && !f.Positive) ? -mag : mag;
+            double pct = (double)f.Box.Value;
+            double px = OffsetUnits.ToPxAt((f.Kind == OffsetKind.Toggle && !f.Positive) ? -pct : pct, f.O(), f.Axis, f.Switched, G); // v5.1.1: FOV side
             if (px > f.MaxPx) px = f.MaxPx;
             if (px < -f.MaxPx) px = -f.MaxPx;
             f.Set(px);
@@ -1858,9 +1966,10 @@ namespace TarkovCrosshair
                 }
                 double px = f.Get();
                 if (double.IsNaN(px) || double.IsInfinity(px)) px = 0;
-                if (f.Kind == OffsetKind.Toggle && OffsetUnits.Round(OffsetUnits.ToPct(px, G)) != 0) f.Positive = px > 0;
+                double shown = OffsetUnits.ToPctAt(px, f.O(), f.Axis, f.Switched, G); // v5.1.1 (X5): the on-screen % (FOV side on X)
+                if (f.Kind == OffsetKind.Toggle && OffsetUnits.Round(shown) != 0) f.Positive = px > 0;
                 ShowArrow(f);
-                f.Box.Value = UiNum.ToDec(Math.Abs(OffsetUnits.ToPct(px, G)), f.Box.Minimum, f.Box.Maximum, f.Box.DecimalPlaces);
+                f.Box.Value = UiNum.ToDec(Math.Abs(shown), f.Box.Minimum, f.Box.Maximum, f.Box.DecimalPlaces);
             }
             finally { loading = was; }
         }
@@ -1869,6 +1978,26 @@ namespace TarkovCrosshair
         private void RefreshOffsets()
         {
             foreach (Action a in offsetRefreshers) { try { a(); } catch (Exception ex) { Program.Log("UI: offset refresh: " + ex.Message); } }
+        }
+
+        /// <summary>v5.1.1 (X9): page index that registered each offsetRefreshers entry (-1 = the shell, e.g. 首页).</summary>
+        private readonly List<int> offsetOwner = new List<int>();
+
+        private void SyncOffsetOwners(int owner)
+        {
+            while (offsetOwner.Count < offsetRefreshers.Count) offsetOwner.Add(owner);
+        }
+
+        /// <summary>v5.1.1 (X9, Leo: every menu click stuttered): only the shown page's boxes (and the shell's) re-read.</summary>
+        private void RefreshPageOffsets(int index)
+        {
+            SyncOffsetOwners(-1);
+            for (int i = 0; i < offsetRefreshers.Count; i++)
+            {
+                int o = offsetOwner[i];
+                if (o != index && o != -1) continue;
+                try { offsetRefreshers[i](); } catch (Exception ex) { Program.Log("UI: offset refresh: " + ex.Message); }
+            }
         }
 
         private ComboBox Choice(string[] labels, string[] values, Func<string> get, Action<string> set)
@@ -2060,6 +2189,48 @@ namespace TarkovCrosshair
 
         private bool refitPosted;
 
+        // v5.1.1 (X11, Leo 21 Nov): the text fit is cached per page per (page-host client width, text scale) -- PageSwitchCache.
+        // When the width really changes (resize ends, maximise, restore, monitor move) the SHOWN page is refitted once, 150 ms
+        // after the last size change; every other page keeps its old fit and is refitted on its next show (its cache key no
+        // longer matches). No fit work on each resize tick.
+        internal const int ResizeRefitMs = 150;
+        private System.Windows.Forms.Timer resizeRefit;
+        /// <summary>Probe / tests: refits done by the resize debounce.</summary>
+        internal int ResizeRefits;
+
+        private void ScheduleResizeRefit()
+        {
+            if (IsDisposed || !constructed) return;
+            if (resizeRefit == null)
+            {
+                resizeRefit = new System.Windows.Forms.Timer();
+                resizeRefit.Interval = ResizeRefitMs;
+                resizeRefit.Tick += delegate { resizeRefit.Stop(); ResizeRefitNow(); };
+            }
+            resizeRefit.Stop(); // debounce: restart the 150 ms on every size change
+            resizeRefit.Start();
+        }
+
+        /// <summary>Refits the shown page if its cached fit was for another width / scale; returns true when it refitted.</summary>
+        internal bool ResizeRefitNow()
+        {
+            if (IsDisposed || frozen || pageHost == null || current < 0 || current >= pages.Count) return false;
+            if (WindowState == FormWindowState.Minimized) return false;
+            Page pg = pages[current];
+            if (!pg.Built || pg.Scroller == null || pg.Content == null) return false;
+            Size area = pageHost.ClientSize;
+            if (area.Width <= 0) return false;
+            int ver = app.ChangeCount;
+            if (!switchCache.Plan(current, ver, area.Width, area.Height, k).Fit) return false; // same width + scale: nothing to do
+            System.Diagnostics.Stopwatch sw = System.Diagnostics.Stopwatch.StartNew();
+            try { FitWrapping(); pg.Content.PerformLayout(); pg.Scroller.PerformLayout(); }
+            catch (Exception ex) { Program.Log("UI: resize refit: " + ex.Message); }
+            switchCache.MarkFit(current, ver, area.Width, area.Height, k);
+            ResizeRefits++;
+            if (sw.ElapsedMilliseconds > SwitchTimer.LimitMs) Program.Log("UI: 窗口大小变了，重新适配文字 " + pg.Id + " " + sw.ElapsedMilliseconds + " ms（宽 " + area.Width + "）");
+            return true;
+        }
+
         /// <summary>Leo 17 Nov (aligned UI): one FitWrapping pass after the pending layout, e.g. when a fold opened or 高级设置
         /// changed, so cards, notes and the label column use the real positions of what just became visible.</summary>
         private void PostRefit()
@@ -2087,6 +2258,19 @@ namespace TarkovCrosshair
         }
 
         // ---------------- pages & navigation ----------------
+
+        /// <summary>v5.1.1 (X5): runs a page's chunked builder (BuildXSteps: null between chunks, the body last) to the end.</summary>
+        private static Control Last(IEnumerable<Control> steps)
+        {
+            Control last = null;
+            foreach (Control c in steps) if (c != null) last = c;
+            return last;
+        }
+
+        private Control BuildKeys() { return Last(BuildKeysSteps()); }
+        private Control BuildGeneral() { return Last(BuildGeneralSteps()); }
+        private Control BuildHand() { return Last(BuildHandSteps()); }
+        private Control BuildFilter() { return Last(BuildFilterSteps()); }
 
         private void AddPage(int index, Func<Control> build, bool scroll)
         {
@@ -2259,9 +2443,12 @@ namespace TarkovCrosshair
             ShowPage(UiPages.IndexOf(it.Id));
         }
 
+        private bool navFitted;
+
         private void SetNavExpanded(bool on)
         {
             if (navModel == null) return;
+            bool changed = navModel.Expanded != on || !navFitted; // v5.1.1 (X9): a switch inside the same menu re-fits nothing
             navModel.Expanded = on;
             navBar.SuspendLayout();
             try
@@ -2269,10 +2456,12 @@ namespace TarkovCrosshair
                 for (int i = 0; i < navItems.Count; i++)
                 {
                     bool vis = navModel.IsVisible(navModel.Items[i]);
-                    if (navItems[i].Visible != vis) navItems[i].Visible = vis;
+                    if (navItems[i].Visible != vis) { navItems[i].Visible = vis; changed = true; }
                 }
             }
             finally { navBar.ResumeLayout(false); }
+            if (!changed) return;
+            navFitted = true;
             FitNav();
         }
 
@@ -2341,34 +2530,71 @@ namespace TarkovCrosshair
         {
             if (index < 0 || index >= pages.Count) return;
             if (index == current) return;
+            Page next = pages[index];
+            // v5.1.1 (X9, Leo 21 Nov: "每次点菜单 就卡一下"): a switch to a built page with nothing changed since its last show
+            // does no offset refresh, no FitWrapping and no PerformLayout; each step is timed, a switch > 30 ms goes to crash.log
+            SwitchTimer tm = new SwitchTimer(next.Id);
             CommitEdits();
             CancelCapture();
-            Page next = pages[index];
+            tm.Step("commit");
             bool fresh = !next.Built;
             EnsureBuilt(index); // v5.0.2: first visit builds the body (filled by EnsureBuilt)
-            if (!fresh && advLazy != null && advLazy.Stale(index)) ApplyAdvancedPage(index); // v4.3: 高级设置 changed on another page
-            next.Host.Visible = true;
-            next.Host.BringToFront();
-            if (current >= 0)
+            if (fresh) { switchCache.Invalidate(index); tm.Step("build"); }
+            if (idle.HasOwner(next.Id)) { idle.Flush(next.Id); switchCache.InvalidateFit(index); tm.Step("idle"); } // X11: no half-built page
+            if (!fresh && advLazy != null && advLazy.Stale(index))
             {
-                pages[current].Host.Visible = false;
-                pages[current].Nav.Selected = false;
+                ApplyAdvancedPage(index); // v4.3: 高级设置 changed on another page
+                switchCache.InvalidateFit(index);
+                tm.Step("advanced");
             }
-            current = index;
-            next.Nav.Selected = true;
-            if (navModel != null)
+            int ver = app.ChangeCount;
+            Size area = pageHost != null ? pageHost.ClientSize : Size.Empty;
+            PageSwitchPlan plan = switchCache.Plan(index, ver, area.Width, area.Height, k);
+            // one page-host layout for hide-old + show-new (was one each); the nav bar keeps its own suspend in SetNavExpanded
+            if (pageHost != null) pageHost.SuspendLayout();
+            try
             {
-                // v5.1: the 准星 sub-menu is open while one of its pages is shown, closed on 滤镜 / 首页 / 指南 / 反馈
-                int mi = navModel.IndexOfPage(next.Id);
-                SetNavExpanded(mi >= 0 && navModel.Items[mi].Parent != null);
+                // v5.1.1 (X11, measured on Mono: 'show' 60-260 ms on EVERY switch, Leo's Windows log 0.4-2 s): Visible = true
+                // raises VisibleChanged in every nested panel, and ScrollableControl.OnVisibleChanged runs PerformLayout in each
+                // one, each re-measuring its subtree. The page was laid out when it was built / last fitted, so those layouts are
+                // held (suspended) while it is shown; the fit below still lays it out when the size or the content changed.
+                List<Control> held = fresh ? null : HoldLayouts(next.Host); // the fit below lays it out when needed
+                try { next.Host.Visible = true; }
+                finally { ReleaseLayouts(held); }
+                next.Host.BringToFront();
+                if (current >= 0)
+                {
+                    pages[current].Host.Visible = false;
+                    pages[current].Nav.Selected = false;
+                }
+                current = index;
+                next.Nav.Selected = true;
+                tm.Step("show");
+                if (navModel != null)
+                {
+                    // v5.1: the 准星 sub-menu is open while one of its pages is shown, closed on 滤镜 / 首页 / 指南 / 反馈
+                    int mi = navModel.IndexOfPage(next.Id);
+                    SetNavExpanded(mi >= 0 && navModel.Items[mi].Parent != null);
+                    tm.Step("nav");
+                }
+                if (plan.Offsets)
+                {
+                    RefreshPageOffsets(index); // 常规 (分辨率 / FOV) or the tutorial may have changed what 1 % is
+                    switchCache.MarkOffsets(index, ver);
+                    tm.Step("offsets");
+                }
             }
-            RefreshOffsets(); // 常规 (分辨率 / FOV) or the tutorial may have changed what 1 % is
-            if (next.Scroller != null && next.Content != null)
+            finally { if (pageHost != null) pageHost.ResumeLayout(true); }
+            tm.Step("layout");
+            if (plan.Fit && next.Scroller != null && next.Content != null)
             {
                 // F2 / F7: wrap widths follow this page's real column positions; then recompute its scroll range
                 try { FitWrapping(); next.Content.PerformLayout(); next.Scroller.PerformLayout(); } catch (Exception) { }
+                switchCache.MarkFit(index, ver, area.Width, area.Height, k);
+                tm.Step("fit");
             }
             if (next.Heading.Parent != null) next.Heading.Restart();
+            tm.Step("heading");
             if (next.Id == "hand" && handSeen != app.ChangeCount) // v5.1: only when something changed since 换手 was last shown
             {
                 handSeen = app.ChangeCount;
@@ -2378,8 +2604,86 @@ namespace TarkovCrosshair
                 try { foreach (Action r in handRefreshers) r(); }
                 finally { loading = was; }
                 PaintHandRows();
+                tm.Step("hand");
             }
+            string slow = Visible ? tm.Report() : null; // the hidden layout warm-up (PrebuildStep) is timed by PrebuildMs
+            if (slow != null) Program.Log(slow + (fresh ? " (首次打开)" : ""));
         }
+
+        /// <summary>v5.1.1 (X11): every container below root, layout suspended (parents first). Pair with ReleaseLayouts.</summary>
+        internal static List<Control> HoldLayouts(Control root)
+        {
+            List<Control> list = new List<Control>();
+            if (root == null) return list;
+            Stack<Control> st = new Stack<Control>();
+            foreach (Control k in root.Controls) st.Push(k);
+            while (st.Count > 0)
+            {
+                Control c = st.Pop();
+                if (c.Controls.Count == 0 && !(c is ScrollableControl)) continue;
+                c.SuspendLayout();
+                list.Add(c);
+                foreach (Control k in c.Controls) st.Push(k);
+            }
+            return list;
+        }
+
+        /// <summary>v5.1.1 (X11): resumes what HoldLayouts suspended (children first) without running the held layouts.</summary>
+        internal static void ReleaseLayouts(List<Control> list) { ReleaseLayouts(list, false); }
+
+        /// <summary>perform = true: each container lays out once as it is resumed (children first).</summary>
+        internal static void ReleaseLayouts(List<Control> list, bool perform)
+        {
+            if (list == null) return;
+            for (int i = list.Count - 1; i >= 0; i--) { try { list[i].ResumeLayout(perform); } catch (Exception) { } }
+        }
+
+        /// <summary>v5.1.1 (X9): per page, the version / size its offset boxes and layout were last brought up to date at.</summary>
+        private readonly PageSwitchCache switchCache = new PageSwitchCache();
+
+        // ---------------------------------------------------------------- v5.1.1 (X11): idle-slice jobs for the page builders
+        /// <summary>Longest time one idle slice may run (ms). Each queued step must itself be short (a few ms).</summary>
+        internal const int IdleSliceMs = 25;
+        private readonly IdleWork idle = new IdleWork();
+        private System.Windows.Forms.Timer idleTimer;
+        /// <summary>Probe / tests: the idle queue (pending count, longest slice).</summary>
+        internal IdleWork Idle { get { return idle; } }
+
+        /// <summary>
+        /// v5.1.1 (X11): run job later on the UI thread, in an idle slice of at most IdleSliceMs. pageId = the page the job
+        /// belongs to (UiPages.Ids, e.g. "style"): ShowPage runs that page's pending jobs before the page is shown, so a page
+        /// never shows half built. pageId null = shell work, never forced. Use it for heavy parts of a page (sub-tabs that
+        /// are not visible yet, closed 高级设置 groups, previews). Jobs run in the order queued.
+        /// </summary>
+        public void QueueIdle(string pageId, Action job)
+        {
+            if (job == null) return;
+            QueueIdleSteps(pageId, delegate { job(); return false; });
+        }
+
+        /// <summary>Same as QueueIdle, for a build cut into steps: step returns true to be called again (next step), false
+        /// when done. Each call should take a few ms at most; the slice ends when IdleSliceMs is used up.</summary>
+        public void QueueIdleSteps(string pageId, Func<bool> step)
+        {
+            if (step == null || IsDisposed) return;
+            if (idle.OnError == null) idle.OnError = delegate(string name, Exception ex) { Program.Log("UI: idle job " + name + ": " + ex.Message); };
+            idle.Enqueue(pageId, pageId, step);
+            if (idleTimer == null)
+            {
+                idleTimer = new System.Windows.Forms.Timer();
+                idleTimer.Interval = 15;
+                idleTimer.Tick += delegate
+                {
+                    if (IsDisposed || idle.Pending == 0) { idleTimer.Stop(); return; }
+                    if (frozen || chunking != null) return; // X11: never between the chunks of a page build (its ranges)
+                    if (!idle.RunSlice(IdleSliceMs)) idleTimer.Stop();
+                };
+            }
+            if (!idleTimer.Enabled) idleTimer.Start();
+        }
+
+        /// <summary>Runs every pending idle job of this page now (before it is shown, or before the tutorial reads it).</summary>
+        public void FlushIdle(string pageId) { idle.Flush(pageId); }
 
         /// <summary>For TutorialForm: show a page by id or title, with fresh values.</summary>
         public void JumpToPage(string idOrTitle)
@@ -2472,6 +2776,10 @@ namespace TarkovCrosshair
                 capture.Start();
                 b.Text = capture.Shown;
                 b.ForeColor = Theme.ColAccent;
+                mousePoll.Start(delegate(int pvk) // v5.1.1 (X1, F3)
+                {
+                    if (capturing == b && capture.Mouse(pvk, ModsOf(Control.ModifierKeys)) == KeyCapture.Result.Done) FinishCapture();
+                });
             };
             b.MouseDown += delegate(object s, MouseEventArgs e)
             {
@@ -2500,6 +2808,7 @@ namespace TarkovCrosshair
 
         private void CancelCapture()
         {
+            mousePoll.Stop(); // v5.1.1 (X1, F3)
             KeyButton b = capturing;
             capturing = null;
             if (b != null)
@@ -2512,6 +2821,7 @@ namespace TarkovCrosshair
         /// <summary>Applies capture.Vk / capture.Mods to the capturing button's action (asks first if another action has it).</summary>
         private void FinishCapture()
         {
+            mousePoll.Stop(); // v5.1.1 (X1, F3)
             KeyButton b = capturing;
             capturing = null;
             if (b == null) return;
@@ -3192,6 +3502,28 @@ namespace TarkovCrosshair
         public bool PrebuildStep()
         {
             if (IsDisposed || frozen) return !IsDisposed;
+            // v5.1.1 (X5, Leo's Windows log 21 Nov): finish the previous page's handle slices BEFORE taking the next page from the
+            // queue. Before, Next() ran first and the page it returned was dropped while handles were sliced, so every other
+            // page (移动 换手 后坐力 常规 滤镜 常见问题) was never prebuilt and was built on its first open (up to 2.2 s on Windows).
+            if (handleQueue != null && handleQueue.Count > 0) { HandleSlice(); return true; }
+            if (chunking != null)
+            {
+                // v5.1.1 (X11): one chunk of a chunked page per idle slot; the last slot attaches, fills and fits the body
+                Page cp = chunking;
+                if (cp.Built) { chunking = null; return true; }
+                if (!cp.IterDone) { AdvanceChunk(cp); MaxChunkMs = Math.Max(MaxChunkMs, cp.LastChunkMs()); return true; }
+                chunking = null;
+                int ci = pages.IndexOf(cp);
+                System.Diagnostics.Stopwatch cs = System.Diagnostics.Stopwatch.StartNew();
+                EnsureBuilt(ci);
+                PrebuildMs[cp.Id] = cp.ChunkMs + cs.ElapsedMilliseconds;
+                Program.Log("启动耗时 设置页「" + cp.Title + "」后台分段创建: 分段合计 " + cp.ChunkMs + " ms，最长一段 " + cp.MaxChunk + " ms，装配 " + cs.ElapsedMilliseconds + " ms（窗口句柄随后分片创建）");
+                handleQueue = new Queue<Control>();
+                handleQueue.Enqueue(cp.Host);
+                handlePage = cp;
+                return true;
+            }
+            if (idle.Pending > 0) { idle.RunSlice(IdleSliceMs); return true; } // X11: a page's lazy parts before the next page
             if (prebuild == null) prebuild = new PrebuildQueue(NavOrder().ToArray());
             int i = prebuild.Next(delegate(int x) { return pages[x].Built; });
             if (i < 0 && !Visible && warmNext < pages.Count)
@@ -3222,13 +3554,74 @@ namespace TarkovCrosshair
                 }
                 return false;
             }
+            // v5.1.1 (X2, Leo F6: no UI freeze > 100 ms while prebuilding): a page's window handles are made in slices of at
+            // most HandleSliceMs, one slice per idle slot, after the page body is built (the body is its own slot)
+            if (handleQueue != null && handleQueue.Count > 0) { HandleSlice(); return true; }
             System.Diagnostics.Stopwatch sw = System.Diagnostics.Stopwatch.StartNew();
             Page pg = pages[i];
+            if (pg.Steps != null && pg.Iter == null)
+            {
+                // v5.1.1 (X11): start the chunked builder; its chunks run in the next idle slots
+                pg.R0 = refreshers.Count; pg.A0 = advOnly.Count; pg.F0 = folds.Count;
+                SyncOffsetOwners(-1);
+                try { pg.Iter = pg.Steps().GetEnumerator(); }
+                catch (Exception ex) { Program.Log("UI: page " + pg.Id + ": " + ex); pg.Iter = null; }
+                if (pg.Iter != null) { chunking = pg; AdvanceChunk(pg); return true; }
+            }
             EnsureBuilt(i);
-            try { CreateHandles(pg.Host); } catch (Exception ex) { Program.Log("UI: prebuild handles " + pg.Id + ": " + ex.Message); }
             PrebuildMs[pg.Id] = sw.ElapsedMilliseconds;
-            Program.Log("启动耗时 设置页「" + pg.Title + "」后台预先创建: " + sw.ElapsedMilliseconds + " ms");
+            Program.Log("启动耗时 设置页「" + pg.Title + "」后台预先创建: " + sw.ElapsedMilliseconds + " ms（窗口句柄随后分片创建）");
+            handleQueue = new Queue<Control>();
+            handleQueue.Enqueue(pg.Host);
+            handlePage = pg;
             return true;
+        }
+
+        /// <summary>v5.1.1 (X11): the page whose chunked builder is running in the background (null = none).</summary>
+        private Page chunking;
+        /// <summary>Probe / tests: longest single chunk of a chunked page builder (ms).</summary>
+        internal long MaxChunkMs;
+
+        /// <summary>v5.1.1 (X11): runs one chunk (up to the next null) of a page's chunked builder.</summary>
+        private void AdvanceChunk(Page pg)
+        {
+            System.Diagnostics.Stopwatch sw = System.Diagnostics.Stopwatch.StartNew();
+            try
+            {
+                if (!pg.Iter.MoveNext()) { pg.IterDone = true; if (pg.Pending == null) pg.Pending = Missing("「" + pg.Title + "」页"); }
+                else if (pg.Iter.Current != null) { pg.Pending = pg.Iter.Current; pg.IterDone = true; }
+            }
+            catch (Exception ex) { Program.Log("UI: page " + pg.Id + ": " + ex); pg.Pending = Missing("「" + pg.Title + "」页"); pg.IterDone = true; }
+            long ms = sw.ElapsedMilliseconds;
+            pg.ChunkMs += ms;
+            pg.LastChunk = ms;
+            if (ms > pg.MaxChunk) pg.MaxChunk = ms;
+        }
+
+        /// <summary>v5.1.1: longest single slice of window-handle creation in the background build.</summary>
+        internal const int HandleSliceMs = 25;
+        private Queue<Control> handleQueue;
+        private Page handlePage;
+        /// <summary>Probe / tests: longest handle slice so far (ms).</summary>
+        internal long MaxHandleSliceMs;
+
+        /// <summary>Parents before children (breadth first), so each Handle call makes exactly one window.</summary>
+        private void HandleSlice()
+        {
+            System.Diagnostics.Stopwatch sw = System.Diagnostics.Stopwatch.StartNew();
+            try
+            {
+                while (handleQueue.Count > 0 && sw.ElapsedMilliseconds < HandleSliceMs)
+                {
+                    Control c = handleQueue.Dequeue();
+                    if (c == null || c.IsDisposed) continue;
+                    IntPtr h = c.Handle;
+                    GC.KeepAlive(h);
+                    foreach (Control k in c.Controls) handleQueue.Enqueue(k);
+                }
+            }
+            catch (Exception ex) { Program.Log("UI: prebuild handles " + (handlePage != null ? handlePage.Id : "?") + ": " + ex.Message); handleQueue.Clear(); }
+            if (sw.ElapsedMilliseconds > MaxHandleSliceMs) MaxHandleSliceMs = sw.ElapsedMilliseconds;
         }
 
         /// <summary>Window handles for a hidden page now (WinForms makes them at the first show otherwise).</summary>
@@ -3317,6 +3710,8 @@ namespace TarkovCrosshair
                 if (foregroundHandler != null) { ForegroundState.Changed -= foregroundHandler; foregroundHandler = null; }
                 uiFont = Font; // created here (Theme.Ui): ours to dispose
                 saveFlash.Dispose();
+                if (idleTimer != null) { idleTimer.Stop(); idleTimer.Dispose(); idleTimer = null; } // X11
+                if (resizeRefit != null) { resizeRefit.Stop(); resizeRefit.Dispose(); resizeRefit = null; }
                 tips.Dispose();
                 if (restoreMenu != null) restoreMenu.Dispose();
                 if (profileMenu != null) profileMenu.Dispose();

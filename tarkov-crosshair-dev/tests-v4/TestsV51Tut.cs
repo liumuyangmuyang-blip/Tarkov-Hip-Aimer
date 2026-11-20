@@ -64,7 +64,7 @@ namespace TarkovCrosshair.Tests
             TutorialV51Math.Swap(900 * TutorialV51Math.QuickOutShare, 900, true, out qo, out qn);
             TutorialV51Math.Swap(900 * TutorialV51Math.QuickOutShare, 2400, false, out no, out nn);
             Check("V51T-9 quick drops the old mag faster than normal", qo == 1 && no < 0.5, "qo=" + qo + " no=" + no);
-            Check("V51T-10 defaults 2400 / 900 ms; swap NaN-safe", TutorialV51Math.DefaultNormalMs == 2400 && TutorialV51Math.DefaultQuickMs == 900
+            Check("V51T-10 defaults 3000 / 2200 ms (Leo 21 Nov); swap NaN-safe", TutorialV51Math.DefaultNormalMs == 3000 && TutorialV51Math.DefaultQuickMs == 2200
                 && SwapNan(), "");
             // standing zero example (decision 5)
             double fs = TutorialV51Math.FromStand(-4.17, 1.0);
