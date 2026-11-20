@@ -1,6 +1,6 @@
 ﻿# W29 (v5.1) CI step 2: tests-v4 and tests-v42-filtertut (both .NET 8 console programs), run at the same time.
 # Several tests read files through the Cloud Desktop's absolute paths (/home/dev/..., /home/dev/...).
-# On Windows such a path means "<current drive>:\local\home\dev\...", so the CI links those folders to the checkout
+# On Windows such a path means "<current drive>:\home\dev\...", so the CI links those folders to the checkout
 # (directory junctions; nothing in the tests is changed).
 . "$PSScriptRoot/common.ps1"
 
@@ -8,9 +8,9 @@ $dotnet = Get-Dotnet
 if ($IsWindows) {
     $drive = [System.IO.Path]::GetPathRoot($Repo).TrimEnd('\')
     $links = @{
-        'local\home\dev\tarkov-crosshair-v4'  = (Join-Path $Repo 'tarkov-crosshair-v4');
-        'local\home\dev\tarkov-crosshair-dev' = $Dev;
-        'local\home\dev\tarkov-shade-module'  = (Join-Path $Repo 'tarkov-shade-module')
+        'home\dev\tarkov-crosshair-v4'  = (Join-Path $Repo 'tarkov-crosshair-v4');
+        'home\dev\tarkov-crosshair-dev' = $Dev;
+        'home\dev\tarkov-shade-module'  = (Join-Path $Repo 'tarkov-shade-module')
     }
     foreach ($k in $links.Keys) {
         $link = Join-Path $drive $k
@@ -22,7 +22,7 @@ if ($IsWindows) {
     $home2 = Join-Path $drive 'home\dev'
     if (-not (Test-Path $home2)) {
         New-Item -ItemType Directory -Force -Path (Join-Path $drive 'home') | Out-Null
-        New-Item -ItemType Junction -Path $home2 -Target (Join-Path $drive 'local\home\dev') | Out-Null
+        New-Item -ItemType Junction -Path $home2 -Target (Join-Path $drive 'home\dev') | Out-Null
     }
 }
 
