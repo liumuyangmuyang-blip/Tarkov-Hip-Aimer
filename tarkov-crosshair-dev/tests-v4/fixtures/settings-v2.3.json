@@ -1,0 +1,441 @@
+{
+  "ActiveProfile": "AK-74N",
+  "AdsMode": "toggle",
+  "CenterOffsetX": 0,
+  "CenterOffsetY": 0,
+  "Enabled": false,
+  "Fps": 240,
+  "FrameMode": "fixed",
+  "HideFadeMs": 20,
+  "HideOnFreeLook": false,
+  "Keys": {
+    "Ads": 18,
+    "Back": 40,
+    "Crouch": 88,
+    "Fire": 17,
+    "Forward": 38,
+    "FreeLook": 6,
+    "LeanLeft": 90,
+    "LeanRight": 67,
+    "Left": 37,
+    "Prone": 86,
+    "Right": 39,
+    "Sprint": 16,
+    "Toggle": 117
+  },
+  "LeanMode": "toggle",
+  "MonitorIndex": 1,
+  "Profiles": [
+    {
+      "CenterDot": true,
+      "CenterDotSize": 3,
+      "Color": "#11EE22",
+      "Color2": "#101010",
+      "Combos": [
+        {
+          "Enabled": true,
+          "Key": "QA",
+          "OffX": 11.5,
+          "OffY": -3.25
+        },
+        {
+          "Enabled": false,
+          "Key": "QWA",
+          "OffX": 18.5,
+          "OffY": -5.25
+        },
+        {
+          "Enabled": true,
+          "Key": "QAS",
+          "OffX": 25.5,
+          "OffY": -7.25
+        },
+        {
+          "Enabled": false,
+          "Key": "ED",
+          "OffX": 32.5,
+          "OffY": -9.25
+        },
+        {
+          "Enabled": true,
+          "Key": "WED",
+          "OffX": 39.5,
+          "OffY": -11.25
+        },
+        {
+          "Enabled": false,
+          "Key": "EDS",
+          "OffX": 46.5,
+          "OffY": -13.25
+        }
+      ],
+      "CrouchColor": "#AABB00",
+      "CrouchColorEnabled": true,
+      "CrouchDriftPct": 90,
+      "CrouchEnabled": true,
+      "CrouchKickPct": 120,
+      "CrouchMaxPct": 70,
+      "CrouchMoveEnabled": true,
+      "CrouchMovePct": 65,
+      "CrouchPct": 80,
+      "CrouchSplit": true,
+      "Diameter": 14.5,
+      "Dirs": [
+        {
+          "OffX": 1.5,
+          "OffY": -21.25
+        },
+        {
+          "OffX": -0.5,
+          "OffY": 2.75
+        },
+        {
+          "OffX": 57.3,
+          "OffY": 1.9
+        },
+        {
+          "OffX": -36.6,
+          "OffY": 1.1
+        },
+        {
+          "OffX": 40.2,
+          "OffY": -14.1
+        },
+        {
+          "OffX": -26.3,
+          "OffY": -12.9
+        },
+        {
+          "OffX": 39.7,
+          "OffY": 2.2
+        },
+        {
+          "OffX": -23.8,
+          "OffY": 0.6
+        }
+      ],
+      "Feather": 0.5,
+      "FollowMs": 95,
+      "Gradient": "radial",
+      "LeanEX": 26.5,
+      "LeanEY": -4.25,
+      "LeanMs": 185,
+      "LeanQX": -3.5,
+      "LeanQY": -8.75,
+      "Name": "M4（Leo 改装）",
+      "OpacityPct": 73,
+      "OuterThickness": 2.5,
+      "RecoilClickKickPx": 9.5,
+      "RecoilDelayMs": 45,
+      "RecoilDriftX": -3.5,
+      "RecoilFallMs": 215,
+      "RecoilMaxPx": 43,
+      "RecoilRiseMs": 275,
+      "ReverseFB": {
+        "AccelMs": 80,
+        "AccelShape": "smooth",
+        "AccelStrength": 100,
+        "DecelMs": 90,
+        "DecelShape": "smooth",
+        "DecelStrength": 100,
+        "Enabled": false,
+        "PauseMs": 150,
+        "TotalMs": 320
+      },
+      "ReverseLR": {
+        "AccelMs": 120,
+        "AccelShape": "smooth",
+        "AccelStrength": 60,
+        "DecelMs": 110,
+        "DecelShape": "in",
+        "DecelStrength": 100,
+        "Enabled": true,
+        "PauseMs": 190,
+        "TotalMs": 420
+      },
+      "SprintDimEnabled": true,
+      "SprintDimPct": 25,
+      "SprintRecoveryMs": 420,
+      "StandOffsetX": 2.5,
+      "StandOffsetY": -1.5,
+      "Thickness": 1.7
+    },
+    {
+      "CenterDot": false,
+      "CenterDotSize": 2,
+      "Color": "#78FF78",
+      "Color2": "#FFFFFF",
+      "Combos": [
+        {
+          "Enabled": false,
+          "Key": "QA",
+          "OffX": 0,
+          "OffY": 0
+        },
+        {
+          "Enabled": false,
+          "Key": "QWA",
+          "OffX": 0,
+          "OffY": 0
+        },
+        {
+          "Enabled": false,
+          "Key": "QAS",
+          "OffX": 0,
+          "OffY": 0
+        },
+        {
+          "Enabled": false,
+          "Key": "ED",
+          "OffX": 0,
+          "OffY": 0
+        },
+        {
+          "Enabled": false,
+          "Key": "WED",
+          "OffX": 0,
+          "OffY": 0
+        },
+        {
+          "Enabled": false,
+          "Key": "EDS",
+          "OffX": 0,
+          "OffY": 0
+        }
+      ],
+      "CrouchColor": "#FFD24A",
+      "CrouchColorEnabled": false,
+      "CrouchDriftPct": 100,
+      "CrouchEnabled": false,
+      "CrouchKickPct": 100,
+      "CrouchMaxPct": 100,
+      "CrouchMoveEnabled": false,
+      "CrouchMovePct": 100,
+      "CrouchPct": 100,
+      "CrouchSplit": false,
+      "Diameter": 18,
+      "Dirs": [
+        {
+          "OffX": 0,
+          "OffY": 0
+        },
+        {
+          "OffX": 0,
+          "OffY": 0
+        },
+        {
+          "OffX": 48,
+          "OffY": 3
+        },
+        {
+          "OffX": -41,
+          "OffY": 3
+        },
+        {
+          "OffX": 0,
+          "OffY": 0
+        },
+        {
+          "OffX": 0,
+          "OffY": 0
+        },
+        {
+          "OffX": 0,
+          "OffY": 0
+        },
+        {
+          "OffX": 0,
+          "OffY": 0
+        }
+      ],
+      "Feather": 1,
+      "FollowMs": 130,
+      "Gradient": "none",
+      "LeanEX": 18,
+      "LeanEY": 0,
+      "LeanMs": 150,
+      "LeanQX": -12,
+      "LeanQY": 0,
+      "Name": "AK-74N",
+      "OpacityPct": 60,
+      "OuterThickness": 1.5,
+      "RecoilClickKickPx": 0,
+      "RecoilDelayMs": 60,
+      "RecoilDriftX": 7,
+      "RecoilFallMs": 250,
+      "RecoilMaxPx": 61,
+      "RecoilRiseMs": 300,
+      "ReverseFB": {
+        "AccelMs": 100,
+        "AccelShape": "smooth",
+        "AccelStrength": 100,
+        "DecelMs": 100,
+        "DecelShape": "smooth",
+        "DecelStrength": 100,
+        "Enabled": true,
+        "PauseMs": 200,
+        "TotalMs": 400
+      },
+      "ReverseLR": {
+        "AccelMs": 100,
+        "AccelShape": "smooth",
+        "AccelStrength": 100,
+        "DecelMs": 100,
+        "DecelShape": "smooth",
+        "DecelStrength": 100,
+        "Enabled": false,
+        "PauseMs": 200,
+        "TotalMs": 400
+      },
+      "SprintDimEnabled": false,
+      "SprintDimPct": 30,
+      "SprintRecoveryMs": 300,
+      "StandOffsetX": -4,
+      "StandOffsetY": 0,
+      "Thickness": 2
+    },
+    {
+      "CenterDot": false,
+      "CenterDotSize": 2,
+      "Color": "#78FF78",
+      "Color2": "#FFFFFF",
+      "Combos": [
+        {
+          "Enabled": false,
+          "Key": "QA",
+          "OffX": 0,
+          "OffY": 0
+        },
+        {
+          "Enabled": false,
+          "Key": "QWA",
+          "OffX": 0,
+          "OffY": 0
+        },
+        {
+          "Enabled": false,
+          "Key": "QAS",
+          "OffX": 0,
+          "OffY": 0
+        },
+        {
+          "Enabled": false,
+          "Key": "ED",
+          "OffX": 0,
+          "OffY": 0
+        },
+        {
+          "Enabled": false,
+          "Key": "WED",
+          "OffX": 0,
+          "OffY": 0
+        },
+        {
+          "Enabled": false,
+          "Key": "EDS",
+          "OffX": 0,
+          "OffY": 0
+        }
+      ],
+      "CrouchColor": "#FFD24A",
+      "CrouchColorEnabled": false,
+      "CrouchDriftPct": 100,
+      "CrouchEnabled": false,
+      "CrouchKickPct": 100,
+      "CrouchMaxPct": 100,
+      "CrouchMoveEnabled": false,
+      "CrouchMovePct": 100,
+      "CrouchPct": 100,
+      "CrouchSplit": false,
+      "Diameter": 18,
+      "Dirs": [
+        {
+          "OffX": 0,
+          "OffY": -9
+        },
+        {
+          "OffX": 0,
+          "OffY": 0
+        },
+        {
+          "OffX": 0,
+          "OffY": 0
+        },
+        {
+          "OffX": 0,
+          "OffY": 0
+        },
+        {
+          "OffX": 0,
+          "OffY": 0
+        },
+        {
+          "OffX": 0,
+          "OffY": 0
+        },
+        {
+          "OffX": 0,
+          "OffY": 0
+        },
+        {
+          "OffX": 0,
+          "OffY": 0
+        }
+      ],
+      "Feather": 1,
+      "FollowMs": 0,
+      "Gradient": "twotone",
+      "LeanEX": 0,
+      "LeanEY": 0,
+      "LeanMs": 150,
+      "LeanQX": 0,
+      "LeanQY": 0,
+      "Name": "MP-153",
+      "OpacityPct": 60,
+      "OuterThickness": 1.5,
+      "RecoilClickKickPx": 0,
+      "RecoilDelayMs": 60,
+      "RecoilDriftX": 0,
+      "RecoilFallMs": 250,
+      "RecoilMaxPx": 0,
+      "RecoilRiseMs": 300,
+      "ReverseFB": {
+        "AccelMs": 100,
+        "AccelShape": "smooth",
+        "AccelStrength": 100,
+        "DecelMs": 100,
+        "DecelShape": "smooth",
+        "DecelStrength": 100,
+        "Enabled": false,
+        "PauseMs": 200,
+        "TotalMs": 400
+      },
+      "ReverseLR": {
+        "AccelMs": 100,
+        "AccelShape": "smooth",
+        "AccelStrength": 100,
+        "DecelMs": 100,
+        "DecelShape": "smooth",
+        "DecelStrength": 100,
+        "Enabled": false,
+        "PauseMs": 200,
+        "TotalMs": 400
+      },
+      "SprintDimEnabled": false,
+      "SprintDimPct": 30,
+      "SprintRecoveryMs": 300,
+      "StandOffsetX": 0,
+      "StandOffsetY": 0,
+      "Thickness": 2
+    }
+  ],
+  "ResBaseH": 1600,
+  "ResBaseW": 2560,
+  "ResGameH": 1080,
+  "ResGameW": 1920,
+  "SettingsTopMost": false,
+  "ShowFadeMs": 70,
+  "ShowSettingsOnStart": false,
+  "SprintMode": "hold",
+  "Version": 1
+}

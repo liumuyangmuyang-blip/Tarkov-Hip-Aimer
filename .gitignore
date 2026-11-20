@@ -1,0 +1,4 @@
+ci-out/
+ci-work/
+bin/
+obj/

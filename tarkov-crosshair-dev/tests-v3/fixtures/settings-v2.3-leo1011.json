@@ -1,0 +1,173 @@
+{
+  "ActiveProfile": "Leo 1011",
+  "AdsMode": "hold",
+  "CenterOffsetX": 0,
+  "CenterOffsetY": 0,
+  "Enabled": true,
+  "Fps": 360,
+  "FrameMode": "vsync",
+  "HideFadeMs": 0,
+  "HideOnFreeLook": true,
+  "Keys": {
+    "Ads": 2,
+    "Back": 83,
+    "Crouch": 67,
+    "Fire": 1,
+    "Forward": 87,
+    "FreeLook": 4,
+    "LeanLeft": 81,
+    "LeanRight": 69,
+    "Left": 65,
+    "Prone": 90,
+    "Right": 68,
+    "Sprint": 160,
+    "Toggle": 123
+  },
+  "LeanMode": "hold",
+  "MonitorIndex": -1,
+  "Profiles": [
+    {
+      "CenterDot": false,
+      "CenterDotSize": 2,
+      "Color": "#00DF00",
+      "Color2": "#000000",
+      "Combos": [
+        {
+          "Enabled": false,
+          "Key": "QA",
+          "OffX": 53,
+          "OffY": -7
+        },
+        {
+          "Enabled": false,
+          "Key": "QWA",
+          "OffX": 36.9,
+          "OffY": -21.4
+        },
+        {
+          "Enabled": false,
+          "Key": "QAS",
+          "OffX": 36.9,
+          "OffY": -6.6
+        },
+        {
+          "Enabled": false,
+          "Key": "ED",
+          "OffX": -10,
+          "OffY": -4
+        },
+        {
+          "Enabled": false,
+          "Key": "WED",
+          "OffX": 0.3,
+          "OffY": -18.4
+        },
+        {
+          "Enabled": false,
+          "Key": "EDS",
+          "OffX": 0.3,
+          "OffY": -3.6
+        }
+      ],
+      "CrouchColor": "#FFD24A",
+      "CrouchColorEnabled": false,
+      "CrouchDriftPct": 100,
+      "CrouchEnabled": false,
+      "CrouchKickPct": 100,
+      "CrouchMaxPct": 100,
+      "CrouchMoveEnabled": false,
+      "CrouchMovePct": 100,
+      "CrouchPct": 50,
+      "CrouchSplit": false,
+      "Diameter": 12,
+      "Dirs": [
+        {
+          "OffX": 0,
+          "OffY": -30
+        },
+        {
+          "OffX": 0,
+          "OffY": 8
+        },
+        {
+          "OffX": 59,
+          "OffY": 0
+        },
+        {
+          "OffX": -36,
+          "OffY": 0
+        },
+        {
+          "OffX": 41.7,
+          "OffY": -21.2
+        },
+        {
+          "OffX": -25.5,
+          "OffY": -21.2
+        },
+        {
+          "OffX": 41.7,
+          "OffY": 5.7
+        },
+        {
+          "OffX": -25.5,
+          "OffY": 5.7
+        }
+      ],
+      "Feather": 1,
+      "FollowMs": 600,
+      "Gradient": "twotone",
+      "LeanEX": 10,
+      "LeanEY": -15,
+      "LeanMs": 250,
+      "LeanQX": -6,
+      "LeanQY": -20,
+      "Name": "Leo 1011",
+      "OpacityPct": 60,
+      "OuterThickness": 1.5,
+      "RecoilClickKickPx": 8,
+      "RecoilDelayMs": 30,
+      "RecoilDriftX": 6,
+      "RecoilFallMs": 180,
+      "RecoilMaxPx": 23,
+      "RecoilRiseMs": 300,
+      "ReverseFB": {
+        "AccelMs": 100,
+        "AccelShape": "smooth",
+        "AccelStrength": 100,
+        "DecelMs": 100,
+        "DecelShape": "smooth",
+        "DecelStrength": 100,
+        "Enabled": false,
+        "PauseMs": 200,
+        "TotalMs": 400
+      },
+      "ReverseLR": {
+        "AccelMs": 143,
+        "AccelShape": "smooth",
+        "AccelStrength": 100,
+        "DecelMs": 254,
+        "DecelShape": "smooth",
+        "DecelStrength": 100,
+        "Enabled": false,
+        "PauseMs": 103,
+        "TotalMs": 500
+      },
+      "SprintDimEnabled": false,
+      "SprintDimPct": 30,
+      "SprintRecoveryMs": 300,
+      "StandOffsetX": 0,
+      "StandOffsetY": 0,
+      "Thickness": 1.2
+    }
+  ],
+  "ResBaseH": 1440,
+  "ResBaseW": 2160,
+  "ResGameH": 1440,
+  "ResGameW": 2160,
+  "SettingsTopMost": true,
+  "ShowFadeMs": 50,
+  "ShowSettingsOnStart": true,
+  "SprintMode": "toggle",
+  "Version": 1
+}

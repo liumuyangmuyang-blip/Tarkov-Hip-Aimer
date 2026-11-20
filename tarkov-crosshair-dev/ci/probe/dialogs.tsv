@@ -1,0 +1,27 @@
+# name	question(1=是/否)	yes	no	message   (every ThemedDialog text in the v5.0.1 snapshot; names / errors filled with long realistic values)
+welcome	1	选择旧的 settings.json	跳过	欢迎使用{ChineseName} {Version}！\n\n用过旧版吗？可以导入你以前调好的设置：所有配置、按键和常规设置。游戏分辨率、画面比例、FOV 和鼠标设置保持现在的，「Leo默认」也会保留。
+firstsetup	1	去「常规」页	稍后	先在「常规」页设好和游戏里一样的 3 项：游戏分辨率、画面比例、FOV（建议 75）。然后进游戏实测，觉得有偏差再细调各项偏移。
+keyconflict	1			「Ctrl+Shift+鼠标侧键2（XButton2）」现在是「左侧身」。换过来吗？（「左侧身」会改成 Ctrl+Shift+鼠标侧键1（XButton1））
+keyconflict-wasd	1			「W」是固定的「前」键（W A S D 不能改）。还要用它当「强化准星」吗？按它会同时移动。
+import-folder	1			没选文件。要改成选旧版的整个文件夹吗？
+import-done	0			已导入 12 套配置，现在用的是「Leo默认 (旧)」。\n原来的设置已备份在设置文件夹（settings.before-import-….json）。\n按键：右侧身原来是 Ctrl+D，和开关准星重复，已改成 E。
+import-fail	0			这个文件不能导入：第 1 行附近不是有效的 JSON（Unexpected character encountered while parsing value: ï. Path '', line 1, position 1.）
+read-fail	0			读取失败：对路径“C:\Users\LeoLiu\AppData\Local\Temp\TarkovHipAimer\settings.json”的访问被拒绝。
+export-fail	0			导出失败：对路径“D:\游戏工具\TarkovHipAimer\准星配置\Leo默认 (旧).json”的访问被拒绝。
+saveasdefault	1			把配置“Leo默认 (旧)”现在的全部数值存成你的默认？以后点「恢复 ▾」就能回到这里（会覆盖上一次存的）。
+restore-saved	1			把配置“Leo默认 (旧)”的数值恢复成你存的默认（2026-11-18 01:46）？名字、按键和全局设置不变。
+restore-builtin	1			把配置“Leo默认 (旧)”的数值恢复成 Leo 推荐的数值？名字、按键、外观和全局设置不变。
+delete	1			确定删除配置「Leo默认 (旧)」？
+keep-one	0			至少要保留一个配置。
+tutorial-fail	0			教程打不开，详细信息在 crash.log。
+keys-reset	1			把这一页的按键和方式全部恢复成第一次安装时的样子？
+hand-reset	1			换手的所有格子都恢复成自动（正常手左右镜像）？
+curve-copy	1			把前后 W/S 的曲线（总时长和 5 个速度）改成和左右 A/D 一样？
+guide-missing	0			没找到「说明 README.txt」（应该在启动程序旁边）。这一页就是同样的内容。
+guide-open-fail	0			打不开说明文件：系统找不到指定的文件。
+filter-save-builtin	1			把现在的数值存进自带预设「夜图（暗处提亮）」？以后可以点「恢复出厂」改回去。
+filter-delete	1			删除预设「我的雪地预设 2」？删除后不能恢复。
+filter-factory	1			把自带预设「夜图（暗处提亮）」恢复成出厂数值？
+filter-keys-reset	1			把滤镜快捷键恢复成第一次安装时的样子？
+filter-tut-missing	0			滤镜教程还没有做好。
+filter-tut-fail	0			滤镜教程打不开，详细信息在 crash.log。

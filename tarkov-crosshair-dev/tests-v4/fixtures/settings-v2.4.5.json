@@ -1,0 +1,805 @@
+{
+  "ActiveProfile": "M4（Leo 改装）",
+  "AdsMode": "hold",
+  "CenterOffsetX": 0,
+  "CenterOffsetY": 0,
+  "Enabled": true,
+  "Fps": 360,
+  "FrameMode": "vsync",
+  "HandEnabled": true,
+  "HandMode": "toggle",
+  "HideFadeMs": 0,
+  "HideOnFreeLook": true,
+  "Keys": {
+    "Ads": 2,
+    "Back": 83,
+    "Fire": 1,
+    "Forward": 87,
+    "FreeLook": 4,
+    "HandSwitch": 5,
+    "Jump": 32,
+    "LeanLeft": 81,
+    "LeanRight": 69,
+    "Left": 65,
+    "Right": 68,
+    "Toggle": 123
+  },
+  "LeanMode": "hold",
+  "MonitorIndex": -1,
+  "Profiles": [
+    {
+      "CenterDot": false,
+      "CenterDotSize": 2,
+      "Color": "#00DF00",
+      "Color2": "#000000",
+      "Combos": [
+        {
+          "Enabled": false,
+          "Key": "QA",
+          "OffX": 53,
+          "OffY": -7
+        },
+        {
+          "Enabled": false,
+          "Key": "QWA",
+          "OffX": 36.9,
+          "OffY": -21.4
+        },
+        {
+          "Enabled": false,
+          "Key": "QAS",
+          "OffX": 36.9,
+          "OffY": -6.6
+        },
+        {
+          "Enabled": false,
+          "Key": "ED",
+          "OffX": -10,
+          "OffY": -4
+        },
+        {
+          "Enabled": false,
+          "Key": "WED",
+          "OffX": 0.3,
+          "OffY": -18.4
+        },
+        {
+          "Enabled": false,
+          "Key": "EDS",
+          "OffX": 0.3,
+          "OffY": -3.6
+        }
+      ],
+      "CurveAD": {
+        "DurationMs": 350,
+        "Speeds": [
+          0,
+          25,
+          50,
+          75,
+          100
+        ]
+      },
+      "CurveWS": {
+        "DurationMs": 350,
+        "Speeds": [
+          0,
+          25,
+          50,
+          75,
+          100
+        ]
+      },
+      "Diameter": 12,
+      "Dirs": [
+        {
+          "OffX": 0,
+          "OffY": -30
+        },
+        {
+          "OffX": 0,
+          "OffY": 8
+        },
+        {
+          "OffX": 62,
+          "OffY": 0
+        },
+        {
+          "OffX": -33,
+          "OffY": 3
+        },
+        {
+          "OffX": 43.840199999999996,
+          "OffY": -21.212999999999997
+        },
+        {
+          "OffX": -23.3343,
+          "OffY": -19.0917
+        },
+        {
+          "OffX": 43.840199999999996,
+          "OffY": 5.6568
+        },
+        {
+          "OffX": -23.3343,
+          "OffY": 7.778099999999999
+        }
+      ],
+      "Feather": 1,
+      "Gradient": "twotone",
+      "Hand": {
+        "Combos": [
+          {
+            "Enabled": false,
+            "Manual": false,
+            "X": 0,
+            "Y": 0
+          },
+          {
+            "Enabled": false,
+            "Manual": false,
+            "X": 0,
+            "Y": 0
+          },
+          {
+            "Enabled": false,
+            "Manual": false,
+            "X": 0,
+            "Y": 0
+          },
+          {
+            "Enabled": false,
+            "Manual": false,
+            "X": 0,
+            "Y": 0
+          },
+          {
+            "Enabled": false,
+            "Manual": false,
+            "X": 0,
+            "Y": 0
+          },
+          {
+            "Enabled": false,
+            "Manual": false,
+            "X": 0,
+            "Y": 0
+          }
+        ],
+        "Dirs": [
+          {
+            "Enabled": false,
+            "Manual": false,
+            "X": 0,
+            "Y": 0
+          },
+          {
+            "Enabled": false,
+            "Manual": false,
+            "X": 0,
+            "Y": 0
+          },
+          {
+            "Enabled": false,
+            "Manual": false,
+            "X": 0,
+            "Y": 0
+          },
+          {
+            "Enabled": false,
+            "Manual": false,
+            "X": 0,
+            "Y": 0
+          },
+          {
+            "Enabled": false,
+            "Manual": false,
+            "X": 0,
+            "Y": 0
+          },
+          {
+            "Enabled": false,
+            "Manual": false,
+            "X": 0,
+            "Y": 0
+          },
+          {
+            "Enabled": false,
+            "Manual": false,
+            "X": 0,
+            "Y": 0
+          },
+          {
+            "Enabled": false,
+            "Manual": false,
+            "X": 0,
+            "Y": 0
+          }
+        ],
+        "Drift": {
+          "Enabled": false,
+          "Manual": false,
+          "X": 0,
+          "Y": 0
+        },
+        "LeanE": {
+          "Enabled": false,
+          "Manual": false,
+          "X": 0,
+          "Y": 0
+        },
+        "LeanQ": {
+          "Enabled": false,
+          "Manual": false,
+          "X": 0,
+          "Y": 0
+        },
+        "Rule": "mirror",
+        "Stand": {
+          "Enabled": false,
+          "Manual": false,
+          "X": 0,
+          "Y": 0
+        }
+      },
+      "HandSwitchMs": 400,
+      "Jump": {
+        "Enabled": true,
+        "Phases": [
+          {
+            "Curve": "smooth",
+            "EndPx": -300,
+            "Ms": 200
+          },
+          {
+            "Curve": "smooth",
+            "EndPx": 0,
+            "Ms": 305
+          },
+          {
+            "Curve": "in",
+            "EndPx": 0,
+            "Ms": 295
+          }
+        ],
+        "TotalMs": 800
+      },
+      "LeanEX": 30,
+      "LeanEY": -15,
+      "LeanMs": 250,
+      "LeanQX": 5,
+      "LeanQY": -20,
+      "Name": "M4（Leo 改装）",
+      "OpacityPct": 60,
+      "OuterThickness": 1.5,
+      "RecoilClickKickPx": 8,
+      "RecoilDelayMs": 30,
+      "RecoilDriftX": 6,
+      "RecoilFallMs": 180,
+      "RecoilMaxPx": 23,
+      "RecoilRiseMs": 300,
+      "SavedDefault": {
+        "CenterDot": false,
+        "CenterDotSize": 2,
+        "Color": "#00DF00",
+        "Color2": "#000000",
+        "Combos": [
+          {
+            "Enabled": false,
+            "Key": "QA",
+            "OffX": 53,
+            "OffY": -7
+          },
+          {
+            "Enabled": false,
+            "Key": "QWA",
+            "OffX": 36.9,
+            "OffY": -21.4
+          },
+          {
+            "Enabled": false,
+            "Key": "QAS",
+            "OffX": 36.9,
+            "OffY": -6.6
+          },
+          {
+            "Enabled": false,
+            "Key": "ED",
+            "OffX": -10,
+            "OffY": -4
+          },
+          {
+            "Enabled": false,
+            "Key": "WED",
+            "OffX": 0.3,
+            "OffY": -18.4
+          },
+          {
+            "Enabled": false,
+            "Key": "EDS",
+            "OffX": 0.3,
+            "OffY": -3.6
+          }
+        ],
+        "CurveAD": {
+          "DurationMs": 350,
+          "Speeds": [
+            0,
+            25,
+            50,
+            75,
+            100
+          ]
+        },
+        "CurveWS": {
+          "DurationMs": 350,
+          "Speeds": [
+            0,
+            25,
+            50,
+            75,
+            100
+          ]
+        },
+        "Diameter": 12,
+        "Dirs": [
+          {
+            "OffX": 0,
+            "OffY": -30
+          },
+          {
+            "OffX": 0,
+            "OffY": 8
+          },
+          {
+            "OffX": 62,
+            "OffY": 0
+          },
+          {
+            "OffX": -33,
+            "OffY": 3
+          },
+          {
+            "OffX": 43.840199999999996,
+            "OffY": -21.212999999999997
+          },
+          {
+            "OffX": -23.3343,
+            "OffY": -19.0917
+          },
+          {
+            "OffX": 43.840199999999996,
+            "OffY": 5.6568
+          },
+          {
+            "OffX": -23.3343,
+            "OffY": 7.778099999999999
+          }
+        ],
+        "Feather": 1,
+        "Gradient": "twotone",
+        "Hand": {
+          "Combos": [
+            {
+              "Enabled": false,
+              "Manual": false,
+              "X": 0,
+              "Y": 0
+            },
+            {
+              "Enabled": false,
+              "Manual": false,
+              "X": 0,
+              "Y": 0
+            },
+            {
+              "Enabled": false,
+              "Manual": false,
+              "X": 0,
+              "Y": 0
+            },
+            {
+              "Enabled": false,
+              "Manual": false,
+              "X": 0,
+              "Y": 0
+            },
+            {
+              "Enabled": false,
+              "Manual": false,
+              "X": 0,
+              "Y": 0
+            },
+            {
+              "Enabled": false,
+              "Manual": false,
+              "X": 0,
+              "Y": 0
+            }
+          ],
+          "Dirs": [
+            {
+              "Enabled": false,
+              "Manual": false,
+              "X": 0,
+              "Y": 0
+            },
+            {
+              "Enabled": false,
+              "Manual": false,
+              "X": 0,
+              "Y": 0
+            },
+            {
+              "Enabled": false,
+              "Manual": false,
+              "X": 0,
+              "Y": 0
+            },
+            {
+              "Enabled": false,
+              "Manual": false,
+              "X": 0,
+              "Y": 0
+            },
+            {
+              "Enabled": false,
+              "Manual": false,
+              "X": 0,
+              "Y": 0
+            },
+            {
+              "Enabled": false,
+              "Manual": false,
+              "X": 0,
+              "Y": 0
+            },
+            {
+              "Enabled": false,
+              "Manual": false,
+              "X": 0,
+              "Y": 0
+            },
+            {
+              "Enabled": false,
+              "Manual": false,
+              "X": 0,
+              "Y": 0
+            }
+          ],
+          "Drift": {
+            "Enabled": false,
+            "Manual": false,
+            "X": 0,
+            "Y": 0
+          },
+          "LeanE": {
+            "Enabled": false,
+            "Manual": false,
+            "X": 0,
+            "Y": 0
+          },
+          "LeanQ": {
+            "Enabled": false,
+            "Manual": false,
+            "X": 0,
+            "Y": 0
+          },
+          "Rule": "mirror",
+          "Stand": {
+            "Enabled": false,
+            "Manual": false,
+            "X": 0,
+            "Y": 0
+          }
+        },
+        "HandSwitchMs": 400,
+        "Jump": {
+          "Enabled": true,
+          "Phases": [
+            {
+              "Curve": "smooth",
+              "EndPx": -300,
+              "Ms": 200
+            },
+            {
+              "Curve": "smooth",
+              "EndPx": 0,
+              "Ms": 305
+            },
+            {
+              "Curve": "in",
+              "EndPx": 0,
+              "Ms": 295
+            }
+          ],
+          "TotalMs": 800
+        },
+        "LeanEX": 30,
+        "LeanEY": -15,
+        "LeanMs": 250,
+        "LeanQX": 5,
+        "LeanQY": -20,
+        "Name": "M4（Leo 改装）",
+        "OpacityPct": 60,
+        "OuterThickness": 1.5,
+        "RecoilClickKickPx": 8,
+        "RecoilDelayMs": 30,
+        "RecoilDriftX": 6,
+        "RecoilFallMs": 180,
+        "RecoilMaxPx": 23,
+        "RecoilRiseMs": 300,
+        "StandOffsetX": 0,
+        "StandOffsetY": 0,
+        "Thickness": 1.2
+      },
+      "SavedDefaultAt": "2026-10-12 18:00",
+      "StandOffsetX": 0,
+      "StandOffsetY": 0,
+      "Thickness": 1.2
+    },
+    {
+      "CenterDot": false,
+      "CenterDotSize": 2,
+      "Color": "#78FF78",
+      "Color2": "#FFFFFF",
+      "Combos": [
+        {
+          "Enabled": true,
+          "Key": "QA",
+          "OffX": 70,
+          "OffY": -9
+        },
+        {
+          "Enabled": false,
+          "Key": "QWA",
+          "OffX": 0,
+          "OffY": 0
+        },
+        {
+          "Enabled": false,
+          "Key": "QAS",
+          "OffX": 0,
+          "OffY": 0
+        },
+        {
+          "Enabled": false,
+          "Key": "ED",
+          "OffX": 0,
+          "OffY": 0
+        },
+        {
+          "Enabled": false,
+          "Key": "WED",
+          "OffX": 0,
+          "OffY": 0
+        },
+        {
+          "Enabled": false,
+          "Key": "EDS",
+          "OffX": 0,
+          "OffY": 0
+        }
+      ],
+      "CurveAD": {
+        "DurationMs": 100,
+        "Speeds": [
+          0,
+          100,
+          61,
+          28,
+          11
+        ]
+      },
+      "CurveWS": {
+        "DurationMs": 100,
+        "Speeds": [
+          0,
+          100,
+          61,
+          28,
+          11
+        ]
+      },
+      "Diameter": 18,
+      "Dirs": [
+        {
+          "OffX": 0,
+          "OffY": 0
+        },
+        {
+          "OffX": 0,
+          "OffY": 0
+        },
+        {
+          "OffX": 40,
+          "OffY": 2
+        },
+        {
+          "OffX": -41,
+          "OffY": 1
+        },
+        {
+          "OffX": 99,
+          "OffY": 99
+        },
+        {
+          "OffX": 0,
+          "OffY": 0
+        },
+        {
+          "OffX": 0,
+          "OffY": 0
+        },
+        {
+          "OffX": 0,
+          "OffY": 0
+        }
+      ],
+      "Feather": 1,
+      "Gradient": "none",
+      "Hand": {
+        "Combos": [
+          {
+            "Enabled": false,
+            "Manual": false,
+            "X": 0,
+            "Y": 0
+          },
+          {
+            "Enabled": false,
+            "Manual": false,
+            "X": 0,
+            "Y": 0
+          },
+          {
+            "Enabled": false,
+            "Manual": false,
+            "X": 0,
+            "Y": 0
+          },
+          {
+            "Enabled": false,
+            "Manual": false,
+            "X": 0,
+            "Y": 0
+          },
+          {
+            "Enabled": false,
+            "Manual": false,
+            "X": 0,
+            "Y": 0
+          },
+          {
+            "Enabled": false,
+            "Manual": false,
+            "X": 0,
+            "Y": 0
+          }
+        ],
+        "Dirs": [
+          {
+            "Enabled": false,
+            "Manual": false,
+            "X": 0,
+            "Y": 0
+          },
+          {
+            "Enabled": false,
+            "Manual": false,
+            "X": 0,
+            "Y": 0
+          },
+          {
+            "Enabled": false,
+            "Manual": true,
+            "X": 77,
+            "Y": 1
+          },
+          {
+            "Enabled": false,
+            "Manual": false,
+            "X": 0,
+            "Y": 0
+          },
+          {
+            "Enabled": false,
+            "Manual": false,
+            "X": 0,
+            "Y": 0
+          },
+          {
+            "Enabled": false,
+            "Manual": false,
+            "X": 0,
+            "Y": 0
+          },
+          {
+            "Enabled": false,
+            "Manual": false,
+            "X": 0,
+            "Y": 0
+          },
+          {
+            "Enabled": false,
+            "Manual": false,
+            "X": 0,
+            "Y": 0
+          }
+        ],
+        "Drift": {
+          "Enabled": false,
+          "Manual": false,
+          "X": 0,
+          "Y": 0
+        },
+        "LeanE": {
+          "Enabled": false,
+          "Manual": false,
+          "X": 0,
+          "Y": 0
+        },
+        "LeanQ": {
+          "Enabled": false,
+          "Manual": true,
+          "X": 0,
+          "Y": -3
+        },
+        "Rule": "swap",
+        "Stand": {
+          "Enabled": false,
+          "Manual": false,
+          "X": 0,
+          "Y": 0
+        }
+      },
+      "HandSwitchMs": 300,
+      "Jump": {
+        "Enabled": false,
+        "Phases": [
+          {
+            "Curve": "out",
+            "EndPx": -30,
+            "Ms": 210
+          },
+          {
+            "Curve": "smooth",
+            "EndPx": 10,
+            "Ms": 280
+          },
+          {
+            "Curve": "out",
+            "EndPx": 0,
+            "Ms": 210
+          }
+        ],
+        "TotalMs": 700
+      },
+      "LeanEX": 0,
+      "LeanEY": 0,
+      "LeanMs": 150,
+      "LeanQX": -12,
+      "LeanQY": 0,
+      "Name": "AK-74N",
+      "OpacityPct": 60,
+      "OuterThickness": 1.5,
+      "RecoilClickKickPx": 0,
+      "RecoilDelayMs": 60,
+      "RecoilDriftX": 4,
+      "RecoilFallMs": 250,
+      "RecoilMaxPx": 0,
+      "RecoilRiseMs": 300,
+      "StandOffsetX": 2,
+      "StandOffsetY": 0,
+      "Thickness": 2
+    }
+  ],
+  "ResBaseH": 1440,
+  "ResBaseW": 2160,
+  "ResGameH": 1440,
+  "ResGameW": 2160,
+  "SettingsTopMost": true,
+  "ShowFadeMs": 50,
+  "ShowSettingsOnStart": true,
+  "Version": 1
+}

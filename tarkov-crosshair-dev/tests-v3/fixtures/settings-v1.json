@@ -1,0 +1,314 @@
+{
+  "ActiveProfile": "M4A1",
+  "AdsMode": "hold",
+  "CenterOffsetX": 3,
+  "CenterOffsetY": -2,
+  "Enabled": true,
+  "Fps": 144,
+  "FrameMode": "vsync",
+  "HideFadeMs": 0,
+  "Keys": {
+    "Ads": 2,
+    "Back": 83,
+    "Fire": 1,
+    "Forward": 87,
+    "LeanLeft": 81,
+    "LeanRight": 69,
+    "Left": 65,
+    "Right": 68,
+    "Toggle": 35
+  },
+  "LeanMode": "toggle",
+  "MonitorIndex": -1,
+  "Profiles": [
+    {
+      "BouncePct": 50,
+      "CenterDot": false,
+      "CenterDotSize": 2,
+      "Color": "#78FF78",
+      "Color2": "#FFFFFF",
+      "Diameter": 18,
+      "Dirs": [
+        {
+          "KickX": 0,
+          "KickY": -10,
+          "OffX": 0,
+          "OffY": 8,
+          "SwayX": 5,
+          "SwayY": 4
+        },
+        {
+          "KickX": 0,
+          "KickY": 10,
+          "OffX": 0,
+          "OffY": -8,
+          "SwayX": 5,
+          "SwayY": 4
+        },
+        {
+          "KickX": 25,
+          "KickY": 8,
+          "OffX": -12,
+          "OffY": 0,
+          "SwayX": 6,
+          "SwayY": 4
+        },
+        {
+          "KickX": -25,
+          "KickY": 8,
+          "OffX": 12,
+          "OffY": 0,
+          "SwayX": 6,
+          "SwayY": 4
+        },
+        {
+          "KickX": 17.6775,
+          "KickY": -1.4142,
+          "OffX": -8.485199999999999,
+          "OffY": 5.6568,
+          "SwayX": 6,
+          "SwayY": 4
+        },
+        {
+          "KickX": -17.6775,
+          "KickY": -1.4142,
+          "OffX": 8.485199999999999,
+          "OffY": 5.6568,
+          "SwayX": 6,
+          "SwayY": 4
+        },
+        {
+          "KickX": 17.6775,
+          "KickY": 12.727799999999998,
+          "OffX": -8.485199999999999,
+          "OffY": -5.6568,
+          "SwayX": 6,
+          "SwayY": 4
+        },
+        {
+          "KickX": -17.6775,
+          "KickY": 12.727799999999998,
+          "OffX": 8.485199999999999,
+          "OffY": -5.6568,
+          "SwayX": 6,
+          "SwayY": 4
+        }
+      ],
+      "Feather": 1,
+      "Gradient": "none",
+      "InertiaPeriodMs": 500,
+      "LeanEX": 30,
+      "LeanEY": -5,
+      "LeanMs": 150,
+      "LeanQX": -30,
+      "LeanQY": -5,
+      "Name": "示例-需校准",
+      "OpacityPct": 60,
+      "RecoilClickKickPx": 8,
+      "RecoilDriftX": 0,
+      "RecoilFallMs": 250,
+      "RecoilMaxPx": 40,
+      "RecoilRiseMs": 300,
+      "StopKickFactor": 1,
+      "SwayFadeMs": 250,
+      "SwayPeriodMs": 900,
+      "SwayPhaseDeg": 0,
+      "SwayShape": "fig8v",
+      "Thickness": 2
+    },
+    {
+      "BouncePct": 50,
+      "CenterDot": false,
+      "CenterDotSize": 2,
+      "Color": "#78FF78",
+      "Color2": "#FFFFFF",
+      "Diameter": 18,
+      "Dirs": [
+        {
+          "KickX": 0,
+          "KickY": 0,
+          "OffX": 0,
+          "OffY": 0,
+          "SwayX": 0,
+          "SwayY": 0
+        },
+        {
+          "KickX": 0,
+          "KickY": 0,
+          "OffX": 0,
+          "OffY": 0,
+          "SwayX": 0,
+          "SwayY": 0
+        },
+        {
+          "KickX": 0,
+          "KickY": 0,
+          "OffX": 0,
+          "OffY": 0,
+          "SwayX": 0,
+          "SwayY": 0
+        },
+        {
+          "KickX": 0,
+          "KickY": 0,
+          "OffX": 0,
+          "OffY": 0,
+          "SwayX": 0,
+          "SwayY": 0
+        },
+        {
+          "KickX": 0,
+          "KickY": 0,
+          "OffX": 0,
+          "OffY": 0,
+          "SwayX": 0,
+          "SwayY": 0
+        },
+        {
+          "KickX": 0,
+          "KickY": 0,
+          "OffX": 0,
+          "OffY": 0,
+          "SwayX": 0,
+          "SwayY": 0
+        },
+        {
+          "KickX": 0,
+          "KickY": 0,
+          "OffX": 0,
+          "OffY": 0,
+          "SwayX": 0,
+          "SwayY": 0
+        },
+        {
+          "KickX": 0,
+          "KickY": 0,
+          "OffX": 0,
+          "OffY": 0,
+          "SwayX": 0,
+          "SwayY": 0
+        }
+      ],
+      "Feather": 1,
+      "Gradient": "none",
+      "InertiaPeriodMs": 500,
+      "LeanEX": 0,
+      "LeanEY": 0,
+      "LeanMs": 150,
+      "LeanQX": 0,
+      "LeanQY": 0,
+      "Name": "空白（全0）",
+      "OpacityPct": 60,
+      "RecoilClickKickPx": 0,
+      "RecoilDriftX": 0,
+      "RecoilFallMs": 250,
+      "RecoilMaxPx": 0,
+      "RecoilRiseMs": 300,
+      "StopKickFactor": 1,
+      "SwayFadeMs": 250,
+      "SwayPeriodMs": 900,
+      "SwayPhaseDeg": 0,
+      "SwayShape": "fig8v",
+      "Thickness": 2
+    },
+    {
+      "BouncePct": 50,
+      "CenterDot": false,
+      "CenterDotSize": 2,
+      "Color": "#00FFFF",
+      "Color2": "#FFFFFF",
+      "Diameter": 24,
+      "Dirs": [
+        {
+          "KickX": 0,
+          "KickY": -10,
+          "OffX": 0,
+          "OffY": 8,
+          "SwayX": 5,
+          "SwayY": 4
+        },
+        {
+          "KickX": 0,
+          "KickY": 10,
+          "OffX": 0,
+          "OffY": -8,
+          "SwayX": 5,
+          "SwayY": 4
+        },
+        {
+          "KickX": 30,
+          "KickY": 8,
+          "OffX": -15,
+          "OffY": 2,
+          "SwayX": 9,
+          "SwayY": 4
+        },
+        {
+          "KickX": -25,
+          "KickY": 8,
+          "OffX": 12,
+          "OffY": 0,
+          "SwayX": 6,
+          "SwayY": 4
+        },
+        {
+          "KickX": 17.6775,
+          "KickY": -1.4142,
+          "OffX": -8.485199999999999,
+          "OffY": 5.6568,
+          "SwayX": 6,
+          "SwayY": 4
+        },
+        {
+          "KickX": -17.6775,
+          "KickY": -1.4142,
+          "OffX": 8.485199999999999,
+          "OffY": 5.6568,
+          "SwayX": 6,
+          "SwayY": 4
+        },
+        {
+          "KickX": 17.6775,
+          "KickY": 12.727799999999998,
+          "OffX": -8.485199999999999,
+          "OffY": -5.6568,
+          "SwayX": 6,
+          "SwayY": 4
+        },
+        {
+          "KickX": -17.6775,
+          "KickY": 12.727799999999998,
+          "OffX": 8.485199999999999,
+          "OffY": -5.6568,
+          "SwayX": 6,
+          "SwayY": 4
+        }
+      ],
+      "Feather": 1,
+      "Gradient": "none",
+      "InertiaPeriodMs": 500,
+      "LeanEX": 30,
+      "LeanEY": -5,
+      "LeanMs": 150,
+      "LeanQX": -40,
+      "LeanQY": -5,
+      "Name": "M4A1",
+      "OpacityPct": 60,
+      "RecoilClickKickPx": 8,
+      "RecoilDriftX": 0,
+      "RecoilFallMs": 250,
+      "RecoilMaxPx": 55,
+      "RecoilRiseMs": 300,
+      "StopKickFactor": 1,
+      "SwayFadeMs": 250,
+      "SwayPeriodMs": 900,
+      "SwayPhaseDeg": 0,
+      "SwayShape": "fig8v",
+      "Thickness": 2
+    }
+  ],
+  "SettingsTopMost": true,
+  "ShowFadeMs": 60,
+  "ShowSettingsOnStart": true,
+  "Version": 1
+}

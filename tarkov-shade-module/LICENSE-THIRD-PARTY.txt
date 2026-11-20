@@ -1,0 +1,52 @@
+Third-party notices for the TarkovShade module
+==============================================
+
+Parts of src/ (gamma ramp controller and its per-monitor smooth transition, the
+gdi32 gamma backend, the apply / restore / crash-recovery flow in ShadeEngine.cs,
+crash-recovery behaviour, ramp conventions in PresetCurve.cs, ShadeMath helpers)
+are ported from TarkovAutoShade:
+https://github.com/lu1249765686/TarkovAutoShade (commit f502076).
+The screenshot-analysis algorithm of TarkovAutoShade is NOT included.
+Each ported file carries a credit comment at the top.
+
+----------------------------------------------------------------------
+
+MIT License
+
+Copyright (c) 2026 TarkovAutoShade contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+----------------------------------------------------------------------
+
+vibranceGUI (https://github.com/juv/vibranceGUI)
+
+src/VibranceController.cs was written for this project; no vibranceGUI source
+code was copied into it. The following interface facts were looked up in
+vibranceGUI (commit 919a9f2) and are used in that file:
+  - NVIDIA NvAPI function ID numbers (most were also confirmed in vibranceGUI's
+    bundled vibranceDLL.dll binary; the comment in the file marks which);
+  - the NV_DISPLAY_DVC_INFO struct layout and its version constant 0x00010010
+    (from vibranceGUI NvidiaTypes.cs);
+  - the AMD ADL constant ADL_DISPLAY_COLOR_SATURATION and the ADL struct layouts
+    (from vibranceGUI AMD/vendor/adl64).
+These are numbers and data layouts of the vendors' driver interfaces, not
+program code. vibranceGUI shows no licence on GitHub (the GitHub API reported
+"license": null on 2026-11-17), so it grants no rights to its code; do not
+copy vibranceGUI code into this project.

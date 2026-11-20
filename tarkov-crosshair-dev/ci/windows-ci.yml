@@ -1,0 +1,78 @@
+# W29 (v5.1) Tarkov Hip Aimer Windows CI. push-to-github.sh copies this file to .github/workflows/windows-ci.yml.
+# Runs on GitHub's Windows machine (windows-latest): build the exe (0 errors / 0 warnings), run the tests, start the real
+# exe and time it, run the layout / text-fit probe at 100 / 150 / 200 % with screenshots. Results: the run's Summary
+# tab and the artifact (zip) at the bottom of the run page. See tarkov-crosshair-dev/ci/CI-SETUP.md.
+name: Windows CI
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      sizes:
+        description: 'Screen sizes for the layout probe (comma separated)'
+        default: '1280x720,1920x1080,2160x1440,2560x1440'
+      scales:
+        description: 'Windows display scales in % (comma separated)'
+        default: '100,150,200'
+      screenshots:
+        description: 'Screenshots: pages (settings + windows), all (also tutorials and dialogs), none'
+        default: 'pages'
+        type: choice
+        options: [pages, all, none]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-ci
+  cancel-in-progress: true
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 120
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: .NET 8 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Build exe
+        id: build
+        run: ./tarkov-crosshair-dev/ci/build.ps1
+
+      - name: Tests
+        if: ${{ !cancelled() }}
+        run: ./tarkov-crosshair-dev/ci/tests.ps1
+
+      - name: Startup and settings timing
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        run: ./tarkov-crosshair-dev/ci/timing.ps1
+
+      - name: Layout probe at 100 / 150 / 200 %
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        env:
+          PROBE_SIZES: ${{ inputs.sizes || '1280x720,1920x1080,2160x1440,2560x1440' }}
+          PROBE_SCALES: ${{ inputs.scales || '100,150,200' }}
+          PROBE_SHOTS: ${{ inputs.screenshots || 'pages' }}
+        run: ./tarkov-crosshair-dev/ci/probe.ps1 -Sizes $env:PROBE_SIZES -Scales $env:PROBE_SCALES -Shots $env:PROBE_SHOTS
+
+      - name: Summary
+        if: ${{ !cancelled() }}
+        run: ./tarkov-crosshair-dev/ci/summary.ps1
+
+      - name: Upload results
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: tarkov-ci-${{ github.run_number }}
+          path: ci-out/
+          retention-days: 7
+          if-no-files-found: warn

@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- V42-W3: tests for the 滤镜教程 model (FilterTutorialModel.cs) with the synced filter maths (src/Shade). -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <AssemblyName>FilterTutTests</AssemblyName>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../tarkov-crosshair-v4/src/Shade/ShadeMath.cs" />
+    <Compile Include="../../tarkov-crosshair-v4/src/Shade/ShadePreset.cs" />
+    <Compile Include="../../tarkov-crosshair-v4/src/Shade/PresetCurve.cs" />
+    <Compile Include="../../tarkov-crosshair-v4/src/Shade/PilotStyle.cs" />
+    <Compile Include="../../tarkov-crosshair-v4/src/Shade/PilotCurve.cs" />
+    <Compile Include="../../tarkov-crosshair-v4/src/Shade/PilotHelpText.cs" />
+    <Compile Include="../../tarkov-crosshair-v4/src/FilterTutorialModel.cs" />
+    <Compile Include="../../tarkov-crosshair-v4/src/FilterTune.cs" />
+    <Compile Include="FilterTutTests.cs" />
+  </ItemGroup>
+</Project>

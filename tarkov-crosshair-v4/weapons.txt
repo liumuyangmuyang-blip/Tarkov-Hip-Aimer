@@ -1,0 +1,164 @@
+﻿20x1毫米玩具枪
+ADAR 2-15 .223 卡宾枪
+AK-101 5.56x45 突击步枪
+AK-102 5.56x45 突击步枪
+AK-103 7.62x39 突击步枪
+AK-104 7.62x39 突击步枪
+AK-105 5.45x39 突击步枪
+AK-12 5.45x39 突击步枪
+AK-308 7.62x51 突击步枪
+AK-74 5.45x39 突击步枪
+AK-74M 5.45x39 突击步枪
+AK-74N 5.45x39 突击步枪
+AKM 7.62x39 突击步枪
+AKMN 7.62x39 突击步枪
+AKMS 7.62x39 突击步枪
+AKMSN 7.62x39 突击步枪
+AKS-74 5.45x39 突击步枪
+AKS-74N 5.45x39 突击步枪
+AKS-74U 5.45x39 短突击步枪
+AKS-74UB 5.45x39 短突击步枪
+AKS-74UN 5.45x39 短突击步枪
+AS VAL“巨浪” 9x39 特种突击步枪
+ASh-12 12.7x55 突击步枪
+AS“巨浪”MOD.4 9x39 特种突击步枪
+Accuracy International AXMC .338 LM 栓动式狙击步枪
+Aklys Defense 迅猛龙 .300 Blackout 突击步枪
+B&T MP9 9x19 冲锋枪
+B&T MP9-N 9x19 冲锋枪
+Benelli M3 Super 90 12铅径双模式霰弹枪
+CMMG Mk47 Mutant 7.62x39 突击步枪
+Chiappa 犀牛 200DS 9x19 左轮手枪
+Chiappa 犀牛 50DS .357 左轮手枪
+DS Arms SA-58 7.62x51 突击步枪
+DVL-10 7.62x51 栓动式狙击步枪
+FN Five-seveN MK2 5.7x28 手枪
+FN Five-seveN MK2 5.7x28 手枪 (FDE)
+FN GL-40 Mk.2 榴弹发射器
+FN P90 5.7x28 submachine gun (Scourge)
+FN P90 5.7x28 冲锋枪
+FN SCAR-H 7.62x51 突击步枪 (FDE)
+FN SCAR-H 7.62x51突击步枪
+FN SCAR-H X-17 7.62x51突击步枪
+FN SCAR-L 5.56x45突击步枪
+FN SCAR-L 5.56x45突击步枪 （FDE）
+GLOCK 18C 9x19 冲锋手枪
+Glock 17 9x19 手枪
+Glock 19X 9x19 手枪
+HK 416A5 5.56x45 突击步枪
+HK 416A5 5.56x45 突击步枪 (RAL 8000)
+HK G28 7.62x51 精确射手步枪
+HK G36 5.56x45 突击步枪
+HK MP5 9x19 冲锋枪（海军三发点射）
+HK MP5K 9x19 微型冲锋枪
+HK MP7A1 4.6x30 冲锋枪
+HK MP7A2 4.6x30 冲锋枪
+HK UMP .45 ACP冲锋枪
+HK USP .45 ACP手枪
+IWI UZI 9x19冲锋枪
+IWI UZI PRO Pistol 9x19冲锋枪
+IWI UZI PRO SMG 9x19冲锋枪
+KBP 9A-91 9x39紧凑型突击步枪
+KBP VSK-94 9x39步枪
+Kel-Tec RFB 7.62x51
+Lone Star TX-15 DML 5.56x45 半自动卡宾枪
+MP-133 12 铅径泵动式霰弹枪
+MP-153 12铅径半自动霰弹枪
+MP-155 12铅径半自动霰弹枪
+MP-18 7.62x54R单发步枪
+MP-43 12铅径截短双管霰弹枪
+MP-43-1C 12 铅径双管霰弹枪
+MPS Auto Assault-12 Gen 1 12铅径自动霰弹枪
+MPS Auto Assault-12 Gen 2 12铅径自动霰弹枪
+MTs-255-12 12铅径转轮霰弹枪
+Magnum Research “沙漠之鹰”L5 .357 手枪
+Magnum Research “沙漠之鹰”L5 .50 AE手枪
+Magnum Research “沙漠之鹰”L6 .50 AE手枪
+Magnum Research “沙漠之鹰”L6 .50 AE手枪（白色虎纹）
+Magnum Research “沙漠之鹰”Mk XIX .50 AE手枪
+Milkor M32A1 MSGL 40 毫米榴弹发射器
+Mossberg 590A1 12铅径泵动式霰弹枪
+NL545 (DI) 5.45x39 突击步枪
+NL545 (GP) 5.45x39 突击步枪
+ORSIS T-5000M 7.62x51 栓动式狙击步枪
+PB 9x18PM消音手枪
+PKM 7.62x54R 机枪
+PKP 7.62x54R 步兵机枪
+PP-19-01 勇士 9x19 冲锋枪
+PP-9 楔子 9x18PMM 冲锋枪
+PP-91 雪松 9x18PM冲锋枪
+PP-91-01 雪松-B 9x18PM 冲锋枪
+PPSh-41 7.62x25 冲锋枪
+RPD 7.62x39 轻机枪
+RPDN 7.62x39 轻机枪
+RPK-16 5.45x39 轻机枪
+RSh-12 12.7x55转轮手枪
+RShG-2 72.5 毫米火箭发射器
+Rifle Dynamics RD-704 7.62x39突击步枪
+SAG AK-545 5.45x39卡宾枪
+SAG AK-545 5.45x39截短卡宾枪
+SIG MCX .300 Blackout 突击步枪
+SIG MCX SPEAR 6.8x51突击步枪
+SIG MPX 9x19 冲锋枪
+SIG P226R 9x19 手枪
+SR-2M 石楠 9x21 冲锋枪
+SR-3M 9x39紧凑型突击步枪
+SV-98 7.62x54 狙击步枪
+SWORD International Mk-18 .338 LM 精确射手步枪
+Saiga-12K 12 铅径自动霰弹枪
+Saiga-12K 12 铅径自动霰弹枪（红线）
+Saiga-12K ver.10 12铅径半自动霰弹枪
+Saiga-9 9x19卡宾枪
+Sako TRG M10 .338 LM 栓动狙击步枪
+Steyr AUG A1 5.56x45突击步枪
+Steyr AUG A3 5.56x45 突击步枪（黑色）
+Steyr AUG A3 5.56x45突击步枪
+TDI KRISS Vector Gen.2 .45 ACP 冲锋枪
+TDI KRISS Vector Gen.2 9x19 冲锋枪
+TKPD 9.3x64 突击卡宾枪
+TOZ KS-23M 23x75 毫米泵动式霰弹枪
+TOZ-106 20铅径栓动式霰弹枪
+TheAKGuy AK-50 .50 BMG 反器材步枪
+Tokarev AVT-40 7.62x54R自动步枪
+Tokarev SVT-40 7.62x54R步枪
+U.S Ordnance M60E4 7.62x51 轻机枪
+U.S Ordnance M60E6 7.62x51 轻机枪
+U.S Ordnance M60E6 7.62x51 轻机枪（FDE）
+VPO-101 Vepr-Hunter 7.62x51 卡宾枪
+VPO-136 野猪-KM 7.62x39 卡宾枪
+VPO-209 .366TKM 卡宾枪
+VPO-215 雪貂 .366 TKM 栓动式步枪
+VSS “绞丝机” 特种狙击步枪
+丰和 20 式 5.56x45 突击步枪
+伯莱塔 M9A3 9x19 手枪
+列别杰夫 PL-15 9x19 手枪
+北方工业 QBZ-191 5.8x42 突击步枪
+奈特军械公司 (KAC) SR-25 7.62x51 精确射手步枪
+奈特军械公司 (KAC) SR-25 7.62x51 精确射手步枪（褐灰色）
+德拉贡诺夫 SVDS 7.62x54 半自动狙击步枪
+托卡列夫 TT-33 7.62x25 手枪
+托卡列夫 TT-33 7.62x25 黄金手枪
+斯捷奇金 APB 9x18PM 消音型自动手枪
+斯捷奇金 APS 9x18PM 冲锋手枪
+春田 M1A 7.62x51 步枪
+柯尔特 M16A1 5.56x45 突击步枪
+柯尔特 M16A2 5.56x45 突击步枪
+柯尔特 M1911A1 .45 ACP 手枪
+柯尔特 M45A1 .45 ACP 手枪
+柯尔特 M4A1 5.56x45 卡宾枪
+沙漠科技 MDR 5.56x45 突击步枪
+沙漠科技 MDR 7.62x51 突击步枪
+联盟-TM STM-9 Gen.2 9x19 卡宾枪
+莫辛-纳甘 7.62x54R 栓动式步枪（步兵型）
+莫辛-纳甘 7.62x54R 栓动式步枪（狙击型）
+西蒙诺夫 OP-SKS 7.62x39 卡宾枪
+西蒙诺夫 SKS 7.62x39 卡宾枪
+谢尔久科夫 SR1MP 9x21 “斑蝰蛇” 半自动手枪
+雅利金 MP-443 “乌鸦” 9x19 手枪
+雷明顿 Model 870 12铅径泵动式霰弹枪
+雷明顿 R11 RSASS 7.62x51 精确射手步枪
+雷明顿Model 700 7.62x51 狙击步枪
+雷电 Model 1 FA 5.56x45 突击步枪
+马卡洛夫 PM(t) 9x18PM 手枪
+马卡洛夫9x18PM 手枪
+马林 MXLR .308 ME 杠杆步枪

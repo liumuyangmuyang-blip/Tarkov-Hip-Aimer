@@ -1,0 +1,290 @@
+{
+  "ActiveProfile": "M4（Leo 改装）",
+  "AdsMode": "hold",
+  "CenterOffsetX": 0,
+  "CenterOffsetY": 0,
+  "Enabled": true,
+  "Fps": 360,
+  "FrameMode": "vsync",
+  "HideFadeMs": 0,
+  "HideOnFreeLook": false,
+  "Keys": {
+    "Ads": 2,
+    "Back": 83,
+    "Crouch": 67,
+    "Fire": 1,
+    "Forward": 87,
+    "FreeLook": 5,
+    "LeanLeft": 81,
+    "LeanRight": 69,
+    "Left": 65,
+    "Right": 68,
+    "Toggle": 123
+  },
+  "LeanMode": "hold",
+  "MonitorIndex": -1,
+  "Profiles": [
+    {
+      "CenterDot": false,
+      "CenterDotSize": 2,
+      "Color": "#00DF00",
+      "Color2": "#000000",
+      "Combos": [
+        {
+          "Enabled": false,
+          "Key": "QA",
+          "OffX": 0,
+          "OffY": 0
+        },
+        {
+          "Enabled": false,
+          "Key": "QWA",
+          "OffX": 0,
+          "OffY": 0
+        },
+        {
+          "Enabled": false,
+          "Key": "QAS",
+          "OffX": 0,
+          "OffY": 0
+        },
+        {
+          "Enabled": false,
+          "Key": "ED",
+          "OffX": 0,
+          "OffY": 0
+        },
+        {
+          "Enabled": false,
+          "Key": "WED",
+          "OffX": 0,
+          "OffY": 0
+        },
+        {
+          "Enabled": false,
+          "Key": "EDS",
+          "OffX": 0,
+          "OffY": 0
+        }
+      ],
+      "CrouchColor": "#FFD24A",
+      "CrouchColorEnabled": false,
+      "CrouchDriftPct": 100,
+      "CrouchEnabled": false,
+      "CrouchKickPct": 100,
+      "CrouchMaxPct": 100,
+      "CrouchPct": 100,
+      "CrouchSplit": false,
+      "Diameter": 13,
+      "Dirs": [
+        {
+          "OffX": 0,
+          "OffY": -20
+        },
+        {
+          "OffX": 0,
+          "OffY": 1
+        },
+        {
+          "OffX": 55,
+          "OffY": 1
+        },
+        {
+          "OffX": -35,
+          "OffY": 1
+        },
+        {
+          "OffX": 38.9,
+          "OffY": -13.4
+        },
+        {
+          "OffX": -24.7,
+          "OffY": -13.4
+        },
+        {
+          "OffX": 38.9,
+          "OffY": 1.4
+        },
+        {
+          "OffX": -24.7,
+          "OffY": 1.4
+        }
+      ],
+      "Feather": 1,
+      "FollowMs": 100,
+      "Gradient": "twotone",
+      "LeanEX": 25,
+      "LeanEY": -5,
+      "LeanMs": 200,
+      "LeanQX": -2,
+      "LeanQY": -8,
+      "Name": "M4（Leo 改装）",
+      "OpacityPct": 60,
+      "OuterThickness": 1.5,
+      "RecoilClickKickPx": 8,
+      "RecoilDelayMs": 40,
+      "RecoilDriftX": 0,
+      "RecoilFallMs": 230,
+      "RecoilMaxPx": 40,
+      "RecoilRiseMs": 260,
+      "ReverseFB": {
+        "AccelMs": 100,
+        "AccelShape": "smooth",
+        "AccelStrength": 100,
+        "DecelMs": 100,
+        "DecelShape": "smooth",
+        "DecelStrength": 100,
+        "Enabled": true,
+        "PauseMs": 200,
+        "TotalMs": 400
+      },
+      "ReverseLR": {
+        "AccelMs": 100,
+        "AccelShape": "smooth",
+        "AccelStrength": 100,
+        "DecelMs": 100,
+        "DecelShape": "smooth",
+        "DecelStrength": 100,
+        "Enabled": true,
+        "PauseMs": 200,
+        "TotalMs": 400
+      },
+      "StandOffsetX": 0,
+      "StandOffsetY": 0,
+      "Thickness": 1.2
+    },
+    {
+      "CenterDot": false,
+      "CenterDotSize": 2,
+      "Color": "#78FF78",
+      "Color2": "#FFFFFF",
+      "Combos": [
+        {
+          "Enabled": false,
+          "Key": "QA",
+          "OffX": 0,
+          "OffY": 0
+        },
+        {
+          "Enabled": false,
+          "Key": "QWA",
+          "OffX": 0,
+          "OffY": 0
+        },
+        {
+          "Enabled": false,
+          "Key": "QAS",
+          "OffX": 0,
+          "OffY": 0
+        },
+        {
+          "Enabled": false,
+          "Key": "ED",
+          "OffX": 0,
+          "OffY": 0
+        },
+        {
+          "Enabled": false,
+          "Key": "WED",
+          "OffX": 0,
+          "OffY": 0
+        },
+        {
+          "Enabled": false,
+          "Key": "EDS",
+          "OffX": 0,
+          "OffY": 0
+        }
+      ],
+      "CrouchColor": "#FFD24A",
+      "CrouchColorEnabled": false,
+      "CrouchDriftPct": 100,
+      "CrouchEnabled": true,
+      "CrouchKickPct": 100,
+      "CrouchMaxPct": 100,
+      "CrouchPct": 70,
+      "CrouchSplit": false,
+      "Diameter": 18,
+      "Dirs": [
+        {
+          "OffX": 0,
+          "OffY": 0
+        },
+        {
+          "OffX": 0,
+          "OffY": 0
+        },
+        {
+          "OffX": 0,
+          "OffY": 0
+        },
+        {
+          "OffX": 0,
+          "OffY": 0
+        },
+        {
+          "OffX": 0,
+          "OffY": 0
+        },
+        {
+          "OffX": 0,
+          "OffY": 0
+        },
+        {
+          "OffX": 0,
+          "OffY": 0
+        },
+        {
+          "OffX": 0,
+          "OffY": 0
+        }
+      ],
+      "Feather": 1,
+      "FollowMs": 200,
+      "Gradient": "none",
+      "LeanEX": 0,
+      "LeanEY": 0,
+      "LeanMs": 150,
+      "LeanQX": 0,
+      "LeanQY": 0,
+      "Name": "AK",
+      "OpacityPct": 60,
+      "OuterThickness": 1.5,
+      "RecoilClickKickPx": 0,
+      "RecoilDelayMs": 60,
+      "RecoilDriftX": 0,
+      "RecoilFallMs": 250,
+      "RecoilMaxPx": 0,
+      "RecoilRiseMs": 300,
+      "ReverseFB": {
+        "AccelMs": 100,
+        "AccelShape": "smooth",
+        "AccelStrength": 100,
+        "DecelMs": 100,
+        "DecelShape": "smooth",
+        "DecelStrength": 100,
+        "Enabled": false,
+        "PauseMs": 200,
+        "TotalMs": 400
+      },
+      "ReverseLR": {
+        "AccelMs": 100,
+        "AccelShape": "smooth",
+        "AccelStrength": 100,
+        "DecelMs": 120,
+        "DecelShape": "smooth",
+        "DecelStrength": 100,
+        "Enabled": true,
+        "PauseMs": 180,
+        "TotalMs": 400
+      },
+      "StandOffsetX": 4,
+      "StandOffsetY": 0,
+      "Thickness": 2
+    }
+  ],
+  "SettingsTopMost": true,
+  "ShowFadeMs": 50,
+  "ShowSettingsOnStart": true,
+  "Version": 1
+}

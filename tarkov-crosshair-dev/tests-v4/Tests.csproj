@@ -1,0 +1,161 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <AssemblyName>CrosshairTests</AssemblyName>
+    <StartupObject>TarkovCrosshair.Tests.Program</StartupObject>
+    <!-- TutorialStepsB.cs: only its pure part (LeanStepMath) -->
+    <DefineConstants>$(DefineConstants);TUTB_PURE_ONLY;TUTORIAL_MATH_ONLY;TUTSTEP7_PURE_ONLY;STEP3_PURE_ONLY;TUTSTEP9_PURE_ONLY;STEP10_PURE_ONLY;SKEL_PURE_ONLY;UI_PURE_CHECK;THEME_PURE_CHECK</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../tarkov-crosshair-v4/src/Settings.cs" />
+    <Compile Include="../../tarkov-crosshair-v4/src/LeoDefaultJson.cs" />
+    <Compile Include="../../tarkov-crosshair-v4/src/Motion.cs" />
+    <Compile Include="../../tarkov-crosshair-v4/src/MotionCurve.cs" />
+    <Compile Include="../../tarkov-crosshair-v4/src/InputResolver.cs" />
+    <Compile Include="../../tarkov-crosshair-v4/src/RingRaster.cs" />
+    <Compile Include="../../tarkov-crosshair-v4/src/StyleShapes.cs" />
+    <Compile Include="../../tarkov-crosshair-v4/src/GameWindow.cs" />
+    <Compile Include="../../tarkov-crosshair-v4/src/Autostart.cs" />
+    <Compile Include="V23Settings.cs" />
+    <Compile Include="V23Motion.cs" />
+    <Compile Include="V242Motion.cs" />
+    <Compile Include="Tests.cs" />
+    <Compile Include="TestsV24.cs" />
+    <Compile Include="TestsV241.cs" />
+    <Compile Include="TestsV243.cs" />
+    <Compile Include="TestsV25.cs" />
+    <Compile Include="TestsV30.cs" />
+    <Compile Include="TestsV31.cs" />
+    <Compile Include="TestsV32.cs" />
+    <Compile Include="TestsV34.cs" />
+    <Compile Include="TestsV40.cs" />
+    <Compile Include="V245Raster.cs" />
+    <Compile Include="Png.cs" />
+    <Compile Include="../../tarkov-crosshair-v4/src/DashboardLogic.cs" />
+    <Compile Include="TestsV4Dash.cs" />
+    <Compile Include="TestsV41Dash.cs" />
+    <Compile Include="TestsV4Brute.cs" />
+    <Compile Include="TestsV4SettingsFix.cs" />
+    <Compile Include="TestsV4AuditLogic.cs" />
+    <Compile Include="LogStub.cs" />
+    <Compile Include="TestsV4Style.cs" />
+    <Compile Include="TestsV4Perf.cs" />
+    <Compile Include="../../tarkov-crosshair-v4/src/TutorialModel.cs" />
+    <Compile Include="TestsV4Tutorial.cs" />
+    <Compile Include="../../tarkov-crosshair-v4/src/TutorialStepsB.cs" />
+    <Compile Include="TestsV4TutorialB.cs" />
+    <Compile Include="../../tarkov-crosshair-v4/src/TutorialStep7.cs" />
+    <Compile Include="TestsV4Step7.cs" />
+    <Compile Include="../../tarkov-crosshair-v4/src/TutorialStep5.cs" />
+    <Compile Include="TestsV4Step5.cs" />
+    <Compile Include="../../tarkov-crosshair-v4/src/TutorialStep3.cs" />
+    <Compile Include="TestsV4Step3.cs" />
+    <Compile Include="../../tarkov-crosshair-v4/src/TutorialStep4.cs" />
+    <Compile Include="TestsV4Step4.cs" />
+    <Compile Include="../../tarkov-crosshair-v4/src/TutorialStep6.cs" />
+    <Compile Include="TestsV4Step6.cs" />
+    <Compile Include="../../tarkov-crosshair-v4/src/TutorialStep9.cs" />
+    <Compile Include="TestsV4Step9.cs" />
+    <Compile Include="../../tarkov-crosshair-v4/src/TutorialStep10.cs" />
+    <Compile Include="TestsV4Step10.cs" />
+    <Compile Include="TestsV41Step10.cs" />
+    <Compile Include="../../tarkov-crosshair-v4/src/TutorialSkeleton.cs" />
+    <Compile Include="TestsV4Skeleton.cs" />
+    <Compile Include="../../tarkov-crosshair-v4/src/SettingsForm.cs" />
+    <Compile Include="../../tarkov-crosshair-v4/src/Theme.cs" />
+    <Compile Include="../../tarkov-crosshair-v4/src/SettingsForm.PageGuide.cs" />
+    <Compile Include="../../tarkov-crosshair-v4/src/GuideText.cs" />
+    <Compile Include="TestsV4Shell.cs" />
+    <Compile Include="TestsV4Legacy.cs" />
+    <Compile Include="TestsV41Core.cs" />
+    <Compile Include="TestsV41Motion.cs" />
+    <Compile Include="../../tarkov-crosshair-v4/src/OffsetUnits.cs" />
+    <Compile Include="TestsV41Units.cs" />
+    <Compile Include="TestsV41Tut.cs" />
+    <Compile Include="TestsV41Ui.cs" />
+    <Compile Include="TestsV41Guide.cs" />
+    <Compile Include="TestsV41Render.cs" />
+    <Compile Include="TestsV41Settings.cs" />
+    <!-- v4.2 (W2) 滤镜: hotkeys/prefs + the synced module (src/Shade, everything except the WinForms Win32Gamma.cs) -->
+    <Compile Include="../../tarkov-crosshair-v4/src/FilterHotkeys.cs" />
+    <Compile Include="../../tarkov-crosshair-v4/src/Shade/*.cs" Exclude="../../tarkov-crosshair-v4/src/Shade/Win32Gamma.cs" />
+    <Compile Include="TestsV42Filter.cs" />
+    <!-- v4.3 (W2): filter worker + ShadePilot gamma rule (pure parts) -->
+    <Compile Include="../../tarkov-crosshair-v4/src/FilterCore.cs" />
+    <Compile Include="../../tarkov-crosshair-v4/src/FilterGamma.cs" />
+    <Compile Include="TestsV43Perf.cs" />
+    <Compile Include="../../tarkov-crosshair-v4/src/FilterTune.cs" />
+    <Compile Include="TestsV43Wording.cs" />
+    <Compile Include="TestsV43Stretch.cs" />
+    <!-- v4.3 (W7) PERF: overlay present gate, foreground tracker, raw mouse batch (pure) -->
+    <Compile Include="../../tarkov-crosshair-v4/src/OverlayPresent.cs" />
+    <Compile Include="TestsV43W7.cs" />
+    <Compile Include="TestsV431W11.cs" />
+    <Compile Include="TestsV50.cs" />
+    <!-- v5.0.1 (W13): startup / freeze guards (fake slow DDC, NVAPI, Magnification), startup timing + UI watchdog -->
+    <Compile Include="../../tarkov-crosshair-v4/src/FilterGuards.cs" />
+    <Compile Include="../../tarkov-crosshair-v4/src/StartupWatch.cs" />
+    <Compile Include="TestsV501.cs" />
+    <!-- v5.0.1 (W14): 开镜 never touches the overlay window, pacing without DwmFlush, render loop never waits (pure + source) -->
+    <Compile Include="TestsV501W14.cs" />
+    <!-- v5.0.2 (W16): 开镜 all-zero frame, SW_HIDE only off / away, 1 ms key poll latency, vblank lock, fade, Hidden, PNG -->
+    <Compile Include="TestsV502W16.cs" />
+    <!-- v4.3.1 (G2): fixed-cell layout rules for 按键 / 常规 / 后坐力 / 滤镜 (source); rendered check: layout-g2/run.sh -->
+    <Compile Include="TestsV431G2.cs" />
+    <!-- v5.0.2 (W18): 推荐 = Leo's file, 强化 full look, typo / encoding salvage, UI-C items in the settings pages -->
+    <Compile Include="TestsV502W18.cs" />
+    <!-- v5.0.2 (W17): UI speed (lazy settings pages, background save, idle watchdog, no timers with the game in front) + UI review items -->
+    <Compile Include="../../tarkov-crosshair-v4/src/UiSpeed.cs" />
+    <Compile Include="TestsV502W17.cs" />
+    <!-- v5.0.2 (W15): filter restore after slow drivers / monitors, damaged recovery file, monotone 调试滤镜, perf (worker threads: run from Main) -->
+    <Compile Include="TestsV502W15.cs" />
+    <!-- v5.0.2 (W19): runtime files in 「数据 Data」 next to the exe, migration, read-only fallback, crosshair folder stays top level -->
+    <Compile Include="TestsV502W19.cs" />
+    <!-- v5.1 (W27): tutorial pages for the v5.1 features (pure part of TutorialStepsV51.cs via TUTB_PURE_ONLY) + source checks -->
+    <Compile Include="../../tarkov-crosshair-v4/src/TutorialStepsV51.cs" />
+    <Compile Include="TestsV51Tut.cs" />
+    <!-- v5.1 (W24): filter tiers, 11-step 调试滤镜, 5-point curve + Windows limit (FilterTune.cs), event-driven filter keys (FilterHotkeys.cs) -->
+    <Compile Include="TestsV51W24.cs" />
+    <Compile Include="TestsV51W25.cs" />
+    <Compile Include="TestsV51W23.cs" />
+    <!-- v5.1 (W22): ammo hint (AmmoDisplay), CS feel + canvas extras (CrosshairAnim / LookExtras), W21's AmmoModel; overlay sim -->
+    <Compile Include="../../tarkov-crosshair-v4/src/AmmoModel.cs" />
+    <Compile Include="../../tarkov-crosshair-v4/src/AmmoDisplay.cs" />
+    <Compile Include="../../tarkov-crosshair-v4/src/CrosshairAnim.cs" />
+    <Compile Include="TestsV51W22.cs" />
+    <!-- v5.1 (W33): texture-drop diagnostics: 开镜/丢雷真隐藏, DirectComposition mode choice + fallback, GPU log (pure + graceful failure + source) -->
+    <Compile Include="../../tarkov-crosshair-v4/src/OverlayDiag.cs" />
+    <Compile Include="../../tarkov-crosshair-v4/src/DCompPresenter.cs" />
+    <Compile Include="../../tarkov-crosshair-v4/src/GpuDiag.cs" />
+    <Compile Include="TestsV51W33.cs" />
+    <!-- v5.1 (W21): motion engine (slow-start legs, 短按, A->D), 丢雷隐藏, 强化 toggle/hold, AmmoModel, ReadInput(g) -->
+    <Compile Include="TestsV51W21.cs" />
+    <!-- v5.1 (W30): text fit (decision 9, pure TextFitMath) + flat tokens / source checks (decision 14) -->
+    <Compile Include="../../tarkov-crosshair-v4/src/TextFit.cs" />
+    <Compile Include="TestsV51W30.cs" />
+    <!-- v5.1 (W26): onboarding / CX pure parts (help texts, 必读, 常见问题, status line, setup wizard model) -->
+    <Compile Include="../../tarkov-crosshair-v4/src/HelpText.cs" />
+    <Compile Include="../../tarkov-crosshair-v4/src/MustRead.cs" />
+    <Compile Include="../../tarkov-crosshair-v4/src/FaqText.cs" />
+    <Compile Include="../../tarkov-crosshair-v4/src/StatusLine.cs" />
+    <Compile Include="../../tarkov-crosshair-v4/src/WizardModel.cs" />
+    <Compile Include="TestsV51W26.cs" />
+    <!-- v5.1 (W28) NET: updater / feedback / stats / crash log / consent (pure parts; WinForms parts are Net.UpdateUi, Net.Crash, Net.FeedbackPanel, Net.Hub, Net.MonitorPanel, Net.Http, Net.FeedbackEnv) -->
+    <Compile Include="../../tarkov-crosshair-v4/src/Net.Json.cs" />
+    <Compile Include="../../tarkov-crosshair-v4/src/Net.Core.cs" />
+    <Compile Include="../../tarkov-crosshair-v4/src/Net.Update.cs" />
+    <Compile Include="../../tarkov-crosshair-v4/src/Net.UpdateInstall.cs" />
+    <Compile Include="../../tarkov-crosshair-v4/src/Net.Feedback.cs" />
+    <Compile Include="../../tarkov-crosshair-v4/src/Net.Usage.cs" />
+    <Compile Include="../../tarkov-crosshair-v4/src/Net.Scrub.cs" />
+    <Compile Include="../../tarkov-crosshair-v4/src/Net.Mail.cs" />
+    <Compile Include="../../tarkov-crosshair-v4/src/Net.CrashStore.cs" />
+    <Compile Include="../../tarkov-crosshair-v4/src/Net.HubLogic.cs" />
+    <Compile Include="TestsV44Net.cs" />
+    <Compile Include="TestsV51Net.cs" />
+  </ItemGroup>
+</Project>

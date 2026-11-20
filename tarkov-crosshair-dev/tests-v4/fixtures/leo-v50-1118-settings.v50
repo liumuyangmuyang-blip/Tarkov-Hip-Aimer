@@ -1,0 +1,600 @@
+{
+  "ActiveProfile": "Leo默认 (旧)",
+  "AdsCancelRun": true,
+  "AdsCancelTabEsc": true,
+  "AdsIgnoreAltCtrl": true,
+  "AdsMode": "hold",
+  "Autostart": true,
+  "BoostEnabled": true,
+  "CenterOffsetX": 0,
+  "CenterOffsetY": 0,
+  "Enabled": true,
+  "Fps": 360,
+  "FrameMode": "vsync",
+  "GameWindowTitle": "EscapeFromTarkov",
+  "HandEnabled": true,
+  "HandMode": "toggle",
+  "HideFadeMs": 0,
+  "HideOnFreeLook": true,
+  "Keys": {
+    "Ads": 2,
+    "AdsMods": 0,
+    "Back": 83,
+    "Boost": 6,
+    "BoostMods": 0,
+    "Fire": 1,
+    "FireMods": 0,
+    "Forward": 87,
+    "FreeLook": 4,
+    "FreeLookMods": 0,
+    "HandSwitch": 5,
+    "HandSwitchMods": 0,
+    "Jump": 32,
+    "JumpMods": 0,
+    "LeanLeft": 81,
+    "LeanLeftMods": 0,
+    "LeanRight": 69,
+    "LeanRightMods": 0,
+    "Left": 65,
+    "Right": 68,
+    "Toggle": 123,
+    "ToggleMods": 0
+  },
+  "LeanCancelRun": true,
+  "LeanMode": "hold",
+  "MonitorIndex": -1,
+  "OnlyWhenGameFocused": true,
+  "Profiles": [
+    {
+      "Boost": {
+        "Color": "#00FF00",
+        "Color2": "#000000",
+        "Diameter": 15,
+        "FollowHandColor": true,
+        "GlowOpacityPct": 45,
+        "GlowPx": 5,
+        "OpacityPct": 90,
+        "OuterThickness": 2.5,
+        "Thickness": 1
+      },
+      "CenterDot": false,
+      "CenterDotSize": 2,
+      "Color": "#00DF00",
+      "Color2": "#000000",
+      "CrossGap": 4,
+      "CrossLength": 6,
+      "CrossThickness": 1.5,
+      "CrossTop": true,
+      "CurveAD": {
+        "DurationMs": 380,
+        "Speeds": [
+          0,
+          25,
+          50,
+          75,
+          100
+        ]
+      },
+      "CurveWS": {
+        "DurationMs": 380,
+        "Speeds": [
+          0,
+          25,
+          50,
+          75,
+          100
+        ]
+      },
+      "DashGapPct": 30,
+      "Dashes": 0,
+      "Diameter": 12,
+      "Dirs": [
+        {
+          "OffX": 0,
+          "OffY": -33
+        },
+        {
+          "OffX": 0,
+          "OffY": 11
+        },
+        {
+          "OffX": 75,
+          "OffY": 0
+        },
+        {
+          "OffX": -30,
+          "OffY": 3
+        },
+        {
+          "OffX": 53.0325,
+          "OffY": -23.3343
+        },
+        {
+          "OffX": -21.212999999999997,
+          "OffY": -21.212999999999997
+        },
+        {
+          "OffX": 53.0325,
+          "OffY": 7.7780999999999993
+        },
+        {
+          "OffX": -21.212999999999997,
+          "OffY": 9.8994
+        }
+      ],
+      "Feather": 1,
+      "GlowOpacityPct": 40,
+      "GlowPx": 0,
+      "Gradient": "twotone",
+      "HandColor": "#FF9500",
+      "HandColor2": "#000000",
+      "HandColorOn": true,
+      "HandCustom": [
+        {
+          "Custom": false,
+          "X": 0,
+          "Y": 0
+        },
+        {
+          "Custom": false,
+          "X": 0,
+          "Y": 0
+        },
+        {
+          "Custom": false,
+          "X": 0,
+          "Y": 0
+        },
+        {
+          "Custom": false,
+          "X": 0,
+          "Y": 0
+        },
+        {
+          "Custom": false,
+          "X": 0,
+          "Y": 0
+        },
+        {
+          "Custom": false,
+          "X": 0,
+          "Y": 0
+        },
+        {
+          "Custom": false,
+          "X": 0,
+          "Y": 0
+        },
+        {
+          "Custom": false,
+          "X": 0,
+          "Y": 0
+        }
+      ],
+      "HandSwitchMs": 400,
+      "Jump": {
+        "Enabled": true,
+        "Phases": [
+          {
+            "Curve": "smooth",
+            "EndPx": -300,
+            "Ms": 200
+          },
+          {
+            "Curve": "smooth",
+            "EndPx": 0,
+            "Ms": 305
+          },
+          {
+            "Curve": "in",
+            "EndPx": 0,
+            "Ms": 295
+          }
+        ],
+        "TotalMs": 800
+      },
+      "LeanEX": 12,
+      "LeanEY": -17,
+      "LeanMs": 280,
+      "LeanQX": -5,
+      "LeanQY": -22,
+      "Name": "Leo默认",
+      "OpacityPct": 65,
+      "OuterThickness": 1.5,
+      "RecoilClickKickPx": 8,
+      "RecoilDelayMs": 30,
+      "RecoilDriftX": 0,
+      "RecoilFallMs": 180,
+      "RecoilMaxPx": 24,
+      "RecoilRiseMs": 300,
+      "RotationDeg": 0,
+      "Shape": "ring",
+      "StandOffsetX": 0,
+      "StandOffsetY": 0,
+      "Style": {
+        "Count": 3,
+        "Gap": 4,
+        "Hole": 3,
+        "Kind": "",
+        "Length": 7,
+        "PngFile": "",
+        "PngTint": false,
+        "Spread": 120
+      },
+      "Thickness": 1.2
+    },
+    {
+      "Boost": {
+        "Color": "#00FF00",
+        "Color2": "#000000",
+        "Diameter": 15,
+        "FollowHandColor": true,
+        "GlowOpacityPct": 45,
+        "GlowPx": 4,
+        "OpacityPct": 90,
+        "OuterThickness": 2.5,
+        "Thickness": 1.8
+      },
+      "CenterDot": false,
+      "CenterDotSize": 2,
+      "Color": "#00DF00",
+      "Color2": "#000000",
+      "CrossGap": 4.3,
+      "CrossLength": 6.3,
+      "CrossThickness": 1.5,
+      "CrossTop": true,
+      "CurveAD": {
+        "DurationMs": 430,
+        "Speeds": [
+          0,
+          15,
+          45,
+          75,
+          100
+        ]
+      },
+      "CurveWS": {
+        "DurationMs": 430,
+        "Speeds": [
+          0,
+          15,
+          45,
+          75,
+          100
+        ]
+      },
+      "DashGapPct": 30,
+      "Dashes": 0,
+      "Diameter": 12,
+      "Dirs": [
+        {
+          "OffX": 0,
+          "OffY": -14.4
+        },
+        {
+          "OffX": 0,
+          "OffY": 14.4
+        },
+        {
+          "OffX": 97.2,
+          "OffY": 0
+        },
+        {
+          "OffX": -37.440000000000005,
+          "OffY": 0
+        },
+        {
+          "OffX": 68.73012,
+          "OffY": -10.18224
+        },
+        {
+          "OffX": -26.473824,
+          "OffY": -10.18224
+        },
+        {
+          "OffX": 68.73012,
+          "OffY": 10.18224
+        },
+        {
+          "OffX": -26.473824,
+          "OffY": 10.18224
+        }
+      ],
+      "Feather": 1,
+      "GlowOpacityPct": 40,
+      "GlowPx": 0,
+      "Gradient": "twotone",
+      "HandColor": "#FF9500",
+      "HandColor2": "#000000",
+      "HandColorOn": true,
+      "HandCustom": [
+        {
+          "Custom": false,
+          "X": 0,
+          "Y": 0
+        },
+        {
+          "Custom": false,
+          "X": 0,
+          "Y": 0
+        },
+        {
+          "Custom": true,
+          "X": 28.8,
+          "Y": 1.08
+        },
+        {
+          "Custom": true,
+          "X": -72,
+          "Y": 0
+        },
+        {
+          "Custom": false,
+          "X": 0,
+          "Y": 0
+        },
+        {
+          "Custom": true,
+          "X": -25.92,
+          "Y": 5.7600000000000007
+        },
+        {
+          "Custom": true,
+          "X": 10.8,
+          "Y": -4.32
+        },
+        {
+          "Custom": false,
+          "X": 0,
+          "Y": 0
+        }
+      ],
+      "HandSwitchMs": 450,
+      "Jump": {
+        "Enabled": true,
+        "Phases": [
+          {
+            "Curve": "smooth",
+            "EndPx": -300,
+            "Ms": 200
+          },
+          {
+            "Curve": "smooth",
+            "EndPx": 0,
+            "Ms": 305
+          },
+          {
+            "Curve": "in",
+            "EndPx": 0,
+            "Ms": 295
+          }
+        ],
+        "TotalMs": 800
+      },
+      "LeanEX": 11.520000000000001,
+      "LeanEY": -16.56,
+      "LeanMs": 280,
+      "LeanQX": -11.808,
+      "LeanQY": -18,
+      "Name": "Leo默认 (旧)",
+      "OpacityPct": 65,
+      "OuterThickness": 1.8,
+      "RecoilClickKickPx": 8,
+      "RecoilDelayMs": 30,
+      "RecoilDriftX": 0,
+      "RecoilFallMs": 180,
+      "RecoilMaxPx": 24,
+      "RecoilRiseMs": 300,
+      "RotationDeg": 0,
+      "SavedDefault": {
+        "Boost": {
+          "Color": "#00FF00",
+          "Color2": "#000000",
+          "Diameter": 15,
+          "FollowHandColor": true,
+          "GlowOpacityPct": 45,
+          "GlowPx": 4,
+          "OpacityPct": 90,
+          "OuterThickness": 2.5,
+          "Thickness": 1.8
+        },
+        "CenterDot": false,
+        "CenterDotSize": 2,
+        "Color": "#00DF00",
+        "Color2": "#000000",
+        "CrossGap": 4.3,
+        "CrossLength": 6.3,
+        "CrossThickness": 1.5,
+        "CrossTop": true,
+        "CurveAD": {
+          "DurationMs": 430,
+          "Speeds": [
+            0,
+            15,
+            45,
+            75,
+            100
+          ]
+        },
+        "CurveWS": {
+          "DurationMs": 430,
+          "Speeds": [
+            0,
+            15,
+            45,
+            75,
+            100
+          ]
+        },
+        "DashGapPct": 30,
+        "Dashes": 0,
+        "Diameter": 12,
+        "Dirs": [
+          {
+            "OffX": 0,
+            "OffY": -14.4
+          },
+          {
+            "OffX": 0,
+            "OffY": 14.4
+          },
+          {
+            "OffX": 97.2,
+            "OffY": 0
+          },
+          {
+            "OffX": -37.440000000000005,
+            "OffY": 0
+          },
+          {
+            "OffX": 68.73012,
+            "OffY": -10.18224
+          },
+          {
+            "OffX": -26.473824,
+            "OffY": -10.18224
+          },
+          {
+            "OffX": 68.73012,
+            "OffY": 10.18224
+          },
+          {
+            "OffX": -26.473824,
+            "OffY": 10.18224
+          }
+        ],
+        "Feather": 1,
+        "GlowOpacityPct": 40,
+        "GlowPx": 0,
+        "Gradient": "twotone",
+        "HandColor": "#FF9500",
+        "HandColor2": "#000000",
+        "HandColorOn": true,
+        "HandCustom": [
+          {
+            "Custom": false,
+            "X": 0,
+            "Y": 0
+          },
+          {
+            "Custom": false,
+            "X": 0,
+            "Y": 0
+          },
+          {
+            "Custom": true,
+            "X": 28.8,
+            "Y": 1.08
+          },
+          {
+            "Custom": true,
+            "X": -72,
+            "Y": 0
+          },
+          {
+            "Custom": false,
+            "X": 0,
+            "Y": 0
+          },
+          {
+            "Custom": true,
+            "X": -25.92,
+            "Y": 5.7600000000000007
+          },
+          {
+            "Custom": true,
+            "X": 10.8,
+            "Y": -4.32
+          },
+          {
+            "Custom": false,
+            "X": 0,
+            "Y": 0
+          }
+        ],
+        "HandSwitchMs": 450,
+        "Jump": {
+          "Enabled": true,
+          "Phases": [
+            {
+              "Curve": "smooth",
+              "EndPx": -300,
+              "Ms": 200
+            },
+            {
+              "Curve": "smooth",
+              "EndPx": 0,
+              "Ms": 305
+            },
+            {
+              "Curve": "in",
+              "EndPx": 0,
+              "Ms": 295
+            }
+          ],
+          "TotalMs": 800
+        },
+        "LeanEX": 11.520000000000001,
+        "LeanEY": -16.56,
+        "LeanMs": 280,
+        "LeanQX": -11.808,
+        "LeanQY": -18,
+        "Name": "Leo默认 (旧)",
+        "OpacityPct": 65,
+        "OuterThickness": 1.8,
+        "RecoilClickKickPx": 8,
+        "RecoilDelayMs": 30,
+        "RecoilDriftX": 0,
+        "RecoilFallMs": 180,
+        "RecoilMaxPx": 24,
+        "RecoilRiseMs": 300,
+        "RotationDeg": 0,
+        "Shape": "cross",
+        "StandOffsetX": 0,
+        "StandOffsetY": 0,
+        "Style": {
+          "Count": 3,
+          "Gap": 4,
+          "Hole": 3,
+          "Kind": "",
+          "Length": 9.5,
+          "PngFile": "",
+          "PngTint": false,
+          "Spread": 70
+        },
+        "Thickness": 1.2
+      },
+      "SavedDefaultAt": "2026-11-17 23:58",
+      "Shape": "cross",
+      "StandOffsetX": 0,
+      "StandOffsetY": 0,
+      "Style": {
+        "Count": 3,
+        "Gap": 4,
+        "Hole": 3,
+        "Kind": "",
+        "Length": 9.5,
+        "PngFile": "",
+        "PngTint": false,
+        "Spread": 70
+      },
+      "Thickness": 1.2
+    }
+  ],
+  "ResAspect": "4:3",
+  "ResBaseAspect": "auto",
+  "ResBaseFov": 75,
+  "ResBaseH": 1440,
+  "ResBaseW": 2160,
+  "ResFov": 75,
+  "ResFovType": "v",
+  "ResGameH": 1440,
+  "ResGameW": 1920,
+  "ResV41": true,
+  "SettingsTopMost": true,
+  "ShowFadeMs": 50,
+  "ShowSettingsOnStart": true,
+  "SplashOnStart": true,
+  "TutorialDone": true,
+  "Version": 2
+}
