@@ -15,6 +15,7 @@ namespace TarkovCrosshair.Tests
         static Sim W21Sim(double fps)
         {
             GlobalSettings g = G();
+            g.GrenadeHideOn = true; // X18: built-in default off since Leo 21 Nov 2026; these tests exercise it on
             Profile p = g.Active;
             p.CurveAD = new MoveCurve(W21T, Profile.RecommendedSpeeds);
             p.CurveWS = new MoveCurve(W21T, Profile.RecommendedSpeeds);

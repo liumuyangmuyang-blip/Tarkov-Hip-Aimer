@@ -334,8 +334,12 @@ namespace TarkovCrosshair.Tests
                 st.Set(p, 0, false);
                 x.Frame(st, x.AnimFrom(g), ai, true, v, g.AmmoStyle, x.BarFrom(g), 0, 0);
                 int S = x.Canvas, rec = x.Recomputes; int[] buf = new int[S * S];
+                // v5.1.1 (X15): load-robust timing. 300 warm-up frames, then 5 runs x 1200 frames; the 1.5 ms limit applies to the
+                // p95 of all 6000 samples (one descheduled frame under a parallel test run no longer fails it); worst still reported.
+                const int Runs = 5, PerRun = 1200;
+                double[] samples = new double[Runs * PerRun];
                 double worst = 0, sum = 0, tF = 0, tX = 0, tA = 0; int n = 0; long a0 = 0;
-                for (int f = 1; f <= 1500; f++)
+                for (int f = 1; f <= 300 + Runs * PerRun; f++)
                 {
                     if (f == 300) a0 = GC.GetAllocatedBytesForCurrentThread();
                     ai.ShotSeq = f / 6; ai.Firing = true;
@@ -352,12 +356,14 @@ namespace TarkovCrosshair.Tests
                     long t3 = Stopwatch.GetTimestamp();
                     double ms = (t3 - t0) * 1000.0 / Stopwatch.Frequency;
                     if (f > 300) { tF += (t1 - t0) * 1000.0 / Stopwatch.Frequency; tX += (t2 - t1) * 1000.0 / Stopwatch.Frequency; tA += (t3 - t2) * 1000.0 / Stopwatch.Frequency; }
-                    if (f > 300) { worst = Math.Max(worst, ms); sum += ms; n++; }
+                    if (f > 300) { worst = Math.Max(worst, ms); sum += ms; samples[n] = ms; n++; }
                 }
                 long alloc = GC.GetAllocatedBytesForCurrentThread() - a0;
+                Array.Sort(samples, 0, n);
+                double med = samples[n / 2], p95 = samples[Math.Min(n - 1, (int)Math.Ceiling(n * 0.95) - 1)];
                 Check("V511-X3-12 everything on at max (竞速 bar 160 px, glow, 2 warnings, reloads, ripples 80 px, gradient): " + alloc + " B allocated, 0 recomputes / resizes, frame work avg "
-                    + (sum / n).ToString("0.000") + " ms, worst " + worst.ToString("0.000") + " ms (limit 1.5)",
-                    alloc == 0 && x.Recomputes == rec && x.Canvas == S && worst < 1.5, "alloc=" + alloc + " rec=" + (x.Recomputes - rec) + " S=" + S + "/" + x.Canvas + " split frame/fx/ammo avg " + (tF / n).ToString("0.000") + "/" + (tX / n).ToString("0.000") + "/" + (tA / n).ToString("0.000"));
+                    + (sum / n).ToString("0.000") + " ms, median " + med.ToString("0.000") + " ms, p95 " + p95.ToString("0.000") + " ms (limit 1.5, " + Runs + " runs x " + PerRun + " frames after 300 warm-up), worst " + worst.ToString("0.000") + " ms",
+                    alloc == 0 && x.Recomputes == rec && x.Canvas == S && p95 < 1.5, "alloc=" + alloc + " rec=" + (x.Recomputes - rec) + " S=" + S + "/" + x.Canvas + " split frame/fx/ammo avg " + (tF / n).ToString("0.000") + "/" + (tX / n).ToString("0.000") + "/" + (tA / n).ToString("0.000"));
             }
 
             // ---- X3-13 F4: the 换手 step no longer turns Pal.Hot into Color.Transparent (white tracer)

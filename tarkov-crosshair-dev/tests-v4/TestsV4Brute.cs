@@ -435,6 +435,8 @@ namespace TarkovCrosshair.Tests
                         // v5.1.1 (X5, Leo 21 Nov 2026): rest = the 站立 point (+ lean), FOV side rule on the final X
                         HandView v = new HandView(); x.P.FillView(x.E.Hand, v);
                         if (x.E.LeanTarget != 0) { lx = x.E.LeanTarget < 0 ? v.QX : v.EX; ly = x.E.LeanTarget < 0 ? v.QY : v.EY; }
+                        // X18 (Leo 21 Nov 2026 tuned default: 站立侧身 own targets): standing still uses the standing lean
+                        if (x.E.LeanTarget != 0 && v.StandLeanOn) { lx = x.E.LeanTarget < 0 ? v.SQX : v.SEX; ly = x.E.LeanTarget < 0 ? v.SQY : v.SEY; }
                         // v5.1.1 (X8, Leo 21 Nov option A): a latched lean counts from the screen centre (the 站立 point fades out)
                         double sx = x.E.LeanTarget != 0 && x.P.StandAsZero ? 0 : v.SX, sy = x.E.LeanTarget != 0 && x.P.StandAsZero ? 0 : v.SY;
                         double rs = g.ResolutionScale, rsx = g.ResolutionScaleX;

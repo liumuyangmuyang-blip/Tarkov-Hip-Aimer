@@ -42,7 +42,7 @@ namespace TarkovCrosshair.Tests
 
         static Profile X5OldDefault()
         {
-            Profile p = Profile.CreateLeoDefault("old");
+            Profile p = X18Pre("old");
             p.StandAsZero = false; p.StandOffsetX = 0; p.StandOffsetY = 0;
             for (int i = 0; i < 8; i++) p.Dirs[i] = new DirSetting(X5OldDirs[i][0], X5OldDirs[i][1]);
             for (int i = 0; i < 8; i++) { p.HandCustom[i].Custom = X5OldHand[i][0] == 1.0; p.HandCustom[i].X = X5OldHand[i][1]; p.HandCustom[i].Y = X5OldHand[i][2]; }
@@ -56,7 +56,7 @@ namespace TarkovCrosshair.Tests
             // FOV 50 3.5); standing = the 站立 point (gun side, unscaled); Y unchanged by FOV.
             {
                 string d = "";
-                Profile p = Profile.CreateLeoDefault("t"); p.RecoilMaxPx = 0; p.RecoilClickKickPx = 0;
+                Profile p = X18Pre("t"); p.RecoilMaxPx = 0; p.RecoilClickKickPx = 0;
                 double y75 = 0;
                 foreach (double fov in new double[] { 75, 60, 50 })
                 {
@@ -82,7 +82,7 @@ namespace TarkovCrosshair.Tests
             // left unscaled, right scaled), Y = k·sum exactly as FOV 75; equal FOV bit-identical to the plain sum.
             {
                 string d = "";
-                Profile p = Profile.CreateLeoDefault("t"); p.RecoilMaxPx = 0; p.RecoilClickKickPx = 0;
+                Profile p = X18Pre("t"); p.RecoilMaxPx = 0; p.RecoilClickKickPx = 0;
                 GlobalSettings g75 = X5G(75);
                 foreach (double fov in new double[] { 50, 55, 60, 65, 70, 75 })
                 {
@@ -179,7 +179,7 @@ namespace TarkovCrosshair.Tests
             // every direction and 换手 custom item at the SAME screen place as the old default (0 px error), FOV 75.
             {
                 string d = "";
-                Profile n = Profile.CreateLeoDefault("n"), o = X5OldDefault();
+                Profile n = X18Pre("n"), o = X5OldDefault();
                 GlobalSettings g = GlobalSettings.CreateDefault();
                 if (n.RecoilMaxPx != 28.8 || OffsetUnits.Format(n.RecoilMaxPx, OffsetAxis.Y, g) != "↑ 4.00%") d += "recoil " + n.RecoilMaxPx + "; ";
                 if (!n.StandAsZero || n.StandOffsetX != 24.48 || n.StandOffsetY != -25.2) d += "stand " + n.StandAsZero + " " + n.StandOffsetX + "," + n.StandOffsetY + "; ";
@@ -208,7 +208,7 @@ namespace TarkovCrosshair.Tests
                     }
                 if (we > 0.06) d += "engine moved " + we + "; ";
                 // only these values changed (everything else = the old default)
-                Profile o2 = X5OldDefault(), n2 = Profile.CreateLeoDefault("old");
+                Profile o2 = X5OldDefault(), n2 = X18Pre("old");
                 n2.RecoilMaxPx = o2.RecoilMaxPx; n2.StandAsZero = o2.StandAsZero; n2.StandOffsetX = o2.StandOffsetX; n2.StandOffsetY = o2.StandOffsetY;
                 for (int i = 0; i < 8; i++) { n2.Dirs[i] = o2.Dirs[i]; n2.HandCustom[i] = o2.HandCustom[i]; }
                 if (SettingsIO.ExportProfile(n2) != SettingsIO.ExportProfile(o2)) d += "another value changed; ";
@@ -290,7 +290,7 @@ namespace TarkovCrosshair.Tests
             // X5-7 predicted box values (normal hand, 1920x1440 4:3, new default): A, D, Q, E as on-screen % (absolute) and as
             // the box shows them (distance from the 站立 point). Printed for V511-X5.md.
             {
-                Profile p = Profile.CreateLeoDefault("t"); p.RecoilMaxPx = 0; p.RecoilClickKickPx = 0;
+                Profile p = X18Pre("t"); p.RecoilMaxPx = 0; p.RecoilClickKickPx = 0;
                 List<string> rows = new List<string>();
                 foreach (double fov in new double[] { 50, 55, 60, 65, 70, 75 })
                 {

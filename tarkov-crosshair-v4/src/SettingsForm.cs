@@ -670,7 +670,7 @@ namespace TarkovCrosshair
         private LazyPageState advLazy;          // v4.3: pages still showing the previous 高级设置 state
 
         private readonly App app;
-        private readonly float k;
+        private float k; // v5.1.1 (X15): no longer readonly: ApplyDpi updates it on WM_DPICHANGED
         private Font monoFont;
         private bool loading;
         private readonly List<Action> refreshers = new List<Action>();
@@ -830,6 +830,14 @@ namespace TarkovCrosshair
             pages[2].Steps = BuildGeneralSteps;
             pages[6].Steps = BuildHandSteps;
             pages[9].Steps = BuildFilterSteps;
+            // v5.1.1 (X15): a page file may supply its own chunked builder (ChunkedBuilder below, e.g. 移动 / 跳跃)
+            foreach (Page hp in pages)
+            {
+                if (hp.Steps != null) continue;
+                Func<IEnumerable<Control>> hs = null;
+                ChunkedBuilder(hp.Id, ref hs);
+                if (hs != null) hp.Steps = hs;
+            }
             advLazy = new LazyPageState(pages.Count);
             EnsureBuilt(0);
             BuildNav();
@@ -1294,16 +1302,31 @@ namespace TarkovCrosshair
         private void FitWrapping()
         {
             if (pageHost == null) return;
+            bool changed = FitWrapPhaseA();
+            if (FitWrapPhaseB()) changed = true;
+            FitWrapPhaseC(changed);
+        }
+
+        /// <summary>v5.1.1 (X15): the page FitWrapping fits: the shown page, or (idle refit after a resize / DPI change) a page
+        /// that is laid out behind the shown one (fitOverride).</summary>
+        private int fitOverride = -1;
+        private int FitIndex { get { return fitOverride >= 0 ? fitOverride : current; } }
+
+        /// <summary>v5.1.1 (X15): FitWrapping phase a (wrap widths, drawn-control widths, narrow fixes); true = something changed.</summary>
+        private bool FitWrapPhaseA()
+        {
+            if (pageHost == null) return false;
+            int ci = FitIndex;
             int flat = pageHost.ClientSize.Width - S(22 + 10) - SystemInformation.VerticalScrollBarWidth - S(60);
             if (flat < S(160)) flat = S(160);
             // right edge a label may reach: page padding (10) + the section's padding / margin (14 + 12) + label margin + slack
             int right = pageHost.ClientSize.Width - SystemInformation.VerticalScrollBarWidth - S(10 + 14 + 12 + 6 + 6);
             bool changed = false;
-            Control shown = current >= 0 && current < pages.Count ? pages[current].Host : null;
+            Control shown = ci >= 0 && ci < pages.Count ? pages[ci].Host : null;
             // v5.1.1 (X11, R2 #1; Mono: 滤镜 refit after a width change 473 ms): every size set below laid out the page's AutoSize
             // panels up the chain at once. Phase a (wrap widths) and phase b (card widths + label column) each run with the
             // page's containers held and lay them out once on release (children first).
-            List<Control> held = shown != null && pages[current].Content != null ? HoldLayouts(pages[current].Content) : null;
+            List<Control> held = shown != null && pages[ci].Content != null ? HoldLayouts(pages[ci].Content) : null;
             try
             {
             foreach (KeyValuePair<Label, int> kv in wrapping)
@@ -1330,13 +1353,26 @@ namespace TarkovCrosshair
             }
             }
             finally { ReleaseLayouts(held, true); }
-            held = shown != null && pages[current].Content != null ? HoldLayouts(pages[current].Content) : null;
-            try { if (FitWidths()) changed = true; }
+            return changed;
+        }
+
+        /// <summary>v5.1.1 (X15): FitWrapping phase b (card widths + label column); true = something changed.</summary>
+        private bool FitWrapPhaseB()
+        {
+            int ci = FitIndex;
+            if (pageHost == null || ci < 0 || ci >= pages.Count) return false;
+            List<Control> held = pages[ci].Content != null ? HoldLayouts(pages[ci].Content) : null;
+            try { return FitWidths(); }
             finally { ReleaseLayouts(held, true); }
-            // brute-ui F7: notes that got shorter must also shrink the scroll range (no scroll bar when the page fits)
-            if (changed && current >= 0 && current < pages.Count && pages[current].Scroller != null)
+        }
+
+        /// <summary>v5.1.1 (X15): FitWrapping phase c: brute-ui F7, notes that got shorter also shrink the scroll range.</summary>
+        private void FitWrapPhaseC(bool changed)
+        {
+            int ci = FitIndex;
+            if (changed && ci >= 0 && ci < pages.Count && pages[ci].Scroller != null)
             {
-                try { pages[current].Content.PerformLayout(); pages[current].Scroller.PerformLayout(); } catch (Exception) { }
+                try { pages[ci].Content.PerformLayout(); pages[ci].Scroller.PerformLayout(); } catch (Exception) { }
             }
         }
 
@@ -1353,8 +1389,9 @@ namespace TarkovCrosshair
         /// </summary>
         private bool FitWidths()
         {
-            if (pageHost == null || current < 0 || current >= pages.Count) return false;
-            Page pg = pages[current];
+            int ci = FitIndex; // v5.1.1 (X15): the shown page, or the page refitted behind it
+            if (pageHost == null || ci < 0 || ci >= pages.Count) return false;
+            Page pg = pages[ci];
             if (pg.Scroller == null) return false;
             int avail = pageHost.ClientSize.Width - pg.Host.Padding.Right - SystemInformation.VerticalScrollBarWidth - S(12 + 4);
             int right = Math.Min(avail, pg.Host.Padding.Left + F(ContentWidthPx));
@@ -2205,10 +2242,145 @@ namespace TarkovCrosshair
             {
                 resizeRefit = new System.Windows.Forms.Timer();
                 resizeRefit.Interval = ResizeRefitMs;
-                resizeRefit.Tick += delegate { resizeRefit.Stop(); ResizeRefitNow(); };
+                resizeRefit.Tick += delegate { resizeRefit.Stop(); ResizeRefitNow(); QueueBackgroundRefits(); };
             }
             resizeRefit.Stop(); // debounce: restart the 150 ms on every size change
             resizeRefit.Start();
+        }
+
+        /// <summary>Probe / tests: DPI changes applied while the window was open (X15).</summary>
+        internal int DpiChanges;
+
+        private const int WM_DPICHANGED = 0x02E0;
+
+        protected override void WndProc(ref Message m)
+        {
+            base.WndProc(ref m);
+            if (m.Msg != WM_DPICHANGED) return;
+            // v5.1.1 (X15): HIWORD/LOWORD of wParam = new DPI (x / y); lParam = RECT the window should take at that DPI
+            try
+            {
+                int dpi = (int)((long)m.WParam & 0xFFFF);
+                Rectangle suggested = Rectangle.Empty;
+                if (m.LParam != IntPtr.Zero)
+                {
+                    int[] r = new int[4];
+                    System.Runtime.InteropServices.Marshal.Copy(m.LParam, r, 0, 4);
+                    suggested = Rectangle.FromLTRB(r[0], r[1], r[2], r[3]);
+                }
+                ApplyDpi(dpi, suggested);
+            }
+            catch (Exception ex) { Program.Log("UI: DPI change: " + ex.Message); }
+        }
+
+        /// <summary>
+        /// v5.1.1 (X15): the window moved to a screen with another DPI (or the scale changed) while open. Rebuilds the text scale
+        /// k, scales every control's position / size by new k / old k (all sizes were S(px) of the old k), drops every cached
+        /// fit (the fit key holds k), refits the shown page once now and the other built pages in idle slices
+        /// (QueueBackgroundRefits; a page not built yet uses the new k when it is built). NOTE: the app manifest is
+        /// system-DPI aware, so Windows only sends WM_DPICHANGED to a per-monitor aware window; with today's manifest
+        /// Windows stretches the window instead and this never runs. ScaleOverride (tests) wins over the DPI.
+        /// </summary>
+        internal void ApplyDpi(int dpi, Rectangle suggested)
+        {
+            if (IsDisposed || dpi <= 0) return;
+            float nk = ScaleOverride > 0 ? ScaleOverride : dpi / 96f;
+            if (nk < 0.5f || nk > 5f || Math.Abs(nk - k) < 0.001f) return;
+            float ratio = nk / k;
+            k = nk;
+            DpiChanges++;
+            Program.Log("UI: 显示缩放变了（DPI " + dpi + "），文字比例 " + nk.ToString("0.00"));
+            SuspendLayout();
+            List<Control> held = HoldLayouts(this); // every container lays out once, children first, after the scale
+            try
+            {
+                Scale(new SizeF(ratio, ratio));
+                if (!suggested.IsEmpty) Bounds = suggested;
+            }
+            finally { ReleaseLayouts(held, true); ResumeLayout(true); }
+            switchCache.InvalidateAll();
+            ResizeRefitNow();          // the shown page, once
+            QueueBackgroundRefits();   // the other built pages, lazily in idle slices (or on their next show)
+        }
+
+        /// <summary>Probe / tests: pages refitted in the background after a resize / DPI change (X15).</summary>
+        internal int BackgroundRefits;
+        /// <summary>Probe / tests: ms of the last background refit step per "p{phase}:{page}" (X15).</summary>
+        internal readonly Dictionary<string, long> BgRefitMs = new Dictionary<string, long>();
+        private int bgRefitGen;
+
+        /// <summary>
+        /// v5.1.1 (X15, Mono: 滤镜 first show after a width change 290-390 ms): after the resize settles (and after a DPI change),
+        /// every other built page whose fit is for another width / scale is refitted in idle slices, one phase per step: shown
+        /// BEHIND the current page (covered by it, so nothing changes on screen), fit phases a / b / c, hidden again. A later
+        /// resize restarts the queue; a page the user opens meanwhile is fitted by ShowPage and dropped here.
+        /// </summary>
+        /// <summary>v5.1.1 (X15): hides a page that the background refit showed behind the current one (not the shown page).</summary>
+        private void HideBehind(int pi)
+        {
+            if (pi < 0 || pi >= pages.Count || pi == current || !pages[pi].Host.Visible) return;
+            List<Control> held = HoldLayouts(pages[pi].Host);
+            try { pages[pi].Host.Visible = false; } finally { ReleaseLayouts(held); }
+        }
+
+        internal void QueueBackgroundRefits()
+        {
+            if (IsDisposed || !constructed || pageHost == null) return;
+            int gen = ++bgRefitGen;
+            List<int> todo = new List<int>();
+            for (int i = 0; i < pages.Count; i++)
+                if (i != current && pages[i].Built && pages[i].Scroller != null && pages[i].Content != null) todo.Add(i);
+            int ti = 0, phase = 0;
+            bool changed = false;
+            QueueIdleSteps(null, delegate
+            {
+                if (gen != bgRefitGen || IsDisposed || frozen || !Visible || WindowState == FormWindowState.Minimized)
+                {
+                    if (phase > 0 && ti < todo.Count && !IsDisposed) HideBehind(todo[ti]); // never leave a page up behind
+                    return false;
+                }
+                while (ti < todo.Count)
+                {
+                    int pi = todo[ti];
+                    Page pg = pages[pi];
+                    Size area = pageHost.ClientSize;
+                    System.Diagnostics.Stopwatch bs = System.Diagnostics.Stopwatch.StartNew();
+                    string bkey = "p" + phase + ":" + pg.Id;
+                    if (pi == current || area.Width <= 0 || (phase == 0 && !switchCache.Plan(pi, app.ChangeCount, area.Width, area.Height, k).Fit))
+                    { ti++; phase = 0; continue; } // shown meanwhile (ShowPage fitted it) or already fitted for this size
+                    try
+                    {
+                        if (phase == 0)
+                        {
+                            // like ShowPage: the nested layouts are held while it is made visible; the fit phases lay it out
+                            List<Control> held = HoldLayouts(pg.Host);
+                            try { pg.Host.Visible = true; pg.Host.SendToBack(); } // behind the shown page: covered
+                            finally { ReleaseLayouts(held); }
+                            changed = false;
+                        }
+                        else
+                        {
+                            fitOverride = pi;
+                            try
+                            {
+                                if (phase == 1) changed = FitWrapPhaseA();
+                                else if (phase == 2) { if (FitWrapPhaseB()) changed = true; }
+                                else { FitWrapPhaseC(changed); pg.Content.PerformLayout(); pg.Scroller.PerformLayout(); }
+                            }
+                            finally { fitOverride = -1; }
+                        }
+                    }
+                    catch (Exception ex) { Program.Log("UI: background refit " + pg.Id + ": " + ex.Message); phase = 3; }
+                    if (phase < 3) { BgRefitMs[bkey] = bs.ElapsedMilliseconds; phase++; return true; }
+                    HideBehind(pi);
+                    BgRefitMs[bkey] = bs.ElapsedMilliseconds;
+                    switchCache.MarkFit(pi, app.ChangeCount, area.Width, area.Height, k);
+                    BackgroundRefits++;
+                    ti++; phase = 0;
+                    return ti < todo.Count;
+                }
+                return false;
+            });
         }
 
         /// <summary>Refits the shown page if its cached fit was for another width / scale; returns true when it refitted.</summary>
@@ -2586,7 +2758,11 @@ namespace TarkovCrosshair
             }
             finally { if (pageHost != null) pageHost.ResumeLayout(true); }
             tm.Step("layout");
-            if (plan.Fit && next.Scroller != null && next.Content != null)
+            if (plan.Fit && deferFit && next.Scroller != null && next.Content != null)
+            {
+                warmFit = index; warmFitPhase = 0; warmFitVer = ver; warmFitChanged = false; // X15: WarmFitStep does it
+            }
+            else if (plan.Fit && next.Scroller != null && next.Content != null)
             {
                 // F2 / F7: wrap widths follow this page's real column positions; then recompute its scroll range
                 try { FitWrapping(); next.Content.PerformLayout(); next.Scroller.PerformLayout(); } catch (Exception) { }
@@ -3506,6 +3682,7 @@ namespace TarkovCrosshair
             // queue. Before, Next() ran first and the page it returned was dropped while handles were sliced, so every other
             // page (移动 换手 后坐力 常规 滤镜 常见问题) was never prebuilt and was built on its first open (up to 2.2 s on Windows).
             if (handleQueue != null && handleQueue.Count > 0) { HandleSlice(); return true; }
+            if (warmFit >= 0) { WarmFitStep(); return true; } // X15: the hidden warm-up fit, one phase per slot
             if (chunking != null)
             {
                 // v5.1.1 (X11): one chunk of a chunked page per idle slot; the last slot attaches, fills and fits the body
@@ -3533,8 +3710,12 @@ namespace TarkovCrosshair
                 System.Diagnostics.Stopwatch ws = System.Diagnostics.Stopwatch.StartNew();
                 if (!sized) SizeToScreen();
                 int w = NavOrder()[warmNext++];
-                try { ShowPage(w); if (warmNext >= pages.Count) ShowPage(0); }
+                // v5.1.1 (X15, Mono: 滤镜 hidden first layout 126-178 ms in one slot): show in this slot, the fit in its 3
+                // phases in the next slots (WarmFitStep, at the top of PrebuildStep)
+                deferFit = true;
+                try { ShowPage(w); if (warmFit < 0 && warmNext >= pages.Count) ShowPage(0); }
                 catch (Exception ex) { Program.Log("UI: prebuild layout " + pages[w].Id + ": " + ex.Message); }
+                finally { deferFit = false; }
                 PrebuildMs["layout:" + pages[w].Id] = ws.ElapsedMilliseconds;
                 return true;
             }
@@ -3559,12 +3740,16 @@ namespace TarkovCrosshair
             if (handleQueue != null && handleQueue.Count > 0) { HandleSlice(); return true; }
             System.Diagnostics.Stopwatch sw = System.Diagnostics.Stopwatch.StartNew();
             Page pg = pages[i];
-            if (pg.Steps != null && pg.Iter == null)
+            // v5.1.1 (X15, Mono: 指南 122-130 ms, 反馈 70, 跳跃 58-84 in ONE slot): a page without its own chunked builder is
+            // built in 2 slots too: its body in this slot, attach + theme + fill + layout (EnsureBuilt) in the next one
+            Func<IEnumerable<Control>> steps = pg.Steps;
+            if (steps == null && pg.Build != null) { Func<Control> b = pg.Build; steps = delegate { return OneStep(b); }; }
+            if (steps != null && pg.Iter == null)
             {
                 // v5.1.1 (X11): start the chunked builder; its chunks run in the next idle slots
                 pg.R0 = refreshers.Count; pg.A0 = advOnly.Count; pg.F0 = folds.Count;
                 SyncOffsetOwners(-1);
-                try { pg.Iter = pg.Steps().GetEnumerator(); }
+                try { pg.Iter = steps().GetEnumerator(); }
                 catch (Exception ex) { Program.Log("UI: page " + pg.Id + ": " + ex); pg.Iter = null; }
                 if (pg.Iter != null) { chunking = pg; AdvanceChunk(pg); return true; }
             }
@@ -3576,6 +3761,51 @@ namespace TarkovCrosshair
             handlePage = pg;
             return true;
         }
+
+        /// <summary>v5.1.1 (X15): set by the hidden warm-up: ShowPage leaves its fit to WarmFitStep (warmFit = that page).</summary>
+        private bool deferFit;
+        private int warmFit = -1, warmFitPhase, warmFitVer;
+        private bool warmFitChanged;
+
+        /// <summary>v5.1.1 (X15): one phase of the hidden warm-up fit of page warmFit (a, b, c + scroll range), one per slot.
+        /// Dropped (the page then refits on its first show, as before) when the window was shown or another page came up.</summary>
+        private void WarmFitStep()
+        {
+            int pi = warmFit;
+            System.Diagnostics.Stopwatch sw = System.Diagnostics.Stopwatch.StartNew();
+            if (pi < 0 || pi >= pages.Count || current != pi || Visible || IsDisposed) { warmFit = -1; return; }
+            Page pg = pages[pi];
+            try
+            {
+                if (warmFitPhase == 0) warmFitChanged = FitWrapPhaseA();
+                else if (warmFitPhase == 1) { if (FitWrapPhaseB()) warmFitChanged = true; }
+                else
+                {
+                    FitWrapPhaseC(warmFitChanged);
+                    pg.Content.PerformLayout(); pg.Scroller.PerformLayout();
+                    Size area = pageHost.ClientSize;
+                    switchCache.MarkFit(pi, warmFitVer, area.Width, area.Height, k);
+                    warmFit = -1;
+                    if (warmNext >= pages.Count) ShowPage(0);
+                }
+            }
+            catch (Exception ex) { Program.Log("UI: prebuild fit " + pg.Id + ": " + ex.Message); warmFit = -1; }
+            warmFitPhase++;
+            string key = "fit" + warmFitPhase + ":" + pg.Id;
+            PrebuildMs[key] = sw.ElapsedMilliseconds;
+        }
+
+        /// <summary>v5.1.1 (X15): a one-chunk builder (the whole body in one slot; EnsureBuilt's assembly in the next).</summary>
+        private static IEnumerable<Control> OneStep(Func<Control> build) { yield return build(); }
+
+        /// <summary>
+        /// v5.1.1 (X15) HOOK FOR PAGE FILES: set steps to a chunked builder for page pageId (UiPages.Ids, e.g. "movement",
+        /// "jump"): an iterator that yields null after each chunk (each &lt;= ~20 ms: one card / one group) and the page body
+        /// last, like BuildKeysSteps. The background prebuild then runs one chunk per idle slot. Implement it ONCE (C# partial
+        /// method) in a page file: partial void ChunkedBuilder(string pageId, ref Func&lt;IEnumerable&lt;Control&gt;&gt; steps)
+        /// { if (pageId == "movement") steps = BuildMovementSteps; ... }. Not implemented = one-slot body build (OneStep).
+        /// </summary>
+        partial void ChunkedBuilder(string pageId, ref Func<IEnumerable<Control>> steps);
 
         /// <summary>v5.1.1 (X11): the page whose chunked builder is running in the background (null = none).</summary>
         private Page chunking;

@@ -18,7 +18,6 @@ namespace TarkovCrosshair
         public const int WS_EX_TOPMOST = 0x00000008;
         public const int WS_EX_TOOLWINDOW = 0x00000080;
         public const int WS_EX_NOACTIVATE = 0x08000000;
-        public const int WS_EX_NOREDIRECTIONBITMAP = 0x00200000; // v5.1 (W33): DirectComposition mode window
         public const uint LWA_ALPHA = 0x00000002;
 
         [DllImport("user32.dll", SetLastError = true)]

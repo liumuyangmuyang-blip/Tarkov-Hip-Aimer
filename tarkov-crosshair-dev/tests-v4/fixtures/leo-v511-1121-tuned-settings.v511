@@ -1,0 +1,644 @@
+{
+  "ActiveProfile": "Leo默认",
+  "AdsCancelRun": true,
+  "AdsCancelTabEsc": true,
+  "AdsIgnoreAltCtrl": true,
+  "AdsMode": "hold",
+  "AdsRealHide": false,
+  "AmmoBar": {
+    "AccentColour": "#FF2A2A",
+    "Backing": false,
+    "BandColours": "#46DC5A,#9ADC46,#EAD23C,#F08C32,#E63C3C",
+    "Colour": "#E6E6E6",
+    "FadeInMs": 150,
+    "Frame": false,
+    "GapPx": 4,
+    "Glow": false,
+    "GlowPx": 3,
+    "Led": false,
+    "LedColours": "#19E650,#FFD21A,#FF2A2A",
+    "LenPx": 24,
+    "OpacityPct": 85,
+    "Pos": "below",
+    "Preset": "simple",
+    "ReloadNormal": {
+      "Colour": "#5CF2FF",
+      "ColourOn": false,
+      "Drop": false,
+      "Ease": "smooth",
+      "InPct": 40,
+      "Marker": "progress",
+      "OutPct": 30,
+      "ReverseDir": false,
+      "Type": "slide"
+    },
+    "ReloadQuick": {
+      "Colour": "#5CF2FF",
+      "ColourOn": false,
+      "Drop": true,
+      "Ease": "out",
+      "InPct": 65,
+      "Marker": "dots",
+      "OutPct": 30,
+      "ReverseDir": false,
+      "Type": "drop"
+    },
+    "Round": false,
+    "SegGapPx": 1,
+    "Segments": 0,
+    "ShowBelowOn": false,
+    "ShowBelowPct": 35,
+    "Slant": false,
+    "SlantDeg": 31,
+    "Stripes": false,
+    "ThickPx": 2,
+    "Track": true,
+    "TrackPct": 22,
+    "Warn1": {
+      "Blinks": 3,
+      "Colour": "#FF3B3B",
+      "IntensityPct": 80,
+      "On": true,
+      "Pct": 15,
+      "PeriodMs": 250,
+      "Style": "flash"
+    },
+    "Warn2": {
+      "Blinks": 5,
+      "Colour": "#FF0000",
+      "IntensityPct": 100,
+      "On": false,
+      "Pct": 5,
+      "PeriodMs": 140,
+      "Style": "pulse"
+    }
+  },
+  "AmmoMagSize": 30,
+  "AmmoOn": false,
+  "AmmoQuickReloadMs": 2200,
+  "AmmoQuickTapMs": 300,
+  "AmmoReloadKey": 82,
+  "AmmoReloadMs": 3000,
+  "AmmoRpm": 850,
+  "AmmoSemi": false,
+  "AmmoStyle": "brackets,colour",
+  "AmmoWeaponKeysMain": [
+    50
+  ],
+  "AmmoWeaponKeysOther": [
+    49,
+    51,
+    86,
+    52,
+    53,
+    54,
+    55,
+    56,
+    57,
+    48
+  ],
+  "AnimDynGap": false,
+  "AnimFirePulse": false,
+  "AnimFx": {
+    "FireGapPct": 100,
+    "FireOpenMs": 0,
+    "FireRecoverMs": 180,
+    "Grad": false,
+    "GradFadeMs": 260,
+    "GradFrom": "#FFFFFF",
+    "GradSpreadMs": 90,
+    "GradTo": "#5CF2FF",
+    "IntensityPct": 100,
+    "MoveGapPct": 100,
+    "Ripple": false,
+    "RippleColour": "#5CF2FF",
+    "RippleFadeMs": 320,
+    "RippleRange": 22,
+    "RippleSpeed": 420,
+    "RippleWidth": 1.5
+  },
+  "AnimLeanRotate": false,
+  "AnimPreset": "static",
+  "AnimShake": false,
+  "AnimStateColour": false,
+  "Autostart": false,
+  "BoostEnabled": true,
+  "BoostToggle": true,
+  "CenterOffsetX": 0,
+  "CenterOffsetY": 0,
+  "Enabled": true,
+  "Fps": 360,
+  "FrameMode": "vsync",
+  "GameWindowTitle": "EscapeFromTarkov",
+  "GpuDiagLog": false,
+  "GrenadeHideOn": false,
+  "GrenadeKey": 71,
+  "HandEnabled": true,
+  "HandMode": "toggle",
+  "HideFadeMs": 0,
+  "HideOnFreeLook": true,
+  "Keys": {
+    "Ads": 2,
+    "AdsMods": 0,
+    "Back": 83,
+    "Boost": 6,
+    "BoostMods": 0,
+    "Fire": 1,
+    "FireMods": 0,
+    "Forward": 87,
+    "FreeLook": 4,
+    "FreeLookMods": 0,
+    "HandSwitch": 5,
+    "HandSwitchMods": 0,
+    "Jump": 32,
+    "JumpMods": 0,
+    "LeanLeft": 81,
+    "LeanLeftMods": 0,
+    "LeanRight": 69,
+    "LeanRightMods": 0,
+    "Left": 65,
+    "Right": 68,
+    "Toggle": 123,
+    "ToggleMods": 0
+  },
+  "LeanCancelRun": true,
+  "LeanMode": "hold",
+  "MonitorIndex": -1,
+  "MustReadAck": true,
+  "NetCrashAsk": true,
+  "NetStatsConsent": null,
+  "NetUpdateCheck": true,
+  "OnlyWhenGameFocused": true,
+  "OverlayDCompMode": false,
+  "PerfMode": false,
+  "Profiles": [
+    {
+      "Boost": {
+        "CenterDot": false,
+        "CenterDotSize": 2,
+        "Color": "#00FF00",
+        "Color2": "#000000",
+        "CrossGap": 7,
+        "CrossLength": 6.5,
+        "CrossThickness": 1.6,
+        "CrossTop": false,
+        "DashGapPct": 30,
+        "Dashes": 0,
+        "Diameter": 15,
+        "Feather": 1,
+        "FollowHandColor": true,
+        "GlowOpacityPct": 45,
+        "GlowPx": 3,
+        "Gradient": "twotone",
+        "OpacityPct": 90,
+        "OuterThickness": 2.3,
+        "OwnLook": true,
+        "RotationDeg": 0,
+        "Shape": "cross",
+        "Style": {
+          "Count": 3,
+          "Gap": 5,
+          "Hole": 4.5,
+          "Kind": "",
+          "Length": 11.875,
+          "PngFile": "",
+          "PngTint": false,
+          "Spread": 70
+        },
+        "Thickness": 1.8
+      },
+      "CenterDot": false,
+      "CenterDotSize": 2,
+      "Color": "#00DF00",
+      "Color2": "#000000",
+      "CrossGap": 5.5,
+      "CrossLength": 6.5,
+      "CrossThickness": 1.6,
+      "CrossTop": false,
+      "CurveAD": {
+        "DurationMs": 430,
+        "Speeds": [
+          0,
+          15,
+          45,
+          75,
+          100
+        ]
+      },
+      "CurveWS": {
+        "DurationMs": 430,
+        "Speeds": [
+          0,
+          15,
+          45,
+          75,
+          100
+        ]
+      },
+      "DashGapPct": 30,
+      "Dashes": 0,
+      "Diameter": 12,
+      "Dirs": [
+        {
+          "OffX": -26.28,
+          "OffY": 11.520000000000007
+        },
+        {
+          "OffX": -26.28,
+          "OffY": 40.320000000000022
+        },
+        {
+          "OffX": 70.92,
+          "OffY": 25.920000000000009
+        },
+        {
+          "OffX": -63.719999999999985,
+          "OffY": 25.920000000000009
+        },
+        {
+          "OffX": 42.45012,
+          "OffY": 15.737760000000009
+        },
+        {
+          "OffX": -52.753823999999987,
+          "OffY": 15.737760000000009
+        },
+        {
+          "OffX": 42.45012,
+          "OffY": 36.102240000000023
+        },
+        {
+          "OffX": -52.753823999999987,
+          "OffY": 36.102240000000023
+        }
+      ],
+      "Feather": 1,
+      "GlowOpacityPct": 40,
+      "GlowPx": 0,
+      "Gradient": "twotone",
+      "HandColor": "#FF9500",
+      "HandColor2": "#000000",
+      "HandColorOn": true,
+      "HandCustom": [
+        {
+          "Custom": false,
+          "X": 0,
+          "Y": 0
+        },
+        {
+          "Custom": false,
+          "X": 0,
+          "Y": 0
+        },
+        {
+          "Custom": true,
+          "X": 46.440000000000005,
+          "Y": 27.000000000000021
+        },
+        {
+          "Custom": true,
+          "X": -45.720000000000013,
+          "Y": 25.920000000000009
+        },
+        {
+          "Custom": false,
+          "X": 0,
+          "Y": 0
+        },
+        {
+          "Custom": true,
+          "X": -25.92,
+          "Y": 5.7600000000000007
+        },
+        {
+          "Custom": true,
+          "X": 14.4,
+          "Y": -4.32
+        },
+        {
+          "Custom": false,
+          "X": 0,
+          "Y": 0
+        }
+      ],
+      "HandSwitchMs": 450,
+      "Jump": {
+        "Enabled": true,
+        "Phases": [
+          {
+            "Curve": "smooth",
+            "EndPx": -300,
+            "Ms": 200
+          },
+          {
+            "Curve": "smooth",
+            "EndPx": 0,
+            "Ms": 305
+          },
+          {
+            "Curve": "in",
+            "EndPx": 0,
+            "Ms": 295
+          }
+        ],
+        "TotalMs": 800
+      },
+      "LeanEX": 12.096,
+      "LeanEY": -16.56,
+      "LeanMs": 350,
+      "LeanQX": -11.016,
+      "LeanQY": -18,
+      "Name": "Leo默认",
+      "OpacityPct": 65,
+      "OuterThickness": 1.8,
+      "RecoilClickKickPx": 8,
+      "RecoilDelayMs": 30,
+      "RecoilDriftX": 0,
+      "RecoilFallMs": 180,
+      "RecoilMaxPx": 28.8,
+      "RecoilRiseMs": 310,
+      "RotationDeg": 0,
+      "SavedDefault": {
+        "Boost": {
+          "CenterDot": false,
+          "CenterDotSize": 2,
+          "Color": "#00FF00",
+          "Color2": "#000000",
+          "CrossGap": 7,
+          "CrossLength": 6.5,
+          "CrossThickness": 1.6,
+          "CrossTop": false,
+          "DashGapPct": 30,
+          "Dashes": 0,
+          "Diameter": 15,
+          "Feather": 1,
+          "FollowHandColor": true,
+          "GlowOpacityPct": 45,
+          "GlowPx": 3,
+          "Gradient": "twotone",
+          "OpacityPct": 90,
+          "OuterThickness": 2.3,
+          "OwnLook": true,
+          "RotationDeg": 0,
+          "Shape": "cross",
+          "Style": {
+            "Count": 3,
+            "Gap": 5,
+            "Hole": 4.5,
+            "Kind": "",
+            "Length": 11.875,
+            "PngFile": "",
+            "PngTint": false,
+            "Spread": 70
+          },
+          "Thickness": 1.8
+        },
+        "CenterDot": false,
+        "CenterDotSize": 2,
+        "Color": "#00DF00",
+        "Color2": "#000000",
+        "CrossGap": 5.5,
+        "CrossLength": 6.5,
+        "CrossThickness": 1.6,
+        "CrossTop": false,
+        "CurveAD": {
+          "DurationMs": 430,
+          "Speeds": [
+            0,
+            15,
+            45,
+            75,
+            100
+          ]
+        },
+        "CurveWS": {
+          "DurationMs": 430,
+          "Speeds": [
+            0,
+            15,
+            45,
+            75,
+            100
+          ]
+        },
+        "DashGapPct": 30,
+        "Dashes": 0,
+        "Diameter": 12,
+        "Dirs": [
+          {
+            "OffX": -26.28,
+            "OffY": 11.520000000000007
+          },
+          {
+            "OffX": -26.28,
+            "OffY": 40.320000000000022
+          },
+          {
+            "OffX": 70.92,
+            "OffY": 25.920000000000009
+          },
+          {
+            "OffX": -63.719999999999985,
+            "OffY": 25.920000000000009
+          },
+          {
+            "OffX": 42.45012,
+            "OffY": 15.737760000000009
+          },
+          {
+            "OffX": -52.753823999999987,
+            "OffY": 15.737760000000009
+          },
+          {
+            "OffX": 42.45012,
+            "OffY": 36.102240000000023
+          },
+          {
+            "OffX": -52.753823999999987,
+            "OffY": 36.102240000000023
+          }
+        ],
+        "Feather": 1,
+        "GlowOpacityPct": 40,
+        "GlowPx": 0,
+        "Gradient": "twotone",
+        "HandColor": "#FF9500",
+        "HandColor2": "#000000",
+        "HandColorOn": true,
+        "HandCustom": [
+          {
+            "Custom": false,
+            "X": 0,
+            "Y": 0
+          },
+          {
+            "Custom": false,
+            "X": 0,
+            "Y": 0
+          },
+          {
+            "Custom": true,
+            "X": 46.440000000000005,
+            "Y": 27.000000000000021
+          },
+          {
+            "Custom": true,
+            "X": -45.720000000000013,
+            "Y": 25.920000000000009
+          },
+          {
+            "Custom": false,
+            "X": 0,
+            "Y": 0
+          },
+          {
+            "Custom": true,
+            "X": -25.92,
+            "Y": 5.7600000000000007
+          },
+          {
+            "Custom": true,
+            "X": 14.4,
+            "Y": -4.32
+          },
+          {
+            "Custom": false,
+            "X": 0,
+            "Y": 0
+          }
+        ],
+        "HandSwitchMs": 450,
+        "Jump": {
+          "Enabled": true,
+          "Phases": [
+            {
+              "Curve": "smooth",
+              "EndPx": -300,
+              "Ms": 200
+            },
+            {
+              "Curve": "smooth",
+              "EndPx": 0,
+              "Ms": 305
+            },
+            {
+              "Curve": "in",
+              "EndPx": 0,
+              "Ms": 295
+            }
+          ],
+          "TotalMs": 800
+        },
+        "LeanEX": 12.096,
+        "LeanEY": -16.56,
+        "LeanMs": 350,
+        "LeanQX": -11.016,
+        "LeanQY": -18,
+        "Name": "Leo默认",
+        "OpacityPct": 65,
+        "OuterThickness": 1.8,
+        "RecoilClickKickPx": 8,
+        "RecoilDelayMs": 30,
+        "RecoilDriftX": 0,
+        "RecoilFallMs": 180,
+        "RecoilMaxPx": 28.8,
+        "RecoilRiseMs": 310,
+        "RotationDeg": 0,
+        "Shape": "cross",
+        "StandAsZero": true,
+        "StandLeanEX": 20.16,
+        "StandLeanEY": -21.6,
+        "StandLeanHand": [
+          {
+            "Custom": true,
+            "X": -16.56,
+            "Y": -28.08
+          },
+          {
+            "Custom": true,
+            "X": -16.56,
+            "Y": -28.8
+          }
+        ],
+        "StandLeanQX": 15.840000000000002,
+        "StandLeanQY": -28.8,
+        "StandLeanSame": false,
+        "StandOffsetX": 26.28,
+        "StandOffsetY": -25.92,
+        "Style": {
+          "Count": 3,
+          "Gap": 4,
+          "Hole": 4.5,
+          "Kind": "",
+          "Length": 9.5,
+          "PngFile": "",
+          "PngTint": false,
+          "Spread": 70
+        },
+        "Thickness": 1.2
+      },
+      "SavedDefaultAt": "2026-11-21 23:43",
+      "Shape": "cross",
+      "StandAsZero": true,
+      "StandLeanEX": 20.16,
+      "StandLeanEY": -21.6,
+      "StandLeanHand": [
+        {
+          "Custom": true,
+          "X": -16.56,
+          "Y": -28.08
+        },
+        {
+          "Custom": true,
+          "X": -16.56,
+          "Y": -28.8
+        }
+      ],
+      "StandLeanQX": 15.840000000000002,
+      "StandLeanQY": -28.8,
+      "StandLeanSame": false,
+      "StandOffsetX": 26.28,
+      "StandOffsetY": -25.92,
+      "Style": {
+        "Count": 3,
+        "Gap": 4,
+        "Hole": 4.5,
+        "Kind": "",
+        "Length": 9.5,
+        "PngFile": "",
+        "PngTint": false,
+        "Spread": 70
+      },
+      "Thickness": 1.2
+    }
+  ],
+  "ResAspect": "5:4",
+  "ResAspectCustom": "16:9",
+  "ResBars": "none",
+  "ResBaseAspect": "auto",
+  "ResBaseFov": 75,
+  "ResBaseH": 1440,
+  "ResBaseW": 2160,
+  "ResFov": 75,
+  "ResFovType": "v",
+  "ResGameH": 1440,
+  "ResGameW": 1800,
+  "ResStretched": true,
+  "ResV41": true,
+  "ReturnTimePct": 100,
+  "ReverseMinMs": 250,
+  "ReverseMode": "slowstart",
+  "ReversePauseMs": 0,
+  "SettingsTopMost": true,
+  "ShowFadeMs": 50,
+  "ShowSettingsOnStart": true,
+  "SplashOnStart": true,
+  "TapThresholdMs": 200,
+  "TutorialDone": true,
+  "Version": 2,
+  "WizardDone": true,
+  "WsReturnTimePct": 80,
+  "WsReverseMinMs": 180,
+  "WsReversePauseMs": 0,
+  "WsTapThresholdMs": 160
+}

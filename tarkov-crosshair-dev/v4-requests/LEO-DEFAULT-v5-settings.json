@@ -4,7 +4,7 @@
   "AdsCancelTabEsc": true,
   "AdsIgnoreAltCtrl": true,
   "AdsMode": "hold",
-  "Autostart": true,
+  "Autostart": false,
   "BoostEnabled": true,
   "CenterOffsetX": 0,
   "CenterOffsetY": 0,
@@ -239,10 +239,10 @@
       "CenterDotSize": 2,
       "Color": "#00DF00",
       "Color2": "#000000",
-      "CrossGap": 4.3,
-      "CrossLength": 6.3,
-      "CrossThickness": 1.5,
-      "CrossTop": true,
+      "CrossGap": 5.5,
+      "CrossLength": 6.5,
+      "CrossThickness": 1.6,
+      "CrossTop": false,
       "CurveAD": {
         "DurationMs": 430,
         "Speeds": [
@@ -268,36 +268,36 @@
       "Diameter": 12,
       "Dirs": [
         {
-          "OffX": -24.48,
-          "OffY": 10.800000000000004
+          "OffX": -26.28,
+          "OffY": 11.520000000000007
         },
         {
-          "OffX": -24.48,
-          "OffY": 39.600000000000016
+          "OffX": -26.28,
+          "OffY": 40.320000000000022
         },
         {
-          "OffX": 72.72,
-          "OffY": 25.200000000000006
+          "OffX": 70.92,
+          "OffY": 25.920000000000009
         },
         {
-          "OffX": -61.91999999999999,
-          "OffY": 25.200000000000006
+          "OffX": -63.719999999999985,
+          "OffY": 25.920000000000009
         },
         {
-          "OffX": 44.25011999999998,
-          "OffY": 15.017760000000012
+          "OffX": 42.45012,
+          "OffY": 15.737760000000009
         },
         {
-          "OffX": -50.95382399999999,
-          "OffY": 15.017760000000012
+          "OffX": -52.753823999999987,
+          "OffY": 15.737760000000009
         },
         {
-          "OffX": 44.25011999999998,
-          "OffY": 35.38224000000002
+          "OffX": 42.45012,
+          "OffY": 36.102240000000023
         },
         {
-          "OffX": -50.95382399999999,
-          "OffY": 35.38224000000002
+          "OffX": -52.753823999999987,
+          "OffY": 36.102240000000023
         }
       ],
       "Feather": 1,
@@ -320,13 +320,13 @@
         },
         {
           "Custom": true,
-          "X": 53.27999999999999,
-          "Y": 26.28000000000002
+          "X": 46.440000000000005,
+          "Y": 27.000000000000021
         },
         {
           "Custom": true,
-          "X": -47.52000000000001,
-          "Y": 25.200000000000006
+          "X": -45.720000000000013,
+          "Y": 25.920000000000009
         },
         {
           "Custom": false,
@@ -336,11 +336,11 @@
         {
           "Custom": true,
           "X": -25.92,
-          "Y": 5.760000000000001
+          "Y": 5.7600000000000007
         },
         {
           "Custom": true,
-          "X": 10.8,
+          "X": 14.4,
           "Y": -4.32
         },
         {
@@ -371,10 +371,10 @@
         ],
         "TotalMs": 800
       },
-      "LeanEX": 11.520000000000001,
+      "LeanEX": 12.096,
       "LeanEY": -16.56,
-      "LeanMs": 280,
-      "LeanQX": -11.808,
+      "LeanMs": 350,
+      "LeanQX": -11.016,
       "LeanQY": -18,
       "Name": "Leo默认 (旧)",
       "OpacityPct": 65,
@@ -384,195 +384,33 @@
       "RecoilDriftX": 0,
       "RecoilFallMs": 180,
       "RecoilMaxPx": 28.8,
-      "RecoilRiseMs": 300,
+      "RecoilRiseMs": 310,
       "RotationDeg": 0,
-      "SavedDefault": {
-        "Boost": {
-          "Color": "#00FF00",
-          "Color2": "#000000",
-          "Diameter": 15,
-          "FollowHandColor": true,
-          "GlowOpacityPct": 45,
-          "GlowPx": 4,
-          "OpacityPct": 90,
-          "OuterThickness": 2.5,
-          "Thickness": 1.8
-        },
-        "CenterDot": false,
-        "CenterDotSize": 2,
-        "Color": "#00DF00",
-        "Color2": "#000000",
-        "CrossGap": 4.3,
-        "CrossLength": 6.3,
-        "CrossThickness": 1.5,
-        "CrossTop": true,
-        "CurveAD": {
-          "DurationMs": 430,
-          "Speeds": [
-            0,
-            15,
-            45,
-            75,
-            100
-          ]
-        },
-        "CurveWS": {
-          "DurationMs": 430,
-          "Speeds": [
-            0,
-            15,
-            45,
-            75,
-            100
-          ]
-        },
-        "DashGapPct": 30,
-        "Dashes": 0,
-        "Diameter": 12,
-        "Dirs": [
-          {
-            "OffX": 0,
-            "OffY": -14.4
-          },
-          {
-            "OffX": 0,
-            "OffY": 14.4
-          },
-          {
-            "OffX": 97.2,
-            "OffY": 0
-          },
-          {
-            "OffX": -37.440000000000005,
-            "OffY": 0
-          },
-          {
-            "OffX": 68.73012,
-            "OffY": -10.18224
-          },
-          {
-            "OffX": -26.473824,
-            "OffY": -10.18224
-          },
-          {
-            "OffX": 68.73012,
-            "OffY": 10.18224
-          },
-          {
-            "OffX": -26.473824,
-            "OffY": 10.18224
-          }
-        ],
-        "Feather": 1,
-        "GlowOpacityPct": 40,
-        "GlowPx": 0,
-        "Gradient": "twotone",
-        "HandColor": "#FF9500",
-        "HandColor2": "#000000",
-        "HandColorOn": true,
-        "HandCustom": [
-          {
-            "Custom": false,
-            "X": 0,
-            "Y": 0
-          },
-          {
-            "Custom": false,
-            "X": 0,
-            "Y": 0
-          },
-          {
-            "Custom": true,
-            "X": 28.8,
-            "Y": 1.08
-          },
-          {
-            "Custom": true,
-            "X": -72,
-            "Y": 0
-          },
-          {
-            "Custom": false,
-            "X": 0,
-            "Y": 0
-          },
-          {
-            "Custom": true,
-            "X": -25.92,
-            "Y": 5.7600000000000007
-          },
-          {
-            "Custom": true,
-            "X": 10.8,
-            "Y": -4.32
-          },
-          {
-            "Custom": false,
-            "X": 0,
-            "Y": 0
-          }
-        ],
-        "HandSwitchMs": 450,
-        "Jump": {
-          "Enabled": true,
-          "Phases": [
-            {
-              "Curve": "smooth",
-              "EndPx": -300,
-              "Ms": 200
-            },
-            {
-              "Curve": "smooth",
-              "EndPx": 0,
-              "Ms": 305
-            },
-            {
-              "Curve": "in",
-              "EndPx": 0,
-              "Ms": 295
-            }
-          ],
-          "TotalMs": 800
-        },
-        "LeanEX": 11.520000000000001,
-        "LeanEY": -16.56,
-        "LeanMs": 280,
-        "LeanQX": -11.808,
-        "LeanQY": -18,
-        "Name": "Leo默认 (旧)",
-        "OpacityPct": 65,
-        "OuterThickness": 1.8,
-        "RecoilClickKickPx": 8,
-        "RecoilDelayMs": 30,
-        "RecoilDriftX": 0,
-        "RecoilFallMs": 180,
-        "RecoilMaxPx": 24,
-        "RecoilRiseMs": 300,
-        "RotationDeg": 0,
-        "Shape": "cross",
-        "StandOffsetX": 0,
-        "StandOffsetY": 0,
-        "Style": {
-          "Count": 3,
-          "Gap": 4,
-          "Hole": 3,
-          "Kind": "",
-          "Length": 9.5,
-          "PngFile": "",
-          "PngTint": false,
-          "Spread": 70
-        },
-        "Thickness": 1.2
-      },
-      "SavedDefaultAt": "2026-11-17 23:58",
       "Shape": "cross",
       "StandAsZero": true,
-      "StandOffsetX": 24.48,
-      "StandOffsetY": -25.2,
+      "StandLeanEX": 20.16,
+      "StandLeanEY": -21.6,
+      "StandLeanHand": [
+        {
+          "Custom": true,
+          "X": -16.56,
+          "Y": -28.08
+        },
+        {
+          "Custom": true,
+          "X": -16.56,
+          "Y": -28.8
+        }
+      ],
+      "StandLeanQX": 15.840000000000002,
+      "StandLeanQY": -28.8,
+      "StandLeanSame": false,
+      "StandOffsetX": 26.28,
+      "StandOffsetY": -25.92,
       "Style": {
         "Count": 3,
         "Gap": 4,
-        "Hole": 3,
+        "Hole": 4.5,
         "Kind": "",
         "Length": 9.5,
         "PngFile": "",

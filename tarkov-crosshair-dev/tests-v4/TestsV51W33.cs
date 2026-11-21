@@ -1,6 +1,7 @@
-// v5.1 (W33): texture-drop diagnostics. 开镜/丢雷时真正隐藏 (window SW_HIDE'd only with the option on), DirectComposition
-// mode choice + fallback latch, GPU diagnostic log line / PDH instance parsing, graceful failure of the DComp and PDH paths
-// where Windows is missing, and source checks (no injection / hooks / process access). Windows behaviour is UNVERIFIED here.
+// v5.1 (W33): texture-drop diagnostics. 开镜/丢雷时真正隐藏 (window SW_HIDE'd only with the option on), GPU diagnostic log
+// line / PDH instance parsing, graceful failure of the PDH path where Windows is missing, and source checks (no injection /
+// hooks / process access). v5.1.1 (X17, Leo 21 Nov): the DirectComposition mode is removed; V51-X17-* check it stays gone
+// and that a stored OverlayDCompMode=true still loads and is ignored. Windows behaviour is UNVERIFIED here.
 using System;
 using System.Diagnostics;
 using System.IO;
@@ -53,17 +54,17 @@ namespace TarkovCrosshair.Tests
             Check("V51-W33-1 GPU log: PDH instance name pid_N_luid_..._phys_K -> N; bad names rejected", a1 && a2 && a3, a1 + " " + a2 + " " + a3);
 
             // W33-2 packed state + log line
-            int pk = OverlayDiag.Pack(OverlayWinState.Transparent, true, true, true, false, true);
+            int pk = OverlayDiag.Pack(OverlayWinState.Transparent, true, true, false, true);
             string line = OverlayDiag.Line(4321, true, 5L * 1024 * 1024 * 1024, 300L * 1024 * 1024, 7L * 1024 * 1024 * 1024, 12L * 1024 * 1024, pk);
             bool l1 = OverlayDiag.State(pk) == OverlayWinState.Transparent && line.Contains("game pid 4321") && line.Contains("dedicated 5120 MB")
                 && line.Contains("shared 300 MB") && line.Contains("all processes dedicated 7168 MB") && line.Contains("ours dedicated 12 MB")
-                && line.Contains("overlay shown-transparent (dcomp)") && line.Contains("crosshair on") && line.Contains(", ads") && line.Contains("real-hide on")
+                && line.Contains("overlay shown-transparent (layered)") && line.Contains("crosshair on") && line.Contains(", ads") && line.Contains("real-hide on")
                 && !line.Contains("grenade");
-            string l0 = OverlayDiag.Line(0, false, -1, -1, -1, -1, OverlayDiag.Pack(OverlayWinState.Hidden, false, false, false, false, false));
+            string l0 = OverlayDiag.Line(0, false, -1, -1, -1, -1, OverlayDiag.Pack(OverlayWinState.Hidden, false, false, false, false));
             bool l2 = l0.Contains("no foreground window") && l0.Contains("all processes dedicated ?") && l0.Contains("overlay hidden (layered)") && l0.Contains("crosshair off");
             bool st = OverlayDiag.StateOf(false, true, false) == OverlayWinState.None && OverlayDiag.StateOf(true, false, true) == OverlayWinState.Hidden
                 && OverlayDiag.StateOf(true, true, true) == OverlayWinState.Transparent && OverlayDiag.StateOf(true, true, false) == OverlayWinState.Visible;
-            Check("V51-W33-2 GPU log line: foreground pid, dedicated / shared / all / ours MB, overlay state (hidden / shown-transparent / shown-visible, layered / dcomp), crosshair / 开镜 / 丢雷 / 真隐藏",
+            Check("V51-W33-2 GPU log line: foreground pid, dedicated / shared / all / ours MB, overlay state (hidden / shown-transparent / shown-visible, always layered), crosshair / 开镜 / 丢雷 / 真隐藏",
                 l1 && l2 && st, line + " | " + l0);
 
             // W33-3 开镜/丢雷真隐藏: option off = v5.0.2 (never hidden for 开镜, one all-zero frame); on = blank then SW_HIDE, shown again before drawing
@@ -84,30 +85,7 @@ namespace TarkovCrosshair.Tests
             Check("V51-W33-3 开镜/丢雷时真正隐藏: off = window untouched on 开镜 (one all-zero frame, 0 hides); on = all-zero frame then SW_HIDE for 开镜 and 丢雷, shown again and drawn in the release frame",
                 offAds && onAds && back && gren && gBack && truth, "off=" + offAds + " on=" + onAds + " back=" + back + " gren=" + gren + " gBack=" + gBack + " truth=" + truth);
 
-            // W33-4 present mode choice: off = layered; on = dcomp; failure latches to layered until the option is switched off and on
-            PresentModeChoice m = new PresentModeChoice();
-            bool m1 = !m.TryDComp(false) && !m.NeedRecreate(false);
-            bool m2 = m.NeedRecreate(true) && m.TryDComp(true);
-            m.Created(true, true);
-            bool m3 = m.Current && !m.NeedRecreate(true) && m.NeedRecreate(false);
-            m.Created(false, false);
-            bool m4 = !m.Current && m.NeedRecreate(true);
-            m.Created(true, false); // DComp setup failed -> layered
-            bool m5 = !m.Current && m.FailedLatch && !m.NeedRecreate(true) && !m.TryDComp(true); // no rebuild every frame
-            bool m6 = !m.NeedRecreate(false) && !m.FailedLatch && m.NeedRecreate(true); // off then on: try again
-            m.Created(true, true); m.RuntimeFailed();
-            bool m7 = m.NeedRecreate(true) && !m.TryDComp(true);
-            m.Created(false, false);
-            bool m8 = !m.NeedRecreate(true) && m.Failures == 2;
-            Check("V51-W33-4 新的显示方式: off = layered window; on = DirectComposition; a failed setup or present falls back to layered and stays there (no rebuild loop) until switched off and on",
-                m1 && m2 && m3 && m4 && m5 && m6 && m7 && m8, m1 + " " + m2 + " " + m3 + " " + m4 + " " + m5 + " " + m6 + " " + m7 + " " + m8);
-
-            // W33-5 DComp / PDH paths fail gracefully where Windows (d3d11 / dcomp / pdh) is missing or no window is given
-            bool dOk; string dErr = null; bool dThrew = false;
-            DCompPresenter d = new DCompPresenter();
-            try { dOk = d.Init(IntPtr.Zero, 64); dErr = d.LastError; } catch (Exception) { dOk = false; dThrew = true; }
-            bool dGood = !dThrew && !dOk && !d.Ready && !string.IsNullOrEmpty(dErr) && !d.Present(IntPtr.Zero, 64, 0, 0);
-            d.Dispose(); d.Dispose();
+            // W33-5 the PDH path fails gracefully where Windows (pdh) is missing
             bool gThrew = false, gOk = false; string gErr = null;
             GpuMemSampler gs = new GpuMemSampler();
             long g1, g2, g3, g4;
@@ -115,8 +93,8 @@ namespace TarkovCrosshair.Tests
             catch (Exception) { gThrew = true; }
             gs.Dispose(); gs.Dispose();
             bool gGood = !gThrew && (gOk || !string.IsNullOrEmpty(gErr));
-            Check("V51-W33-5 DirectComposition setup with no window / no d3d11 and the PDH sampler without pdh.dll: false + reason, never an exception, Dispose twice is safe",
-                dGood && gGood, "dcomp=" + dErr + " pdh=" + (gOk ? "ok" : gErr));
+            Check("V51-W33-5 the PDH sampler without pdh.dll: false + reason, never an exception, Dispose twice is safe",
+                gGood, "pdh=" + (gOk ? "ok" : gErr));
 
             // W33-6 per-frame cost of the W33 additions (Pack + StateOf + RealHideNow): far below the 1.5 ms key -> present budget
             int sink = 0;
@@ -124,36 +102,83 @@ namespace TarkovCrosshair.Tests
             for (int i = 0; i < 100000; i++)
             {
                 bool rh = OverlayDiag.RealHideNow((i & 1) != 0, true, (i & 2) != 0, (i & 4) != 0);
-                sink += OverlayDiag.Pack(OverlayDiag.StateOf(true, (i & 8) != 0, rh), (i & 16) != 0, true, rh, false, (i & 1) != 0);
+                sink += OverlayDiag.Pack(OverlayDiag.StateOf(true, (i & 8) != 0, rh), true, rh, false, (i & 1) != 0);
             }
             double perFrameUs = (Stopwatch.GetTimestamp() - t0) * 1e6 / Stopwatch.Frequency / 100000.0;
             Check("V51-W33-6 per-frame cost of the W33 state work " + perFrameUs.ToString("0.000") + " us (limit 5 us; key -> present budget 1500 us)", perFrameUs < 5 && sink != 1, "");
 
-            // W33-8 the three options: default off, read through W33Opt, copied by Clone (the render thread's copy)
+            // W33-8 the two remaining options: default off, read through W33Opt, copied by Clone (the render thread's copy)
             GlobalSettings gd0 = GlobalSettings.CreateDefault();
-            bool defOff = !W33Opt.DComp(gd0) && !W33Opt.RealHide(gd0) && !W33Opt.GpuLog(gd0) && !W33Opt.DComp(null) && !W33Opt.RealHide(null) && !W33Opt.GpuLog(null);
-            gd0.OverlayDCompMode = true; gd0.AdsRealHide = true; gd0.GpuDiagLog = true;
+            bool defOff = !W33Opt.RealHide(gd0) && !W33Opt.GpuLog(gd0) && !W33Opt.RealHide(null) && !W33Opt.GpuLog(null);
+            gd0.AdsRealHide = true; gd0.GpuDiagLog = true;
             GlobalSettings gc = gd0.Clone(false);
-            bool cloned = W33Opt.DComp(gc) && W33Opt.RealHide(gc) && W33Opt.GpuLog(gc);
-            Check("V51-W33-8 options OverlayDCompMode / AdsRealHide / GpuDiagLog: default off, read by the overlay through W33Opt, kept by Clone", defOff && cloned, "def=" + defOff + " clone=" + cloned);
+            bool cloned = W33Opt.RealHide(gc) && W33Opt.GpuLog(gc);
+            Check("V51-W33-8 options AdsRealHide / GpuDiagLog: default off, read by the overlay through W33Opt, kept by Clone", defOff && cloned, "def=" + defOff + " clone=" + cloned);
 
             // W33-7 source checks
-            string ov = W33Src("Overlay.cs"), dc = W33Src("DCompPresenter.cs"), gd = W33Src("GpuDiag.cs"), od = W33Src("OverlayDiag.cs");
-            if (ov == null || dc == null || gd == null || od == null) { Check("V51-W33-7 sources found", false, "missing source"); return; }
-            string all = dc + gd + od;
+            string ov = W33Src("Overlay.cs"), gd = W33Src("GpuDiag.cs"), od = W33Src("OverlayDiag.cs");
+            if (ov == null || gd == null || od == null) { Check("V51-W33-7 sources found", false, "missing source"); return; }
+            string all = gd + od;
             bool noInject = !Regex.IsMatch(all + ov, @"OpenProcess|ReadProcessMemory|WriteProcessMemory|SetWindowsHookEx|CreateRemoteThread|VirtualAllocEx|LoadLibrary");
-            bool fallback = ov.Contains("DirectComposition mode failed (") && ov.Contains("using the normal layered window")
-                && ov.Contains("DirectComposition present failed (") && Regex.IsMatch(ov, @"presentMode\.TryDComp\(wantDComp\)")
-                && Regex.IsMatch(ov, @"presentMode\.NeedRecreate\(W33Opt\.DComp\(g\)\)");
-            bool slots = dc.Contains("SlotVisualSetContent = 15") && dc.Contains("SlotFactory2CreateSwapChainForComposition = 24")
-                && dc.Contains("SlotCtxUpdateSubresource = 48") && dc.Contains("DXGI_ALPHA_MODE_PREMULTIPLIED") && dc.Contains("CreateSwapChainForComposition")
-                && ov.Contains("Native.WS_EX_NOREDIRECTIONBITMAP");
             bool hideOnlyOpt = Regex.IsMatch(ov, @"bool longHidden = WindowShowPolicy\.LongHidden\([^;]*\) \|\| realHide;")
                 && Regex.IsMatch(ov, @"OverlayDiag\.RealHideNow\(W33Opt\.RealHide\(g\), localEnabled, eng\.AdsActive, eng\.GrenadeHidden\)");
             bool logWorker = Regex.IsMatch(ov, @"GpuDiagTick\(c, t, wfreq\)") && !Regex.IsMatch(ov, @"new GpuMemSampler\(\)[\s\S]{0,40}Run\(") 
                 && ov.IndexOf("gpuSampler.Sample(", StringComparison.Ordinal) > ov.IndexOf("private void GpuDiagTick", StringComparison.Ordinal);
-            Check("V51-W33-7 sources: no injection / hooks / process memory; DirectComposition falls back to the layered window (logged); vtable slots; 真隐藏 only joins the off / away rule; PDH only on the worker tick",
-                noInject && fallback && slots && hideOnlyOpt && logWorker, "noInject=" + noInject + " fallback=" + fallback + " slots=" + slots + " hide=" + hideOnlyOpt + " worker=" + logWorker);
+            Check("V51-W33-7 sources: no injection / hooks / process memory; 真隐藏 only joins the off / away rule; PDH only on the worker tick",
+                noInject && hideOnlyOpt && logWorker, "noInject=" + noInject + " hide=" + hideOnlyOpt + " worker=" + logWorker);
+
+            V51X17Tests(ov);
+        }
+
+        /// <summary>v5.1.1 (X17, Leo 21 Nov): the DirectComposition mode is removed for good.</summary>
+        static void V51X17Tests(string ov)
+        {
+            // X17-1 no DirectComposition code anywhere in the exe source; the 常规 page has no DComp checkbox
+            string srcDir = Path.GetDirectoryName(W33Src("Overlay.cs") != null ? FindW33Path("Overlay.cs") : "");
+            string bad = "";
+            if (srcDir == null || !Directory.Exists(srcDir)) bad = "src dir not found";
+            else
+            {
+                foreach (string f in Directory.GetFiles(srcDir, "*.cs", SearchOption.AllDirectories))
+                {
+                    string t = File.ReadAllText(f), n = Path.GetFileName(f);
+                    if (Regex.IsMatch(t, @"dcomp\.dll|DCompositionCreateDevice|d3d11\.dll|dxgi\.dll|D3D11CreateDevice|CreateSwapChainForComposition|DCompPresenter|WS_EX_NOREDIRECTIONBITMAP|IDCompositionDevice", RegexOptions.IgnoreCase))
+                        bad += " " + n;
+                    if (n != "Settings.cs" && t.Contains("OverlayDCompMode")) bad += " reads:" + n;
+                }
+                if (File.Exists(Path.Combine(srcDir, "DCompPresenter.cs"))) bad += " DCompPresenter.cs exists";
+            }
+            string pg = W33Src("SettingsForm.PageGeneral.cs") ?? "";
+            bool page = pg.Length > 0 && !pg.Contains("OverlayDCompMode") && !pg.Contains("新的显示方式") && !pg.Contains("DirectComposition (") && !Regex.IsMatch(pg, @"Check\(""[^""]*DirectComposition")
+                && pg.Contains("Check(\"开镜/丢雷时真正隐藏准星窗口\"") && pg.Contains("Check(\"显存诊断日志\"") && pg.Contains("G.AdsRealHide") && pg.Contains("G.GpuDiagLog");
+            string texts = (W33Src("HelpText.cs") ?? "") + (W33Src("FaqText.cs") ?? "") + (W33Src("GuideText.cs") ?? "");
+            bool txt = texts.Length > 0 && !texts.Contains("DirectComposition") && !texts.Contains("新的显示方式");
+            Check("V51-X17-1 DirectComposition removed: no dcomp.dll / DCompositionCreateDevice / d3d11 / dxgi / swap-chain code in src, OverlayDCompMode read nowhere but Settings.cs, 常规 page keeps 真隐藏 + 显存诊断日志 but has no DComp checkbox, help / FAQ / guide do not mention it",
+                bad.Length == 0 && page && txt, "bad=" + bad + " page=" + page + " txt=" + txt);
+
+            // X17-2 a settings file with OverlayDCompMode=true still loads, and the overlay draws through the normal layered path
+            string j = LeoDefaultJson.Text.Replace("\"Version\": 2", "\"Version\": 2, \"OverlayDCompMode\": true");
+            GlobalSettings g; string err = null; System.Collections.Generic.List<string> dropped;
+            bool loads = j != LeoDefaultJson.Text && SettingsIO.TryParse(j, out g, out err, out dropped) && g != null && g.OverlayDCompMode;
+            bool noOpt = typeof(W33Opt).GetMethod("DComp") == null && Type.GetType("TarkovCrosshair.PresentModeChoice") == null && Type.GetType("TarkovCrosshair.DCompPresenter") == null;
+            bool layeredOnly = ov != null && Regex.IsMatch(ov, @"private bool TryCreateWindow\(long now, Action<string> log\)\s*\{\s*try\s*\{\s*hwnd = OverlayWindow\.CreateLayered\(")
+                && !ov.Contains("CreateDComp") && Regex.IsMatch(ov, @"bool ok = surfaceCurrent \? Dib\.Move\(hwnd, winX, winY, sca\) : dib\.Present\(hwnd, winX, winY, sca\);")
+                && Regex.IsMatch(ov, @"bool ok = blank\.Present\(hwnd, ");
+            string line = OverlayDiag.Line(1, true, 0, 0, 0, 0, OverlayDiag.Pack(OverlayWinState.Visible, true, false, false, false));
+            bool diag = line.Contains("(layered)") && !line.Contains("dcomp");
+            Check("V51-X17-2 settings with OverlayDCompMode=true load (value kept for old files) and are ignored: no DComp option reader, window always created with CreateLayered and drawn with UpdateLayeredWindow (frame + 开镜 all-zero frame)",
+                loads && noOpt && layeredOnly && diag, "loads=" + loads + " (" + err + ") noOpt=" + noOpt + " layered=" + layeredOnly + " diag=" + diag);
+        }
+
+        static string FindW33Path(string name)
+        {
+            string here = AppContext.BaseDirectory;
+            string[] tries = {
+                "/home/dev/tarkov-crosshair-v4/src/" + name,
+                Path.Combine(here, "../../../../tarkov-crosshair-v4/src/" + name),
+                Path.Combine(here, "../../tarkov-crosshair-v4/src/" + name) };
+            foreach (string t in tries) if (File.Exists(t)) return Path.GetFullPath(t);
+            return null;
         }
     }
 }

@@ -14,7 +14,7 @@ namespace TarkovCrosshair
     {
         public const string ProductName = "Tarkov Hip Aimer 塔科夫腰射准星 — by Leo";
         public const string ShortName = "Tarkov Hip Aimer";
-        public const string Version = "v5.1";
+        public const string Version = "v5.2";
         /// <summary>Chinese product name shown under the English brand (header, splash).</summary>
         public const string ChineseName = "塔科夫腰射准星";
         public const string MutexName = @"Local\TarkovHipAimer_Leo";

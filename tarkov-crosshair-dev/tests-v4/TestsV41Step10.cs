@@ -91,7 +91,7 @@ namespace TarkovCrosshair.Tests
         {
             bool ok = true; string info = "";
             TutorialStep10Peek p = new TutorialStep10Peek();
-            p.Configure(null, null);
+            p.Configure(X18Pre("演示"), null); // X18: the pre-21 Nov default (Leo's tuned 换手 A item puts the ring left of centre)
             for (int s = 0; s < 2; s++)
             {
                 int side = s == 0 ? 1 : -1;
@@ -127,7 +127,7 @@ namespace TarkovCrosshair.Tests
         static void S41FoePull()
         {
             TutorialStep10Peek p = new TutorialStep10Peek();
-            Profile flat = Profile.CreateLeoDefault("演示"); flat.SetStandPoint(0, 0); /* v5.1.1 (X5, Leo 21 Nov 2026): the built-in has a 站立 point now; this case measures around the centre */
+            Profile flat = X18Pre("演示"); flat.SetStandPoint(0, 0); /* v5.1.1 (X5, Leo 21 Nov 2026): the built-in has a 站立 point now; this case measures around the centre */
             p.Configure(flat, null);
             int s = TutorialStep10Peek.SceneFoe;
             p.Start(s);

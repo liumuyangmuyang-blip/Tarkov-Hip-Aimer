@@ -145,10 +145,12 @@ namespace TarkovCrosshair
         private bool adsPressBlocked; // v3.2: this 开镜 press started with Alt/Ctrl held
         private double recoil;
         // v5.1.1 (X8, Leo 21 Nov option A): 1 = standing still (no move key), 0 = moving; eased with the move 总时长 so the
-        // 站立 point fades out smoothly while leaning / at recoil top (lean and recoil then count from the screen centre).
+        // 站立 point fades out smoothly while leaning (lean then counts from the screen centre).
+        // X12 (Leo 21 Nov 2026): recoil no longer fades the stand point; it rises straight up from the current point.
         private double standStill = 1;
-        // recoil / 上抬 (0..1) eased with 到顶时间 / 松开回落时间, so the 每次按下额外上跳 kick does not also snap the stand fade
-        private double standRecoil;
+        // X14 (Leo 21 Nov 2026) 站立侧身: 0 = no move key (standing lean), 1 = a move key held (normal lean). Runs linearly
+        // over the longer move 总时长 and is shaped by smoothstep, so it reaches exactly 0 / 1 and nothing jumps.
+        private double standLeanU;
         private InputState prev;
         private bool prevPreview;
         private PreviewMode prevPm;
@@ -192,9 +194,13 @@ namespace TarkovCrosshair
         /// <summary>R4 defaults of the other tunables (settings TapThresholdMs / ReturnTimePct / ReversePauseMs).</summary>
         public const double DefaultTapThresholdMs = 120, DefaultReturnTimePct = 100, DefaultReversePauseMs = 0;
         // this frame's tunables (read from GlobalSettings at the start of Update, clamped)
-        private double tapMs = DefaultTapThresholdMs, reverseMinMs = MinReverseMs, returnScale = 1.0, reversePauseMs = DefaultReversePauseMs;
+        // X13 (Leo 21 Nov 2026): per axis. [0] = X (A/D: TapThresholdMs / ReverseMinMs / ReturnTimePct / ReversePauseMs),
+        // [1] = Y (W/S: WsTapThresholdMs / WsReverseMinMs / WsReturnTimePct / WsReversePauseMs, a bit faster by default).
+        private readonly double[] tapMs = { DefaultTapThresholdMs, DefaultTapThresholdMs }, reverseMinMs = { MinReverseMs, MinReverseMs };
+        private readonly double[] returnScale = { 1.0, 1.0 }, reversePauseMs = { DefaultReversePauseMs, DefaultReversePauseMs };
         /// <summary>R4 tunables 回程时间 % and 换向停顿 ms. v5.1.1 (X4): the engine reads GlobalSettings.ReturnTimePct /
-        /// ReversePauseMs (the 移动 page sliders); these fields only override them when set to a number (NaN = follow settings).</summary>
+        /// ReversePauseMs (the 移动 page sliders); these fields only override them when set to a number (NaN = follow settings).
+        /// X13: an override set here applies to both axes (A/D and W/S).</summary>
         public double ReturnTimePct = double.NaN, ReversePauseMs = double.NaN;
         private readonly double[] legPause = new double[2]; // rest at 0 between the two legs of a reversal, ms
         // v5.1.1 (X4, Leo B6): a leg back toward 0 runs DOWN the ramp (the outward slow-start travel played backwards, so the
@@ -207,6 +213,11 @@ namespace TarkovCrosshair
         /// <summary>v5.1.1 (X4, B6): a press is undone in at most its own held time (× ReturnTimePct), so rapid W A S D
         /// alternation never builds up offset; but a way back is never faster than this many times the normal ramp speed.</summary>
         public const double AltReturnMaxSpeed = 2.0;
+        // X12 (Leo 21 Nov 2026): W/S use the A/D reversal logic. sideSign[a] = the key sign (axis 0: D +1 / A -1; axis 1:
+        // W +1 / S -1) whose ramp the position is on (0 = at rest or a ramp no key of this axis made); pendSign = the sign of
+        // the out leg that follows a running to-zero leg. With the stand point on, W and S can be stored on the SAME side of
+        // the stand point (Leo默认: W 10.8, S 39.6), so a reversal is decided by the keys, not only by the sign of the offset.
+        private readonly int[] sideSign = new int[2], pendSign = new int[2];
 
         private static double Tune(double v, double lo, double hi, double def)
         {
@@ -217,12 +228,16 @@ namespace TarkovCrosshair
         /// <summary>R4: the tap / reversal tunables from the settings (same clamps as GlobalSettings.Validate).</summary>
         private void ReadTuning(GlobalSettings g)
         {
-            tapMs = Tune(g.TapThresholdMs, GlobalSettings.TapThresholdMsMin, GlobalSettings.TapThresholdMsMax, DefaultTapThresholdMs);
-            reverseMinMs = Tune(g.ReverseMinMs, GlobalSettings.ReverseMinMsMin, GlobalSettings.ReverseMinMsMax, MinReverseMs);
-            double rt = double.IsNaN(ReturnTimePct) ? g.ReturnTimePct : ReturnTimePct;
-            double rp = double.IsNaN(ReversePauseMs) ? g.ReversePauseMs : ReversePauseMs;
-            returnScale = Tune(rt, GlobalSettings.ReturnTimePctMin, GlobalSettings.ReturnTimePctMax, DefaultReturnTimePct) / 100.0;
-            reversePauseMs = Tune(rp, GlobalSettings.ReversePauseMsMin, GlobalSettings.ReversePauseMsMax, DefaultReversePauseMs);
+            for (int a = 0; a < 2; a++)
+            {
+                bool ws = a == 1; // X13: Y axis = W/S tunables
+                tapMs[a] = Tune(ws ? g.WsTapThresholdMs : g.TapThresholdMs, GlobalSettings.TapThresholdMsMin, GlobalSettings.TapThresholdMsMax, DefaultTapThresholdMs);
+                reverseMinMs[a] = Tune(ws ? g.WsReverseMinMs : g.ReverseMinMs, GlobalSettings.ReverseMinMsMin, GlobalSettings.ReverseMinMsMax, MinReverseMs);
+                double rt = double.IsNaN(ReturnTimePct) ? (ws ? g.WsReturnTimePct : g.ReturnTimePct) : ReturnTimePct;
+                double rp = double.IsNaN(ReversePauseMs) ? (ws ? g.WsReversePauseMs : g.ReversePauseMs) : ReversePauseMs;
+                returnScale[a] = Tune(rt, GlobalSettings.ReturnTimePctMin, GlobalSettings.ReturnTimePctMax, DefaultReturnTimePct) / 100.0;
+                reversePauseMs[a] = Tune(rp, GlobalSettings.ReversePauseMsMin, GlobalSettings.ReversePauseMsMax, DefaultReversePauseMs);
+            }
         }
 
         /// <summary>v3.0 只在塔科夫前台时显示: set by the render thread (≤ 10 Hz) before Update. Defaults = game in front.</summary>
@@ -240,7 +255,8 @@ namespace TarkovCrosshair
             lean = leanTarget = 0; leanCancelled = false; adsSprintCancelled = false;
             adsToggled = false; adsPressBlocked = false;
             recoil = 0;
-            standStill = 1; standRecoil = 0;
+            standStill = 1;
+            standLeanU = 0;
             prev = new InputState();
             prevPreview = false;
             prevPm = PreviewMode.Live;
@@ -253,7 +269,7 @@ namespace TarkovCrosshair
             liveBoost = false; prevBoostKey = false; boostShown = false;
             grenadeHidden = false; prevGrenadeKey = false; prevAmmoOn = false;
             Ammo.Reset();
-            for (int a = 0; a < 2; a++) { legDur[a] = 0; legU0[a] = 0; legToZero[a] = false; refMag[a] = 0; pressMs[a] = 0; outward[a] = false; legC[a] = 1; liveTarget[a] = 0; legPause[a] = 0; legDown[a] = false; legUa[a] = 0; legUb[a] = 0; holdMs[a] = 0; lastOut[a] = false; }
+            for (int a = 0; a < 2; a++) { legDur[a] = 0; legU0[a] = 0; legToZero[a] = false; refMag[a] = 0; pressMs[a] = 0; outward[a] = false; legC[a] = 1; liveTarget[a] = 0; legPause[a] = 0; legDown[a] = false; legUa[a] = 0; legUb[a] = 0; holdMs[a] = 0; lastOut[a] = false; sideSign[a] = 0; pendSign[a] = 0; }
             LastTap = false; TapCount = 0; MoveLevel = 0; Firing = false;
             prevKeysLive = true;
             Alpha = 0;
@@ -551,18 +567,22 @@ namespace TarkovCrosshair
         /// - other side (A→D): first back to 0 like a release, rest ReversePauseMs at 0, then out from rest with the full curve;
         ///   never a jump; total ≥ ReverseMinMs (the first leg is stretched when needed).
         /// R4 tunables (settings): TapThresholdMs (短按 label only), ReverseMinMs, ReturnTimePct, ReversePauseMs.
+        /// X13: on the Y axis (W/S) the Ws* copies of these four are used instead.
         /// v5.1.1 (X4, Leo B6, W A S D spam drifted to the full offset): every way back runs DOWN the ramp (u falls linearly,
         /// the outward travel played backwards; before, it started slowly and the next press climbed again from high up), and a
         /// press is undone in at most its own held time (BackMs), so rapid alternation stays near rest and never builds up.
         /// </summary>
-        private void StartLeg(int a, double oldT, double newT, double T, double[] speeds)
+        private void StartLeg(int a, double oldT, double newT, double T, double[] speeds, int sNew)
         {
             double x = pos[a];
             double ax = Math.Abs(x), an = Math.Abs(newT);
-            if (an < Math.Abs(oldT) || (oldT != 0 && (oldT > 0) != (newT > 0)))
+            // X12: the opposite key of this axis while the position is still on the other key's ramp = a reversal (to rest,
+            // then out), also when both offsets lie on the same side of the rest point
+            bool keyRev = sNew != 0 && sideSign[a] == -sNew && x != 0 && an > 0;
+            if (an < Math.Abs(oldT) || (oldT != 0 && (oldT > 0) != (newT > 0)) || keyRev)
             {
                 // a press that was still on its way out when let go (or reversed) before 短按 threshold = 短按
-                LastTap = outward[a] && moving[a] && pressMs[a] < tapMs;
+                LastTap = outward[a] && moving[a] && pressMs[a] < tapMs[a];
                 if (LastTap) TapCount++;
             }
             // X4 (B6): the press that is being undone was held this long (only when the last leg on this axis went outward)
@@ -571,17 +591,17 @@ namespace TarkovCrosshair
             bool held = lastOut[a] && !moving[a] && x != 0 && T > 0 && holdMs[a] >= T;
             travelMs[a] = 0; moving[a] = true; from[a] = x;
             legPause[a] = 0; legDown[a] = false; legUa[a] = 0; legUb[a] = 0;
-            if (!(T > 0)) { legDur[a] = 0; legU0[a] = 0; legToZero[a] = false; outward[a] = false; refMag[a] = an; lastOut[a] = an > ax; holdMs[a] = 0; return; }
+            if (!(T > 0)) { legDur[a] = 0; legU0[a] = 0; legToZero[a] = false; outward[a] = false; refMag[a] = an; lastOut[a] = an > ax; holdMs[a] = 0; sideSign[a] = an > 0 ? sNew : 0; return; }
             double F = Math.Max(refMag[a], ax);
-            bool cross = (x > 0 && newT < 0) || (x < 0 && newT > 0);
+            bool cross = (x > 0 && newT < 0) || (x < 0 && newT > 0) || keyRev;
             if (cross)
             {
-                legToZero[a] = true; legU0[a] = 0; outward[a] = false; lastOut[a] = false;
+                legToZero[a] = true; legU0[a] = 0; outward[a] = false; lastOut[a] = false; pendSign[a] = sNew;
                 double ux = F > 0 ? MotionCurve.ProgressInverse(speeds, ax / F) : 0;
-                double d1 = BackMs(returnScale * T * ux, capMs);
+                double d1 = BackMs(a, returnScale[a] * T * ux, capMs);
                 legDown[a] = !held; legUa[a] = ux; legUb[a] = 0;
-                legPause[a] = reversePauseMs;
-                if (d1 + legPause[a] + T < reverseMinMs) d1 = reverseMinMs - legPause[a] - T;
+                legPause[a] = reversePauseMs[a];
+                if (d1 + legPause[a] + T < reverseMinMs[a]) d1 = reverseMinMs[a] - legPause[a] - T;
                 legDur[a] = d1;
                 refMag[a] = F;
             }
@@ -592,12 +612,13 @@ namespace TarkovCrosshair
                 legDur[a] = T * (1 - legU0[a]);
                 refMag[a] = an; outward[a] = an > 0; pressMs[a] = 0;
                 lastOut[a] = an > 0; holdMs[a] = 0;
+                sideSign[a] = an > 0 ? sNew : 0;
             }
             else
             {
                 legToZero[a] = false; legU0[a] = 0; outward[a] = false; lastOut[a] = false;
                 double ux = F > 0 ? MotionCurve.ProgressInverse(speeds, ax / F) : 0, un = F > 0 ? MotionCurve.ProgressInverse(speeds, an / F) : 0;
-                legDur[a] = F > 0 ? BackMs(returnScale * T * (ux - un), capMs) : 0;
+                legDur[a] = F > 0 ? BackMs(a, returnScale[a] * T * (ux - un), capMs) : 0;
                 legDown[a] = !held; legUa[a] = ux; legUb[a] = un;
                 refMag[a] = F;
             }
@@ -606,9 +627,9 @@ namespace TarkovCrosshair
         /// <summary>X4 (B6): time of a way back. full = the normal time (down the ramp in the time it took to get there ×
         /// ReturnTimePct); a press held only heldMs is undone in heldMs × ReturnTimePct (no build-up from rapid alternation),
         /// but never faster than AltReturnMaxSpeed × the normal speed. A single press from rest: heldMs = its own time = full.</summary>
-        private double BackMs(double full, double heldMs)
+        private double BackMs(int a, double full, double heldMs)
         {
-            double cap = returnScale * heldMs;
+            double cap = returnScale[a] * heldMs;
             if (!(cap < full)) return full;
             return Math.Max(cap, full / AltReturnMaxSpeed);
         }
@@ -641,12 +662,14 @@ namespace TarkovCrosshair
                 legToZero[a] = false; from[a] = 0; legU0[a] = 0; legDur[a] = T > 0 ? T : 0; legDown[a] = false;
                 refMag[a] = Math.Abs(target); outward[a] = target != 0; pressMs[a] = over; travelMs[a] = over;
                 lastOut[a] = target != 0; holdMs[a] = over;
+                sideSign[a] = target != 0 ? pendSign[a] : 0;
             }
             double dur = legDur[a];
             if (!(dur > 0) || travelMs[a] >= dur)
             {
                 moving[a] = false; pos[a] = target; outward[a] = false; legC[a] = 1;
                 if (target != 0) refMag[a] = Math.Abs(target);
+                else sideSign[a] = 0; // X12: back at rest
                 return;
             }
             if (legDown[a])
@@ -743,7 +766,10 @@ namespace TarkovCrosshair
             if (!jumpOk) jumpOn = false;
             else
             {
-                if (input.Jump && !prev.Jump && !jumpOn) { jumpOn = true; jumpT = 0; }
+                // v5.1.1 (X16): 松开时触发 = the release edge starts it instead (holding never retriggers). A release caused
+                // by the game losing focus (input forced to all-up) is not a key release, so it does not count.
+                bool jumpEdge = js.OnRelease ? (!input.Jump && prev.Jump && (preview || keysLive)) : (input.Jump && !prev.Jump);
+                if (jumpEdge && !jumpOn) { jumpOn = true; jumpT = 0; }
                 if (jumpOn) { jumpT += dtMs; if (jumpT >= js.TotalMs) { jumpOn = false; jumpT = 0; } }
             }
             JumpOffset = jumpOn ? JumpPath.Offset(js, jumpT) : 0.0;
@@ -786,7 +812,7 @@ namespace TarkovCrosshair
                     if (oldT != newT)
                     {
                         MoveCurve c0 = a == 0 ? p.CurveAD : p.CurveWS;
-                        StartLeg(a, oldT, newT, c0 == null ? 0 : c0.DurationMs, c0 == null ? null : c0.Speeds);
+                        StartLeg(a, oldT, newT, c0 == null ? 0 : c0.DurationMs, c0 == null ? null : c0.Speeds, a == 0 ? rawX : rawF);
                     }
                 }
                 prevDir = dir; prevLean = lt;
@@ -819,6 +845,26 @@ namespace TarkovCrosshair
             double lx, ly;
             if (lean < 0) { lx = -lean * Mix(view0.QX, view1.QX, blend); ly = -lean * Mix(view0.QY, view1.QY, blend); }
             else { lx = lean * Mix(view0.EX, view1.EX, blend); ly = lean * Mix(view0.EY, view1.EY, blend); }
+            // X14 (Leo 21 Nov 2026) 站立侧身: with 「和移动时一样」 off, leaning with NO move key goes to StandLeanQ/E (from the screen
+            // centre, like the lean); with a move key the normal lean above applies exactly. Between them: smoothstep of
+            // standLeanU, which runs over the longer move 总时长. Flag on: this block never runs (bit-identical to before).
+            {
+                double slT = curDir >= 0 ? 1.0 : 0.0;
+                double slMs = Math.Max(p.CurveAD == null ? 0 : p.CurveAD.DurationMs, p.CurveWS == null ? 0 : p.CurveWS.DurationMs);
+                if (pm == PreviewMode.LeanQ || pm == PreviewMode.LeanE) standLeanU = 1; // the 侧身 previews keep showing the normal lean
+                else if ((ringOnEdge && !preview) || !(slMs > 0)) standLeanU = slT;
+                else if (slT > standLeanU) standLeanU = Math.Min(1.0, standLeanU + dtMs / slMs);
+                else if (slT < standLeanU) standLeanU = Math.Max(0.0, standLeanU - dtMs / slMs);
+            }
+            if (view0.StandLeanOn && standLeanU < 1)
+            {
+                double m = standLeanU * standLeanU * (3 - 2 * standLeanU);
+                double sx, sy;
+                if (lean < 0) { sx = -lean * Mix(view0.SQX, view1.SQX, blend); sy = -lean * Mix(view0.SQY, view1.SQY, blend); }
+                else { sx = lean * Mix(view0.SEX, view1.SEX, blend); sy = lean * Mix(view0.SEY, view1.SEY, blend); }
+                if (m <= 0) { lx = sx; ly = sy; }
+                else { lx = sx + (lx - sx) * m; ly = sy + (ly - sy) * m; }
+            }
 
             // ADS
             // v3.2: (1) 开镜键是右键 and Alt/Ctrl is held at the press -> 切倍率/切瞄具, not 开镜 (the whole press is
@@ -915,23 +961,19 @@ namespace TarkovCrosshair
             double rsX = g.ResolutionScaleX; // v4.2: X also carries the 画面比例 stretch (== rs when the ratio is native)
             // 站立静止偏移 (v5.1 decision 5: 0 unless StandAsZero; then the new zero, Dirs stored relative to it)
             double standX = Mix(view0.SX, view1.SX, blend), standY = Mix(view0.SY, view1.SY, blend);
-            // v5.1.1 (X8, Leo 21 Nov option A): lean (Q/E, 换手 too) and recoil count from the SCREEN CENTRE, as in v5.0.2.
-            // Standing still, the 站立 point fades out by k = max(|侧身|, 后坐力/上抬) (both already eased by their own
-            // 过渡/到顶/回落 curves, so nothing jumps); moving, the direction itself is the position (Dirs are relative to the
-            // stand point), so the stand stays. standStill follows the move keys over the move 总时长. k = 0 -> factor exactly 1.
+            // v5.1.1 (X8, Leo 21 Nov option A): lean (Q/E, 换手 too) counts from the SCREEN CENTRE, as in v5.0.2.
+            // Standing still, the 站立 point fades out by k = |侧身| (already eased by 侧身过渡时间, so nothing jumps); moving,
+            // the direction itself is the position (Dirs are relative to the stand point), so the stand stays. standStill
+            // follows the move keys over the move 总时长. k = 0 -> factor exactly 1.
+            // X12 (Leo 21 Nov 2026): recoil does NOT fade the stand point: it rises straight up from the current point (the
+            // stand point standing still, the mirrored one after 换手, wherever the movement put it while moving).
             double stillMs = Math.Max(p.CurveAD == null ? 0 : p.CurveAD.DurationMs, p.CurveWS == null ? 0 : p.CurveWS.DurationMs);
             double stillT = curDir < 0 ? 1.0 : 0.0;
-            double recT = cap > 0 ? Math.Min(1.0, recoil / cap) : 0.0;
-            if ((ringOnEdge && !preview) || pm == PreviewMode.RecoilMax) { standStill = stillT; standRecoil = recT; }
-            else
-            {
-                standStill += (stillT - standStill) * Ease(dt, stillMs);
-                standRecoil += (recT - standRecoil) * Ease(dt, recT > standRecoil ? p.RecoilRiseMs : p.RecoilFallMs);
-            }
+            if ((ringOnEdge && !preview) || pm == PreviewMode.RecoilMax) standStill = stillT;
+            else standStill += (stillT - standStill) * Ease(dt, stillMs);
             if (p.StandAsZero)
             {
                 double k = Math.Abs(lean);
-                if (standRecoil > k) k = standRecoil;
                 if (k > 1) k = 1;
                 double w = 1 - k * standStill;
                 standX *= w; standY *= w;

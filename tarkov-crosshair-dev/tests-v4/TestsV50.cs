@@ -31,18 +31,22 @@ namespace TarkovCrosshair.Tests
                 string file = File.ReadAllText(Fixture("leo-v50-1118-settings.v50")).TrimStart('\uFEFF').Replace("\r\n", "\n");
                 // v5.1.1 (X5, Leo 21 Nov 2026): Leo's file except 「Leo默认 (旧)」's 上抬 / 站立 / Dirs / HandCustom (his 21 Nov values)
                 System.Text.Json.Nodes.JsonNode jt = System.Text.Json.Nodes.JsonNode.Parse(LeoDefaultJson.Text), jf = System.Text.Json.Nodes.JsonNode.Parse(file);
+                // Leo 21 Nov 2026 tuned default (X18): the whole 「Leo默认 (旧)」 profile is his tuned one (checked by V50-1 / X18-1)
+                // and Autostart is off; the rest of the text is still his 18 Nov file
                 foreach (System.Text.Json.Nodes.JsonNode j in new System.Text.Json.Nodes.JsonNode[] { jt, jf })
-                    foreach (System.Text.Json.Nodes.JsonNode pr in j["Profiles"].AsArray())
-                        if ((string)pr["Name"] == "Leo默认 (旧)")
-                            foreach (string key in new string[] { "RecoilMaxPx", "StandAsZero", "StandOffsetX", "StandOffsetY", "Dirs", "HandCustom" }) pr.AsObject().Remove(key);
+                {
+                    j.AsObject().Remove("Autostart");
+                    System.Text.Json.Nodes.JsonArray arr = j["Profiles"].AsArray();
+                    for (int k = arr.Count - 1; k >= 0; k--) if ((string)arr[k]["Name"] == "Leo默认 (旧)") arr.RemoveAt(k);
+                }
                 bool same = System.Text.Json.Nodes.JsonNode.DeepEquals(jt, jf) && LeoDefaultJson.Text != file;
                 Profile a = Profile.CreateLeoDefault("a"), b = Profile.CreateLeoDefault("b");
                 a.Dirs[2].OffX = 1; a.Boost.Diameter = 99; a.Jump.TotalMs = 1234;
-                bool indep = b.Dirs[2].OffX == 72.72 /* v5.1.1: from the 站立 point */ && b.Boost.Diameter == 15 && b.Jump.TotalMs == 800;
+                bool indep = b.Dirs[2].OffX == 70.92 /* Leo 21 Nov 2026 tuned default: from the 站立 point 26.28 */ && b.Boost.Diameter == 15 && b.Jump.TotalMs == 800;
                 Profile legacy = Profile.CreateLeoDefaultLegacy("l");
                 bool leg = legacy.Dirs[2].OffX == 75 && legacy.Shape == "ring" && legacy.HandSwitchMs == 400;
                 GlobalSettings g = GlobalSettings.CreateDefault();
-                bool screen = g.ResAspect == "auto" && g.ResFov == 75 && g.Autostart /* Leo 21 Nov 2026 new defaults: autostart on */ && g.ResBaseW == 2160 && g.ResBaseH == 1440 && g.ResBaseFov == 75
+                bool screen = g.ResAspect == "auto" && g.ResFov == 75 && !g.Autostart /* Leo 21 Nov 2026 tuned default: autostart off */ && g.ResBaseW == 2160 && g.ResBaseH == 1440 && g.ResBaseFov == 75
                     && g.MonitorIndex == -1 && g.GameWindowTitle == GlobalSettings.DefaultGameWindowTitle && !g.TutorialDone;
                 Check("V50-2 LeoDefaultJson = Leo's file byte for byte; each call a deep copy; legacy fallback = v3.1 values; screen settings keep the first-run rules (画面比例 auto, FOV 75, autostart off, base 2160×1440 / 75)",
                     same && indep && leg && screen, "same=" + same + " indep=" + indep + " legacy=" + leg + " screen=" + screen);
@@ -60,7 +64,7 @@ namespace TarkovCrosshair.Tests
                     && sf.Contains("先在「分辨率 · 常规」页设好和游戏里一样的 3 项：游戏分辨率、画面比例、FOV（建议 75）。然后进游戏实测，觉得有偏差再细调各项偏移。");
                 bool rd = readme == readme2 && readme.Contains("第一次用，先做这 3 步：") && readme.IndexOf("第一次用，先做这 3 步") < readme.IndexOf("【这是什么】")
                     && guide.Contains("第一次用，先做这 3 步：") && readme.Contains("v5.0") && !readme.Contains("v4.3.1");
-                bool ver = File.ReadAllText(Path.Combine(UiSrcDir(), "Program.cs")).Contains("public const string Version = \"v5.1\";"); // v5.1 (W25)
+                bool ver = File.ReadAllText(Path.Combine(UiSrcDir(), "Program.cs")).Contains("public const string Version = \"v5.2\";"); // v5.1 (W25)
                 Check("V50-3 first-run guidance dialog after the welcome (button 去「常规」页), README × 2 + 指南 start with the 3 steps, Version v5.0",
                     dlg && rd && ver, "dialog=" + dlg + " readme=" + rd + " version=" + ver);
             }

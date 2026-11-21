@@ -42,7 +42,8 @@ namespace TarkovCrosshair.Tests
                 string btn = X6Body(sf, "private Button Btn(") + X6Body(sp, "private Button SmallButton(");
                 if (btn.Length == 0 || Regex.IsMatch(btn, @"\.(Height|Size)\s*=")) d += "fixed height in Btn / SmallButton; ";
                 // X6-2 wrapping notes stop at the nearest fixed-width parent (card), not only at the page edge
-                string fw = X6Body(sf, "private void FitWrapping(");
+                // v5.1.1 (X15): FitWrapping runs its wrap-width part in FitWrapPhaseA (phases a / b / c)
+                string fw = X6Body(sf, "private void FitWrapping(") + X6Body(sf, "private bool FitWrapPhaseA(");
                 if (!fw.Contains("ClipRight(kv.Key)")) d += "FitWrapping ignores the card edge; ";
                 if (!X6Body(sf, "private int ClipRight(").Contains("Padding.Right")) d += "ClipRight without padding; ";
                 // arithmetic of the rule at 100 / 150 / 200 %: YaHei 9 pt line ~ 17 / 25 / 33 px

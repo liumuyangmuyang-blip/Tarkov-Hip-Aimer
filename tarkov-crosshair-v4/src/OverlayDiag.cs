@@ -12,11 +12,11 @@ namespace TarkovCrosshair
     /// </summary>
     internal static class OverlayDiag
     {
-        // packed render-thread state (one volatile int): bits 0-1 window state, 2 DirectComposition, 3 crosshair on,
-        // 4 开镜, 5 丢雷, 6 真隐藏 option on
-        public static int Pack(OverlayWinState s, bool dcomp, bool enabled, bool ads, bool grenade, bool realHide)
+        // packed render-thread state (one volatile int): bits 0-1 window state, 2 unused (was the removed DirectComposition
+        // mode, v5.1.1 X17), 3 crosshair on, 4 开镜, 5 丢雷, 6 真隐藏 option on
+        public static int Pack(OverlayWinState s, bool enabled, bool ads, bool grenade, bool realHide)
         {
-            return ((int)s & 3) | (dcomp ? 4 : 0) | (enabled ? 8 : 0) | (ads ? 16 : 0) | (grenade ? 32 : 0) | (realHide ? 64 : 0);
+            return ((int)s & 3) | (enabled ? 8 : 0) | (ads ? 16 : 0) | (grenade ? 32 : 0) | (realHide ? 64 : 0);
         }
 
         public static OverlayWinState State(int packed) { return (OverlayWinState)(packed & 3); }
@@ -74,55 +74,20 @@ namespace TarkovCrosshair
             string fg = fgPid <= 0 ? "no foreground window" : ((fgIsGame ? "game" : "foreground (not the game title)") + " pid " + fgPid
                 + " dedicated " + Mb(fgDedicated) + " shared " + Mb(fgShared));
             return "gpu-diag: " + fg + "; all processes dedicated " + Mb(allDedicated) + "; ours dedicated " + Mb(oursDedicated)
-                + "; overlay " + StateWord(State(packed)) + " (" + ((packed & 4) != 0 ? "dcomp" : "layered") + ")"
+                + "; overlay " + StateWord(State(packed)) + " (layered)"
                 + ", crosshair " + ((packed & 8) != 0 ? "on" : "off")
                 + ((packed & 16) != 0 ? ", ads" : "") + ((packed & 32) != 0 ? ", grenade" : "")
                 + ((packed & 64) != 0 ? ", real-hide on" : "");
         }
     }
-
-    /// <summary>
-    /// v5.1 (W33): which present path the overlay window uses. Wanted = GlobalSettings.OverlayDCompMode. A failed
-    /// DirectComposition setup (or a later present failure) latches back to the layered window until the option is turned off
-    /// and on again, so a PC without support does not rebuild the window every frame.
-    /// </summary>
-    internal sealed class PresentModeChoice
-    {
-        private bool current;      // the live window uses DirectComposition
-        private bool failedLatch;  // DirectComposition failed while wanted
-
-        public bool Current { get { return current; } }
-        public bool FailedLatch { get { return failedLatch; } }
-        public int Failures;
-
-        /// <summary>What the next window creation should try.</summary>
-        public bool TryDComp(bool wanted) { return wanted && !failedLatch; }
-
-        /// <summary>true = destroy the window and create it again with TryDComp(wanted).</summary>
-        public bool NeedRecreate(bool wanted)
-        {
-            if (!wanted) failedLatch = false;
-            return current != TryDComp(wanted);
-        }
-
-        public void Created(bool triedDComp, bool dcompOk)
-        {
-            current = triedDComp && dcompOk;
-            if (triedDComp && !dcompOk) { failedLatch = true; Failures++; }
-        }
-
-        /// <summary>A DirectComposition present failed on the live window: NeedRecreate is true from now on.</summary>
-        public void RuntimeFailed() { if (current) { failedLatch = true; Failures++; } }
-    }
 }
 
 namespace TarkovCrosshair
 {
-    /// <summary>v5.1 (W33): the three W33 options (GlobalSettings.OverlayDCompMode / AdsRealHide / GpuDiagLog, owner W23), read
-    /// in one place (null settings = off).</summary>
+    /// <summary>v5.1 (W33): the W33 options (GlobalSettings.AdsRealHide / GpuDiagLog, owner W23), read in one place (null
+    /// settings = off). v5.1.1 (X17): the old DirectComposition setting is no longer read anywhere (the mode is removed).</summary>
     internal static class W33Opt
     {
-        public static bool DComp(GlobalSettings g) { return g != null && g.OverlayDCompMode; }
         public static bool RealHide(GlobalSettings g) { return g != null && g.AdsRealHide; }
         public static bool GpuLog(GlobalSettings g) { return g != null && g.GpuDiagLog; }
     }

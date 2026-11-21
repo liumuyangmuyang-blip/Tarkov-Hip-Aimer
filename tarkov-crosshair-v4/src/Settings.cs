@@ -458,6 +458,13 @@ namespace TarkovCrosshair
         [DataMember(Name = "Enabled")] public bool Enabled;
         [DataMember(Name = "TotalMs")] public double TotalMs;
         [DataMember(Name = "Phases")] public List<JumpPhase> Phases;
+        /// <summary>v5.1.1 (X16, Leo 21 Nov 2026): 触发方式. "press" = 按下时触发 (default, the v2.4.3 behaviour, also for old files);
+        /// "release" = 松开时触发 (the path starts on the frame the jump key is released). Holding never retriggers.</summary>
+        [DataMember(Name = "Trigger")] public string Trigger;
+        public const string TriggerPress = "press", TriggerRelease = "release";
+        public static readonly string[] Triggers = new string[] { TriggerPress, TriggerRelease };
+        public static readonly string[] TriggerLabels = new string[] { "按下时触发", "松开时触发" };
+        public bool OnRelease { get { return Trigger == TriggerRelease; } }
 
         public JumpSettings() { SetDefaults(); }
 
@@ -470,6 +477,7 @@ namespace TarkovCrosshair
             Enabled = false;
             TotalMs = 700;
             Phases = NewDefaultPhases();
+            Trigger = TriggerPress;
         }
 
         public static List<JumpPhase> NewDefaultPhases()
@@ -512,6 +520,8 @@ namespace TarkovCrosshair
                 p.Curve = Array.IndexOf(Curves, c) >= 0 ? c : d[i].Curve;
             }
             Phases[PhaseCount - 1].EndPx = 0; // 回到起点 always ends at 0
+            string tr = Trigger == null ? null : Trigger.Trim().ToLowerInvariant();
+            Trigger = tr == TriggerRelease ? TriggerRelease : TriggerPress; // missing / unknown = 按下时触发
             TotalMs = Math.Round(Clamp.D(TotalMs, MinTotalMs, MaxTotalMs, 700));
             double sum = Phases[0].Ms + Phases[1].Ms + Phases[2].Ms;
             if (sum != TotalMs)
@@ -749,6 +759,10 @@ namespace TarkovCrosshair
     {
         public readonly double[] DX = new double[Profile.DirCount], DY = new double[Profile.DirCount];
         public double QX, QY, EX, EY, SX, SY, Drift;
+        /// <summary>X14 站立侧身 (lean with no move key) of this hand; equal to QX..EY while StandLeanOn is false.</summary>
+        public double SQX, SQY, SEX, SEY;
+        /// <summary>X14: the profile's 「和移动时一样」 is off (the engine blends standing / moving lean).</summary>
+        public bool StandLeanOn;
 
         public void FullLean(int side, out double x, out double y)
         {
@@ -859,6 +873,20 @@ namespace TarkovCrosshair
         [DataMember(Name = "LeanEY")] public double LeanEY;
         [DataMember(Name = "LeanMs")] public double LeanMs;
 
+        // X14 (Leo 21 Nov 2026) 站立侧身: where the ring goes while leaning with NO movement key held (UI coords, from the screen
+        // centre like LeanQX/EX). StandLeanSame = 和移动时一样 (default, also for every older file): the engine ignores the four
+        // numbers and standing lean = the normal lean, bit-identical to before. Off: standing Q/E land on these values; with a
+        // move key the normal LeanQ/E apply exactly as before; the engine blends between them over the move 总时长.
+        [DataMember(Name = "StandLeanSame")] public bool StandLeanSame;
+        [DataMember(Name = "StandLeanQX")] public double StandLeanQX;
+        [DataMember(Name = "StandLeanQY")] public double StandLeanQY;
+        [DataMember(Name = "StandLeanEX")] public double StandLeanEX;
+        [DataMember(Name = "StandLeanEY")] public double StandLeanEY;
+        /// <summary>X14: 换手 站立侧身 items [StandLeanHandQ, StandLeanHandE]. Custom false = 自动 = mirror (Q <- E with X negated,
+        /// E <- Q), like HandCustom. Only used while StandLeanSame is off.</summary>
+        [DataMember(Name = "StandLeanHand")] public List<HandCustomItem> StandLeanHand;
+        public const int StandLeanHandQ = 0, StandLeanHandE = 1, StandLeanHandCount = 2;
+
         /// <summary>换手过渡时间 ms (0..2000).</summary>
         [DataMember(Name = "HandSwitchMs")] public double HandSwitchMs;
 
@@ -907,6 +935,8 @@ namespace TarkovCrosshair
             Dirs = NewZeroDirs();
             RecoilMaxPx = 40; RecoilRiseMs = 300; RecoilClickKickPx = 8; RecoilFallMs = 250; RecoilDriftX = 0; RecoilDelayMs = 60;
             LeanQX = -30; LeanQY = -5; LeanEX = 30; LeanEY = -5; LeanMs = 150;
+            StandLeanSame = true; StandLeanQX = 0; StandLeanQY = 0; StandLeanEX = 0; StandLeanEY = 0; // X14
+            StandLeanHand = NewAutoStandLeanHand();
             HandSwitchMs = 300;
             HandCustom = NewAutoHand();
             Jump = new JumpSettings();
@@ -936,6 +966,87 @@ namespace TarkovCrosshair
             return l;
         }
 
+        /// <summary>X14: 换手 站立侧身 Q and E, both 自动.</summary>
+        public static List<HandCustomItem> NewAutoStandLeanHand()
+        {
+            List<HandCustomItem> l = new List<HandCustomItem>();
+            for (int i = 0; i < StandLeanHandCount; i++) l.Add(new HandCustomItem());
+            return l;
+        }
+
+        /// <summary>X14: deep copy padded/truncated to StandLeanHandCount (missing items 自动).</summary>
+        public static List<HandCustomItem> CloneStandLeanHand(List<HandCustomItem> src)
+        {
+            List<HandCustomItem> l = new List<HandCustomItem>();
+            for (int i = 0; i < StandLeanHandCount; i++)
+                l.Add(src != null && i < src.Count && src[i] != null ? src[i].Clone() : new HandCustomItem());
+            return l;
+        }
+
+        /// <summary>X14: 站立侧身 of the normal hand (side -1 = Q, +1 = E): StandLeanQ/E, or the normal lean while StandLeanSame.</summary>
+        public void StandLean(int side, out double x, out double y)
+        {
+            if (StandLeanSame) { FullLean(side, out x, out y); return; }
+            if (side < 0) { x = StandLeanQX; y = StandLeanQY; }
+            else if (side > 0) { x = StandLeanEX; y = StandLeanEY; }
+            else { x = 0; y = 0; }
+        }
+
+        /// <summary>X14: 自动 value of a 换手 站立侧身 item = mirror of the normal-hand 站立侧身 (Q <- E, E <- Q, X negated).</summary>
+        public void StandLeanHandAuto(int item, out double x, out double y)
+        {
+            if (item == StandLeanHandQ) { x = Neg(StandLeanEX); y = StandLeanEY; }
+            else if (item == StandLeanHandE) { x = Neg(StandLeanQX); y = StandLeanQY; }
+            else { x = 0; y = 0; }
+        }
+
+        public bool IsStandLeanHandCustom(int item)
+        {
+            List<HandCustomItem> l = StandLeanHand;
+            return l != null && item >= 0 && item < l.Count && l[item] != null && l[item].Custom;
+        }
+
+        /// <summary>X14: the value the switched hand uses for 站立侧身 (custom numbers, else 自动 mirror).</summary>
+        public void StandLeanHandValue(int item, out double x, out double y)
+        {
+            if (IsStandLeanHandCustom(item)) { x = StandLeanHand[item].X; y = StandLeanHand[item].Y; return; }
+            StandLeanHandAuto(item, out x, out y);
+        }
+
+        public void SetStandLeanHandCustom(int item, double x, double y)
+        {
+            if (item < 0 || item >= StandLeanHandCount) return;
+            StandLeanHand = CloneStandLeanHand(StandLeanHand);
+            HandCustomItem h = new HandCustomItem();
+            h.Custom = true; h.X = x; h.Y = y;
+            StandLeanHand[item] = h;
+        }
+
+        public void SetStandLeanHandAuto(int item)
+        {
+            if (item < 0 || item >= StandLeanHandCount) return;
+            StandLeanHand = CloneStandLeanHand(StandLeanHand);
+            StandLeanHand[item] = new HandCustomItem();
+        }
+
+        /// <summary>X14: 「和移动时一样」 off -> on/off. Turning it off with all four numbers 0 starts them at the current normal
+        /// lean, so unticking alone changes nothing on screen until a number is edited.</summary>
+        public void SetStandLeanSame(bool same)
+        {
+            if (!same && StandLeanSame && StandLeanQX == 0 && StandLeanQY == 0 && StandLeanEX == 0 && StandLeanEY == 0)
+            {
+                StandLeanQX = LeanQX; StandLeanQY = LeanQY; StandLeanEX = LeanEX; StandLeanEY = LeanEY;
+                StandLeanHand = CloneStandLeanHand(StandLeanHand);
+                // the 换手 rows start where the 换手 lean is now (custom only when the 换手 lean itself is custom)
+                for (int i = 0; i < StandLeanHandCount; i++)
+                {
+                    int hi = i == StandLeanHandQ ? HandQ : HandE;
+                    if (IsHandCustom(hi)) { double x, y; HandValue(hi, out x, out y); SetStandLeanHandCustom(i, x, y); }
+                }
+            }
+            StandLeanSame = same;
+        }
+
         /// <summary>Deep copy padded/truncated to HandItemCount (missing items 自动).</summary>
         public static List<HandCustomItem> CloneHand(List<HandCustomItem> src)
         {
@@ -958,6 +1069,7 @@ namespace TarkovCrosshair
             p.Style = Style == null ? new CrosshairStyle() : Style.Clone();
             p.Jump = Jump == null ? new JumpSettings() : Jump.Clone();
             p.HandCustom = CloneHand(HandCustom);
+            p.StandLeanHand = CloneStandLeanHand(StandLeanHand); // X14
             p.SavedDefault = SavedDefault == null ? null : SavedDefault.Clone();
             return p;
         }
@@ -989,6 +1101,7 @@ namespace TarkovCrosshair
             p.StandAsZero = false; // v5.1.1 (X5): the built-in has a 站立 point since Leo 21 Nov 2026; a blank profile has none
             p.RecoilMaxPx = 0; p.RecoilClickKickPx = 0; p.RecoilDriftX = 0;
             p.LeanQX = 0; p.LeanQY = 0; p.LeanEX = 0; p.LeanEY = 0;
+            p.StandLeanSame = true; p.StandLeanQX = 0; p.StandLeanQY = 0; p.StandLeanEX = 0; p.StandLeanEY = 0; // X14
             p.AllHandAuto();
             if (p.Jump == null) p.Jump = new JumpSettings();
             p.Jump.Enabled = false;
@@ -1160,6 +1273,7 @@ namespace TarkovCrosshair
                 v.QX = LeanQX; v.QY = LeanQY;
                 v.EX = LeanEX; v.EY = LeanEY;
                 v.Drift = RecoilDriftX;
+                FillStandLean(-1, v); // X14
                 return;
             }
             for (int i = 0; i < 4; i++) HandValue(i, out v.DX[i], out v.DY[i]);
@@ -1176,6 +1290,18 @@ namespace TarkovCrosshair
             HandValue(HandE, out v.EX, out v.EY);
             double unused;
             HandValue(HandDrift, out v.Drift, out unused);
+            FillStandLean(1, v); // X14
+        }
+
+        /// <summary>X14: the view's 站立侧身 (hand -1 = 正常手, 1 = 换手). StandLeanSame: the view's own lean (Q/E), so the engine's
+        /// standing target equals the moving one.</summary>
+        private void FillStandLean(int hand, HandView v)
+        {
+            v.StandLeanOn = !StandLeanSame;
+            if (StandLeanSame) { v.SQX = v.QX; v.SQY = v.QY; v.SEX = v.EX; v.SEY = v.EY; return; }
+            if (hand < 0) { v.SQX = StandLeanQX; v.SQY = StandLeanQY; v.SEX = StandLeanEX; v.SEY = StandLeanEY; return; }
+            StandLeanHandValue(StandLeanHandQ, out v.SQX, out v.SQY);
+            StandLeanHandValue(StandLeanHandE, out v.SEX, out v.SEY);
         }
 
         /// <summary>自动 value of a 换手 item: 左右镜像 of the CURRENT normal-hand values (the v3.0 rule).</summary>
@@ -1232,11 +1358,12 @@ namespace TarkovCrosshair
             HandCustom[item] = new HandCustomItem();
         }
 
-        public void AllHandAuto() { HandCustom = NewAutoHand(); }
+        public void AllHandAuto() { HandCustom = NewAutoHand(); StandLeanHand = NewAutoStandLeanHand(); } // X14: 站立侧身 换手 too
 
         public bool AnyHandCustom()
         {
             for (int i = 0; i < HandItemCount; i++) if (IsHandCustom(i)) return true;
+            for (int i = 0; i < StandLeanHandCount; i++) if (IsStandLeanHandCustom(i)) return true; // X14
             return false;
         }
 
@@ -1321,6 +1448,11 @@ namespace TarkovCrosshair
             LeanQX = Clamp.D(LeanQX, -500, 500, -30); LeanQY = Clamp.D(LeanQY, -500, 500, -5);
             LeanEX = Clamp.D(LeanEX, -500, 500, 30); LeanEY = Clamp.D(LeanEY, -500, 500, -5);
             LeanMs = Clamp.D(LeanMs, 0, 2000, 150);
+            // X14 站立侧身: same ±500 limits as the lean; exactly 2 换手 items (older files have none: 自动)
+            StandLeanQX = Clamp.D(StandLeanQX, -500, 500, 0); StandLeanQY = Clamp.D(StandLeanQY, -500, 500, 0);
+            StandLeanEX = Clamp.D(StandLeanEX, -500, 500, 0); StandLeanEY = Clamp.D(StandLeanEY, -500, 500, 0);
+            StandLeanHand = CloneStandLeanHand(StandLeanHand);
+            foreach (HandCustomItem sh in StandLeanHand) { sh.X = Clamp.D(sh.X, -500, 500, 0); sh.Y = Clamp.D(sh.Y, -500, 500, 0); }
             HandSwitchMs = Clamp.D(HandSwitchMs, 0, 2000, 300);
             EnsureHandList(); // v3.1 换手自定义: exactly 8 items; older files have none (all 自动)
             for (int i = 0; i < HandItemCount; i++)
@@ -1613,6 +1745,16 @@ namespace TarkovCrosshair
         [DataMember(Name = "ReturnTimePct")] public double ReturnTimePct;
         /// <summary>v5.1 R4: 换向停顿 in ms: rest at 0 between the two legs of A→D; 0..300, default 0.</summary>
         [DataMember(Name = "ReversePauseMs")] public double ReversePauseMs;
+        // X13 (Leo 21 Nov 2026): W/S (前后, Y axis) get their own copies of the four 短按和换向 tunables, a bit faster than A/D.
+        // Same ranges / clamps as the A/D ones. Older files without them get these defaults (SetV51Defaults runs before reading).
+        /// <summary>X13: W/S 短按阈值 ms (60..250, default 160; A/D TapThresholdMs stays 200).</summary>
+        [DataMember(Name = "WsTapThresholdMs")] public double WsTapThresholdMs;
+        /// <summary>X13: W/S 换向最短时间 ms (W→S; 0..600, default 180; A/D ReverseMinMs stays 250).</summary>
+        [DataMember(Name = "WsReverseMinMs")] public double WsReverseMinMs;
+        /// <summary>X13: W/S 回程时间 % (25..300, default 80; A/D ReturnTimePct stays 100).</summary>
+        [DataMember(Name = "WsReturnTimePct")] public double WsReturnTimePct;
+        /// <summary>X13: W/S 换向停顿 ms (0..300, default 0).</summary>
+        [DataMember(Name = "WsReversePauseMs")] public double WsReversePauseMs;
         public const double AmmoReloadMsMin = 300, AmmoReloadMsMax = 6000, AmmoQuickReloadMsMin = 200, AmmoQuickReloadMsMax = 4000;
         public const double TapThresholdMsMin = 60, TapThresholdMsMax = 250, ReverseMinMsMin = 0, ReverseMinMsMax = 600;
         public const double ReturnTimePctMin = 25, ReturnTimePctMax = 300, ReversePauseMsMin = 0, ReversePauseMsMax = 300;
@@ -1778,7 +1920,7 @@ namespace TarkovCrosshair
             HandEnabled = true; HandMode = "toggle";
             ResBaseW = 2160; ResBaseH = 1440; ResGameW = 2160; ResGameH = 1440;
             OnlyWhenGameFocused = true; GameWindowTitle = DefaultGameWindowTitle;
-            Autostart = true; SplashOnStart = true; BoostEnabled = true; // Leo 21 Nov 2026: 开机自启 on by default
+            Autostart = false; SplashOnStart = true; BoostEnabled = true; // Leo 21 Nov 2026 tuned default (X18): 开机自启 off by default
             AdsCancelTabEsc = true; AdsIgnoreAltCtrl = true; AdsCancelSprint = true;
             LeanCancelSprint = true; TutorialDone = false;
             SetV51Defaults();
@@ -1793,12 +1935,13 @@ namespace TarkovCrosshair
             AmmoBar = AmmoBarSettings.Defaults(); AnimFx = AnimFxSettings.Defaults();
             AmmoReloadKey = 0x52; AmmoQuickTapMs = 300;
             AmmoWeaponKeysMain = DefaultWeaponKeysMain(); AmmoWeaponKeysOther = DefaultWeaponKeysOther();
-            GrenadeHideOn = true; GrenadeKey = 0x47; BoostToggle = true;
+            GrenadeHideOn = false; GrenadeKey = 0x47; BoostToggle = true; // Leo 21 Nov 2026 tuned default (X18): 丢雷隐藏 off
             AnimPreset = "static"; AnimDynGap = false; AnimFirePulse = false; AnimLeanRotate = false; AnimStateColour = false; AnimShake = false;
             PerfMode = false; OverlayDCompMode = false; AdsRealHide = false; GpuDiagLog = false; ResAspectCustom = "16:9"; ResStretched = null; ResBars = BarsNone; WizardDone = false; MustReadAck = false;
             NetUpdateCheck = true; NetStatsConsent = null; NetCrashAsk = true;
             TapThresholdMs = 200; ReverseMode = "slowstart";
             AmmoReloadMs = 3000; AmmoQuickReloadMs = 2200; ReverseMinMs = 250; ReturnTimePct = 100; ReversePauseMs = 0;
+            WsTapThresholdMs = 160; WsReverseMinMs = 180; WsReturnTimePct = 80; WsReversePauseMs = 0; // X13 (Leo 21 Nov 2026)
         }
 
         /// <summary>v5.1: clamps the shared fields; a bad value gets its SetV51Defaults value.</summary>
@@ -1826,6 +1969,10 @@ namespace TarkovCrosshair
             ReverseMinMs = Math.Round(Clamp.D(ReverseMinMs, ReverseMinMsMin, ReverseMinMsMax, d.ReverseMinMs));
             ReturnTimePct = Math.Round(Clamp.D(ReturnTimePct, ReturnTimePctMin, ReturnTimePctMax, d.ReturnTimePct));
             ReversePauseMs = Math.Round(Clamp.D(ReversePauseMs, ReversePauseMsMin, ReversePauseMsMax, d.ReversePauseMs));
+            WsTapThresholdMs = Math.Round(Clamp.D(WsTapThresholdMs, TapThresholdMsMin, TapThresholdMsMax, d.WsTapThresholdMs));
+            WsReverseMinMs = Math.Round(Clamp.D(WsReverseMinMs, ReverseMinMsMin, ReverseMinMsMax, d.WsReverseMinMs));
+            WsReturnTimePct = Math.Round(Clamp.D(WsReturnTimePct, ReturnTimePctMin, ReturnTimePctMax, d.WsReturnTimePct));
+            WsReversePauseMs = Math.Round(Clamp.D(WsReversePauseMs, ReversePauseMsMin, ReversePauseMsMax, d.WsReversePauseMs));
             ReverseMode = Clamp.OneOf(ReverseMode, ReverseModeIds);
         }
 
@@ -1860,13 +2007,21 @@ namespace TarkovCrosshair
             g.FrameMode = "vsync"; g.Fps = 360;
             g.ShowFadeMs = 50; g.HideFadeMs = 0;
             g.ResGameW = 1920; // Leo's file (27 Oct 2026); the scale uses height only, so nothing moves
+            // (X18: a fresh install / empty file gets Leo's screen on top: ApplyLeoScreen, called by SettingsIO.FreshDefaults)
             g.SettingsTopMost = true; g.ShowSettingsOnStart = true; g.HideOnFreeLook = true;
             g.HandEnabled = true; g.HandMode = "toggle";
             g.OnlyWhenGameFocused = true; g.GameWindowTitle = DefaultGameWindowTitle;
-            g.Autostart = true; g.SplashOnStart = true; g.BoostEnabled = true; // Leo 21 Nov 2026
+            g.Autostart = false; g.SplashOnStart = true; g.BoostEnabled = true; // Leo 21 Nov 2026 tuned default (X18): autostart off
             g.Profiles.Add(Profile.CreateLeoDefault(DefaultProfileName));
             g.ActiveProfile = DefaultProfileName;
             return g;
+        }
+
+        /// <summary>Leo 21 Nov 2026 tuned default (X18): his screen = the fresh-install 游戏分辨率 1800×1440 / 画面比例 5:4 拉伸 /
+        /// FOV 75 (a first run then takes the real screen size via DetectGameResolution; these are the fallback). 调参 base unchanged.</summary>
+        public void ApplyLeoScreen()
+        {
+            ResGameW = 1800; ResGameH = 1440; ResAspect = "5:4"; ResStretched = true; ResBars = BarsNone; ResFov = 75;
         }
 
         /// <summary>「按键恢复默认」: every binding + mode on the 按键 page back to the fresh-install values.</summary>
@@ -3455,6 +3610,7 @@ namespace TarkovCrosshair
         private static GlobalSettings FreshDefaults()
         {
             GlobalSettings d = GlobalSettings.CreateDefault();
+            d.ApplyLeoScreen(); // X18 (Leo 21 Nov 2026): his screen settings are the fresh-install default
             d.DetectGameResolution(ScreenProbe);
             d.Validate();
             return d;

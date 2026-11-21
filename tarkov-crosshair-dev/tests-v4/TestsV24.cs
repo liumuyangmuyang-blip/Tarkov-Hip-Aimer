@@ -613,6 +613,7 @@ namespace TarkovCrosshair.Tests
                         if (Array.IndexOf(V3New, prop.Name) >= 0) continue; // v3.0 fields: defaults on both sides
                         if (prop.Name == "Style") continue; // v4.0 准星样式: defaults on both sides
                         if (prop.Name.StartsWith("MouseLag")) continue; // v4.1 鼠标滞后: defaults on both sides
+                        if (prop.Name.StartsWith("StandLean")) continue; // v5.1.1 (X14, Leo 21 Nov 2026) 站立侧身: defaults on both sides
                         CountSame(prop.Value, b.RootElement.GetProperty(prop.Name), prop.Name, ref same, ref total, ref sameList);
                     }
                 Check("C6 fixture sanity: the tuned v2.3 M4 differs from the built-in 「Leo默认」 in (nearly) every value; diagonals recomputed; renamed 「Leo默认」",
@@ -661,7 +662,7 @@ namespace TarkovCrosshair.Tests
                                 if (Array.IndexOf(RemovedKeys, k.Name) < 0) { if (k.Value.GetInt32() == 5) used5 = true; if (k.Value.GetInt32() == 6) used6 = true; }
                             fine = fine && g.Keys.HandSwitch == 5 && g.HandEnabled == !used5 && g.HandMode == "toggle";
                             fine = fine && g.Keys.Boost == 6 && g.BoostEnabled == !used6 && g.OnlyWhenGameFocused && g.GameWindowTitle == GlobalSettings.DefaultGameWindowTitle
-                                && g.Autostart /* Leo 21 Nov 2026 new defaults: these files have no Autostart -> default on */ && g.SplashOnStart;
+                                && !g.Autostart /* Leo 21 Nov 2026 tuned default: these files have no Autostart -> default off */ && g.SplashOnStart;
                             if (name == "settings-v2.1.json") fine = fine && used5 && !g.HandEnabled && g.Keys.FreeLook == 5; // 自由视角 is on side button 1 there
                         }
                         string saved = SettingsIO.Serialize(g);
@@ -686,14 +687,14 @@ namespace TarkovCrosshair.Tests
                 GlobalSettings d = GlobalSettings.CreateDefault(); d.Validate();
                 Profile m = d.Active, b = Profile.CreateBlank("b");
                 bool look = m.Diameter == 12 && m.Thickness == 1.2 && m.Feather == 1.0 && m.OpacityPct == 65 && m.Color == "#00DF00" && m.Color2 == "#000000"
-                    && m.Gradient == "twotone" && m.OuterThickness == 1.8 && !m.CenterDot && m.CenterDotSize == 2 && m.Shape == "cross" && m.CrossLength == 6.3 && m.CrossGap == 4.3 && m.Dashes == 0 && m.GlowPx == 0
+                    && m.Gradient == "twotone" && m.OuterThickness == 1.8 && !m.CenterDot && m.CenterDotSize == 2 && m.Shape == "cross" && m.CrossLength == 6.5 && m.CrossGap == 5.5 /* Leo 21 Nov 2026 tuned default */ && m.Dashes == 0 && m.GlowPx == 0
                     && m.RotationDeg == 0 && m.HandColorOn && m.HandColor == "#FF9500" && m.HandColor2 == "#000000";
                 double[,] dirs = { { 0, -14.4 }, { 0, 14.4 }, { 97.2, 0 }, { -37.4, 0 }, { 68.7, -10.2 }, { -26.5, -10.2 }, { 68.7, 10.2 }, { -26.5, 10.2 } }; // v5.0: Leo's v5 file 「Leo默认 (旧)」
                 bool mv = m.CurveAD.DurationMs == 430 && m.CurveWS.DurationMs == 430 && Same(m.CurveAD.Speeds, 0, 15, 45, 75, 100) && Same(m.CurveWS.Speeds, 0, 15, 45, 75, 100)
-                    && m.StandAsZero && m.StandOffsetX == 24.48 && m.StandOffsetY == -25.2; // v5.1.1 (X5, Leo 21 Nov 2026): 站立 point
+                    && m.StandAsZero && m.StandOffsetX == 26.28 && m.StandOffsetY == -25.92; // Leo 21 Nov 2026 tuned default // v5.1.1 (X5, Leo 21 Nov 2026): 站立 point
                 for (int i = 0; i < 8; i++) { double ax, ay; m.DirFromCentre(i, out ax, out ay); if (Math.Round(ax, 1) != dirs[i, 0] || Math.Round(ay, 1) != dirs[i, 1]) mv = false; } // same screen places
-                bool rc = m.RecoilMaxPx == 28.8 && m.RecoilRiseMs == 300 && m.RecoilClickKickPx == 8 && m.RecoilFallMs == 180 && m.RecoilDelayMs == 30 && m.RecoilDriftX == 0;
-                bool ln = Math.Abs(m.LeanQX + 11.808) < 1e-9 && m.LeanQY == -18 && Math.Abs(m.LeanEX - 11.52) < 1e-9 && Math.Abs(m.LeanEY + 16.56) < 1e-9 && m.LeanMs == 280;
+                bool rc = m.RecoilMaxPx == 28.8 && m.RecoilRiseMs == 310 /* Leo 21 Nov 2026 tuned default */ && m.RecoilClickKickPx == 8 && m.RecoilFallMs == 180 && m.RecoilDelayMs == 30 && m.RecoilDriftX == 0;
+                bool ln = Math.Abs(m.LeanQX + 11.016) < 1e-9 && m.LeanQY == -18 && Math.Abs(m.LeanEX - 12.096) < 1e-9 && Math.Abs(m.LeanEY + 16.56) < 1e-9 && m.LeanMs == 350; // Leo 21 Nov 2026 tuned default
                 bool hd = m.HandSwitchMs == 450 && m.SavedDefault == null && b.CurveAD.IsRecommended && b.CurveWS.IsRecommended && b.HandSwitchMs == 450; // v4.1 (BRUTE40 P1-1): 新建空白配置 = 推荐 curve, not the deleted v2.3 one; v5.0.2 (W18): its times are Leo's (450 ms)
                 JumpSettings js = m.Jump;
                 bool jp = js.Enabled && js.TotalMs == 800 && js.Phases[0].Ms == 200 && js.Phases[1].Ms == 305 && js.Phases[2].Ms == 295
@@ -705,7 +706,7 @@ namespace TarkovCrosshair.Tests
                 KeyBindings k = d.Keys;
                 bool gl = k.Toggle == 0x7B && k.Fire == 1 && k.Ads == 2 && k.FreeLook == 4 && k.HandSwitch == 5 && k.Boost == 6 && k.BoostMods == 0 /* v5.1.1 (X5, Leo 21 Nov 2026): 强化 = 鼠标侧键2 */ && k.LeanLeft == 0x51 && k.LeanRight == 0x45
                     && k.Forward == 0x57 && k.Back == 0x53 && k.Left == 0x41 && k.Right == 0x44 && k.Jump == 0x20 && d.AdsMode == "hold" && d.LeanMode == "hold" && d.HideOnFreeLook
-                    && d.HandEnabled && d.HandMode == "toggle" && d.BoostEnabled && d.OnlyWhenGameFocused && d.GameWindowTitle == "EscapeFromTarkov" && d.Autostart /* Leo 21 Nov 2026 new defaults */
+                    && d.HandEnabled && d.HandMode == "toggle" && d.BoostEnabled && d.OnlyWhenGameFocused && d.GameWindowTitle == "EscapeFromTarkov" && !d.Autostart /* Leo 21 Nov 2026 tuned default: autostart off */
                     && d.SplashOnStart && d.Enabled && d.Fps == 360 && d.ShowFadeMs == 50 && d.ResBaseH == 1440 && d.ResGameH == 1440 && d.ResBaseW == 2160 && d.ResGameW == 1920
                     && d.Profiles.Count == 1 && d.ActiveProfile == "Leo默认" && m.Name == "Leo默认";
                 string scratch = Environment.GetEnvironmentVariable("KIROCREW_SCRATCH");

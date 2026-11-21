@@ -1,6 +1,6 @@
-// v5.1.1 (X8, Leo 21 Nov 2026 option A): with 站立静止偏移 on (StandAsZero), lean (Q / E, 换手 Q / E) and recoil count from
-// the SCREEN CENTRE again, so they land where v5.0.2 put them; the 站立 point fades out smoothly while leaning / at recoil
-// top. W/S/A/D and diagonals are unchanged; recoil top = centre ↑ 28.8 px (4.00 %) in both hands; stand 0 = as before.
+// v5.1.1 (X8, Leo 21 Nov 2026 option A; X12 Leo 21 Nov 2026: recoil now rises from the current point): with 站立静止偏移 on (StandAsZero), lean (Q / E, 换手 Q / E) count from
+// the SCREEN CENTRE again, so they land where v5.0.2 put them; the 站立 point fades out smoothly while leaning. W/S/A/D and
+// diagonals are unchanged; recoil top = the current point ↑ 28.8 px (4.00 %) in both hands (X12); stand 0 = as before.
 using System;
 using System.IO;
 
@@ -43,7 +43,7 @@ namespace TarkovCrosshair.Tests
             // the same screen spot (< 0.01 px); every direction too; standing = the stand point.
             {
                 string d = "";
-                Profile n = Profile.CreateLeoDefault("n"), o = X5OldDefault();
+                Profile n = X18Pre("n"), o = X5OldDefault();
                 n.RecoilMaxPx = 24; // compare lean / moves with the old cap (recoil is not used here)
                 for (int h = 0; h < 2; h++)
                 {
@@ -61,14 +61,15 @@ namespace TarkovCrosshair.Tests
                 }
                 Check("X8-1 站立 point on: Q / E (and with every move key), 换手 Q / E land where v5.0.2 put them (< 0.01 px), W/S/A/D/diagonals unchanged, standing = 站立 point", d.Length == 0, d);
             }
-            // X8-2 recoil top = screen centre ↑ 28.8 px (4.00 %) in both hands (not on top of the 站立 point)
+            // X8-2 (updated by X12, Leo 21 Nov 2026: recoil rises from the CURRENT point, not from the centre): standing, recoil
+            // top = the 站立 point ↑ 28.8 px (4.00 %); after 换手 = the mirrored 站立 point ↑ 28.8 px
             {
                 string d = "";
-                Profile n = Profile.CreateLeoDefault("n");
+                Profile n = X18Pre("n");
                 InputState f = new InputState(); f.Fire = true;
-                d += X8Cmp("recoil", X8Run(n, g, false, f, 6, null), 0, -28.8);
-                d += X8Cmp("换手 recoil", X8Run(n, g, true, f, 6, null), 0, -28.8);
-                Check("X8-2 recoil top = centre ↑ 28.8 px (4.00 %), 换手 too", d.Length == 0 && n.RecoilMaxPx == 28.8, d);
+                d += X8Cmp("recoil", X8Run(n, g, false, f, 6, null), 24.48, 25.2 - 28.8);
+                d += X8Cmp("换手 recoil", X8Run(n, g, true, f, 6, null), -24.48, 25.2 - 28.8);
+                Check("X8-2 recoil top = 站立 point ↑ 28.8 px (4.00 %), 换手 = mirrored 站立 point ↑ 28.8 px (X12, Leo 21 Nov 2026)", d.Length == 0 && n.RecoilMaxPx == 28.8, d);
             }
             // X8-3 nothing jumps: press / release Q, E and fire with the stand point on, at 360 fps the ring never moves more than
             // 1.5 px in one frame (the stand fade rides the 侧身过渡 and recoil curves).
@@ -76,7 +77,7 @@ namespace TarkovCrosshair.Tests
                 double[] worst = new double[2];
                 for (int run = 0; run < 2; run++)
                 {
-                    Profile n = Profile.CreateLeoDefault("n");
+                    Profile n = X18Pre("n");
                     if (run == 1) n.SetStandPoint(0, 0); // same values, no 站立 point: the v5.0.2-style reference (kick = its own 8 px step)
                     MotionEngine m = new MotionEngine(); m.GameFocused = true; m.OwnForeground = true;
                     InputState none = new InputState(), q = W23Keys(-1, -1), e2 = W23Keys(-1, 1), fire = new InputState(); fire.Fire = true;
@@ -116,7 +117,7 @@ namespace TarkovCrosshair.Tests
                 bool ok = !lh.Contains("qx.Origin") && lh.Contains("if (item < Profile.HandStand) fx.Origin")
                     && !rc.Contains("drift.Origin") && !tb.Contains("p.LeanQX, OffsetUnits.StandOriginX")
                     && t9.Contains("if (item < Profile.HandStand) f.OriginX") && mv.Contains("fx.Origin = delegate { return OffsetUnits.StandOriginX(Cur, false); }")
-                    && mv.Contains("侧身和后坐力照旧从屏幕中心算起");
+                    && mv.Contains("侧身照旧从屏幕中心算起"); // X12 (Leo 21 Nov 2026): recoil now rises from the current point
                 Check("X8-5 侧身 / 换手 Q E 到顶时水平偏移 / 后坐力 X boxes count from the centre; 移动 directions still from the 站立 point; note on 移动", ok, "");
             }
         }
