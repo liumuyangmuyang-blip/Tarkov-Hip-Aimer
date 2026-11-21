@@ -180,6 +180,11 @@ namespace TarkovCrosshair.Tests
                 for (int i = 0; i < Profile.DirCount; i++) p.Dirs[i] = new DirSetting(q.Dirs[i].OffX, q.Dirs[i].OffY);
                 for (int i = 0; i < p.HandCustom.Count; i++) p.HandCustom[i] = q.HandCustom[i].Clone();
             }
+            // Leo 21 Nov 2026 tuned default (X18): every field = his tuned profile 「Leo默认」 (fixture leo-v511-1121-tuned-settings.v511)
+            GlobalSettings t = LoadFixture("leo-v511-1121-tuned-settings.v511", out e);
+            Profile tp = t == null ? null : t.FindProfile("Leo默认");
+            // except 强化准星: Leo kept the old built-in Boost block (OwnLook off = follows the normal look)
+            if (tp != null) { string nm = p.Name; BoostStyle ob = p.Boost.Clone(); p = tp.CloneValues(); p.Name = nm; p.Boost = ob; p.SavedDefault = null; p.SavedDefaultAt = null; }
             return p;
         }
 
@@ -198,7 +203,7 @@ namespace TarkovCrosshair.Tests
             if (fx == null) { Check("H1 fixture leo-v30-1027-settings.json parses", false, err); return; }
             V50Apply(fx); // v5.0: the built-in profile values come from Leo's v5 file (globals still = the 27 Oct file)
             fx.Keys.Boost = 6; fx.Keys.BoostMods = 0; // v5.1.1 (X5, Leo 21 Nov 2026): fresh install 强化 = 鼠标侧键2 (v5.1: Ctrl+T)
-            fx.Autostart = true; // Leo 21 Nov 2026 new defaults: fresh install autostart on (the 27 Oct file stores false and keeps it when loaded)
+            fx.Autostart = false; // Leo 21 Nov 2026 tuned default: fresh install autostart off
 
             GlobalSettings raw = GlobalSettings.CreateDefault();
             GlobalSettings val = GlobalSettings.CreateDefault(); val.Validate();
@@ -220,6 +225,7 @@ namespace TarkovCrosshair.Tests
             string dir = Path.Combine(scratch, "h1-" + Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(dir);
             string path = Path.Combine(dir, "settings.json"), msg;
+            fx.ApplyLeoScreen(); // Leo 21 Nov 2026 tuned default (X18): a first run gets his screen (1800×1440 5:4 拉伸)
             GlobalSettings loaded = SettingsIO.Load(path, out msg);
             GlobalSettings reread = SettingsIO.Load(path, out msg);
             List<string> d3 = new List<string>(); int n3 = 0;

@@ -65,6 +65,11 @@ namespace TarkovCrosshair
             CheckBox on = Check("跳跃时准星跟着动", delegate { return J().Enabled; },
                 delegate(bool v) { J().Enabled = v; foreach (Control c in parts) c.Enabled = v; });
             refreshers.Add(delegate { foreach (Control c in parts) c.Enabled = J().Enabled; });
+            // v5.1.1 (X16, Leo 21 Nov 2026): 触发方式 (高级设置): 按下时触发 (default) / 松开时触发
+            ComboBox trig = Choice(JumpSettings.TriggerLabels, JumpSettings.Triggers, delegate { return J().Trigger; },
+                delegate(string v) { J().Trigger = v; });
+            Tip(trig, "按下时触发：一按跳跃键就开始走路线（默认）。松开时触发：松开跳跃键那一刻才开始。按住不放都只算一次");
+            parts.Add(trig);
             Label key = StatusLbl();
             refreshers.Add(delegate { key.Text = G.Keys.ComboOf(KeyBindings.ActionJump); });
 
@@ -76,6 +81,8 @@ namespace TarkovCrosshair
             Wide(box, plot);
             Wide(box, Hint("竖着看：准星上下位置（百分比）；横着看：时间。", 520));
             Wide(box, Note("默认就是开发者调好的路线，一般不用改；要改的话，一般只改总时长。", 520));
+            Wide(box, AdvOnly(Line(Lbl("触发方式"), trig, HelpMark.For("jumptrigger", Font, delegate { return G; })))); // v5.1.1 (X16): 高级设置 only
+            Wide(box, AdvOnly(Note("松开时触发：松开跳跃键的那一刻才开始走路线。按住多久都只算一次；开镜、隐藏时松开也照样算（和按下时触发一样）。", 520)));
             Wide(box, AdvOnly(g)); // per-phase table: 高级设置 only
             Wide(box, AdvOnly(Note("三段加起来永远等于总时长：改总时长，三段按比例一起变；「自动分配」＝ 30% / 40% / 30%。结束位置：↑ 往上，↓ 往下。", 520)));
             return Stack(Group("跳跃", box));

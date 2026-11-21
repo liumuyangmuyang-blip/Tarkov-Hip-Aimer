@@ -145,7 +145,7 @@ namespace TarkovCrosshair.Tests
                             if (lit.Contains(b)) { ok = false; d += f + ":[" + b + "] "; }
                 }
                 string prog = File.ReadAllText(Path.Combine(dir, "Program.cs"), Encoding.UTF8);
-                if (!prog.Contains("public const string Version = \"v5.1\";")) { ok = false; d += "Version "; } // v5.1 (W25)
+                if (!prog.Contains("public const string Version = \"v5.2\";")) { ok = false; d += "Version "; } // v5.1 (W25)
                 Check("UI6 settings-window files (" + files + "): no 站着偏移 / admin / 任务计划 / v4.0 user text, Version v5.0", ok, d);
             }
 

@@ -67,7 +67,7 @@ namespace TarkovCrosshair.Tests
                     if (g.AmmoOn || g.AmmoMagSize != 30 || g.AmmoRpm != 850 || g.AmmoSemi || g.AmmoStyle != "brackets,colour") d += "ammo; ";
                     if (g.AmmoReloadKey != 0x52 || g.AmmoQuickTapMs != 300) d += "reload; ";
                     if (string.Join(",", g.AmmoWeaponKeysMain) != "50" || string.Join(",", g.AmmoWeaponKeysOther) != "49,51,86,52,53,54,55,56,57,48") d += "weapon keys; ";
-                    if (!g.GrenadeHideOn || g.GrenadeKey != 0x47 || !g.BoostToggle) d += "grenade/boost mode; ";
+                    if (g.GrenadeHideOn /* Leo 21 Nov 2026 tuned default: off */ || g.GrenadeKey != 0x47 || !g.BoostToggle) d += "grenade/boost mode; ";
                     if (g.AnimPreset != "static" || g.AnimDynGap || g.AnimFirePulse || g.AnimLeanRotate || g.AnimStateColour || g.AnimShake) d += "anim; ";
                     if (g.PerfMode || g.ResAspectCustom != "16:9" || g.ResStretched != null || g.WizardDone || g.MustReadAck) d += "misc; ";
                     if (!g.NetUpdateCheck || g.NetStatsConsent != null || !g.NetCrashAsk) d += "net; ";
@@ -75,7 +75,7 @@ namespace TarkovCrosshair.Tests
                     if (g.Profiles.Count != 2 || g.Keys.Boost != 6 || g.Keys.BoostMods != 0) d += "kept: profiles=" + g.Profiles.Count + " boost=" + g.Keys.Boost + "; ";
                     // v5.1.1 (X5, Leo 21 Nov 2026): the built-in 「Leo默认 (旧)」 has Leo's 站立 point 24.48 / -25.2; the other stays 0
                     foreach (Profile p in g.Profiles)
-                        if (p.Name == LeoDefaultJson.ProfileName ? !(p.StandAsZero && p.StandOffsetX == 24.48 && p.StandOffsetY == -25.2) : (p.StandAsZero || p.StandOffsetX != 0 || p.StandOffsetY != 0)) d += "stand " + p.Name + "; ";
+                        if (p.Name == LeoDefaultJson.ProfileName ? !(p.StandAsZero && p.StandOffsetX == 26.28 && p.StandOffsetY == -25.92) /* Leo 21 Nov 2026 tuned default */ : (p.StandAsZero || p.StandOffsetX != 0 || p.StandOffsetY != 0)) d += "stand " + p.Name + "; ";
                 }
                 Check("W23-1 v5.0.2 file imports: v5.1 fields default (ammo off 30/850 R 300 ms, main 2 / other 1 3 V 4-0, grenade G on, boost 切换, anim static, net ask once, tap 200, slowstart), profiles + Boost key kept", d.Length == 0, d);
             }

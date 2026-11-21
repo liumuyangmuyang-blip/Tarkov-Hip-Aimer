@@ -143,7 +143,7 @@ namespace TarkovCrosshair.Tests
                 if (!W17Between(p, "public void ExitApp(bool closeForm)", "tray.Visible = false;").Contains("SaveNowSync();")) d += " exitsave";
                 if (W17Between(p, "string startMsg = loadMsg;", "bool splashShown").Contains("MessageBox.Show")) d += " L7";
                 if (!p.Contains("form.DisplaysChanged()") || p.Contains("form.RefreshMonitors()")) d += " monitors";
-                if (!p.Contains("public const string Version = \"v5.1\";")) d += " version"; // v5.1 (W25)
+                if (!p.Contains("public const string Version = \"v5.2\";")) d += " version"; // v5.1 (W25)
                 Check("W17-5 Program.cs: one background GC, multicore JIT, 正在重试 balloon, tray menu prebuilt, settings saved off the UI thread (exit: sync), themed start message, v5.0.2",
                     d.Length == 0, d.Length == 0 ? "ok" : d);
             }
@@ -264,7 +264,7 @@ namespace TarkovCrosshair.Tests
                 if (a != b) d += " README differs";
                 if (g != a.Replace("\r", "").TrimStart('\uFEFF')) d += " GuideText differs (gen-guide.py)";
                 string first = a.TrimStart('\uFEFF').Split('\n')[0];
-                if (!first.Contains("v5.1")) d += " title"; // v5.1 (W25)
+                if (!first.Contains("v5.2")) d += " title"; // v5.1 (W25)
                 if (a.Contains("v5.0.1")) d += " v5.0.1 left";
                 int admin = 0; foreach (string line in a.Split('\n')) if (line.Contains("管理员")) admin++;
                 if (admin != 1) d += " admin lines=" + admin;

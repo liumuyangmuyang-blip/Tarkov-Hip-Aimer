@@ -72,23 +72,6 @@ namespace TarkovCrosshair
             return h;
         }
 
-        /// <summary>v5.1 (W33): the window for the DirectComposition mode (GlobalSettings.OverlayDCompMode): no redirection
-        /// bitmap (its content is a composition swap chain), still layered + transparent so clicks go through to the game
-        /// (constant alpha 255, the pixels carry the alpha). Same class, same click-through window proc. Throws when refused.</summary>
-        public static IntPtr CreateDComp(string caption)
-        {
-            int ex = Native.WS_EX_LAYERED | Native.WS_EX_TRANSPARENT | Native.WS_EX_TOPMOST | Native.WS_EX_TOOLWINDOW | Native.WS_EX_NOACTIVATE
-                | Native.WS_EX_NOREDIRECTIONBITMAP;
-            IntPtr h = Create(ex, caption, true); // shown like the layered one (nothing is visible before the first present)
-            if (!Native.SetLayeredWindowAttributes(h, 0, 255, Native.LWA_ALPHA))
-            {
-                int err = Marshal.GetLastWin32Error();
-                Destroy(h);
-                throw new InvalidOperationException("SetLayeredWindowAttributes failed, Win32 error " + err);
-            }
-            return h;
-        }
-
         public static void Destroy(IntPtr h)
         {
             if (h != IntPtr.Zero) { try { Native.DestroyWindow(h); } catch (Exception) { } }
@@ -290,7 +273,7 @@ namespace TarkovCrosshair
 
         /// <summary>v5.1 (W33, GlobalSettings.GpuDiagLog): once per second (overlay worker thread) one crash.log line with the
         /// foreground game's dedicated / shared GPU memory (PDH, the numbers Task Manager shows) and what our window is doing
-        /// (shown / fully transparent / hidden, layered or DirectComposition), so crosshair on / off can be compared without
+        /// (shown / fully transparent / hidden), so crosshair on / off can be compared without
         /// putting Task Manager over the game. Off = no counters opened, no lines.</summary>
         private void GpuDiagTick(RenderConfig c, long t, long f)
         {
@@ -396,9 +379,8 @@ namespace TarkovCrosshair
             if (f != null) worker.Post(delegate { f(m); });
         }
 
-        // ---- v5.1 (W33): DirectComposition mode, 开镜/丢雷真隐藏, GPU diagnostic log (all default off)
-        private DCompPresenter dcomp;                                        // non-null = the live window presents through it
-        private readonly PresentModeChoice presentMode = new PresentModeChoice();
+        // ---- v5.1 (W33): 开镜/丢雷真隐藏, GPU diagnostic log (default off). v5.1.1 (X17, Leo 21 Nov): the DirectComposition
+        // mode is removed; the overlay always presents through the normal layered window (the stored setting is ignored).
         private volatile int diagBits;                                       // OverlayDiag.Pack of this frame (worker reads it)
         private volatile int diagFgPid;                                      // pid of the foreground window (0 none)
         private volatile bool diagFgIsGame;
@@ -408,36 +390,9 @@ namespace TarkovCrosshair
         private long gpuNextAt = long.MinValue;
         private string gpuLastError;
 
-        /// <summary>Creates the window with the present path PresentModeChoice asks for (DirectComposition when wanted and not
-        /// failed before; any failure falls back to the layered window in the same call, logged once).</summary>
-        private bool TryCreateWindow(long now, Action<string> log, bool wantDComp)
+        /// <summary>Creates the normal layered overlay window (the only present path).</summary>
+        private bool TryCreateWindow(long now, Action<string> log)
         {
-            bool tryD = presentMode.TryDComp(wantDComp);
-            if (tryD)
-            {
-                IntPtr h = IntPtr.Zero;
-                DCompPresenter d = new DCompPresenter();
-                string why = null;
-                try
-                {
-                    h = OverlayWindow.CreateDComp("TarkovHipAimerOverlay");
-                    if (!d.Init(h, 1)) why = d.LastError;
-                }
-                catch (Exception ex) { why = ex.Message; }
-                if (why == null)
-                {
-                    hwnd = h; dcomp = d;
-                    presentMode.Created(true, true);
-                    log("overlay: DirectComposition mode on (composition swap chain, no redirection bitmap)");
-                    AfterCreate(now);
-                    return true;
-                }
-                d.Dispose();
-                OverlayWindow.Destroy(h);
-                presentMode.Created(true, false);
-                log("overlay: DirectComposition mode failed (" + why + "), using the normal layered window");
-            }
-            else presentMode.Created(false, false);
             try
             {
                 hwnd = OverlayWindow.CreateLayered("TarkovHipAimerOverlay");
@@ -454,7 +409,6 @@ namespace TarkovCrosshair
 
         private void DestroyWindowNow()
         {
-            if (dcomp != null) { dcomp.Dispose(); dcomp = null; }
             OverlayWindow.Destroy(hwnd);
             hwnd = IntPtr.Zero;
             presentGate.Invalidate();
@@ -556,8 +510,7 @@ namespace TarkovCrosshair
                     + " Hz, 1 ms key poll, per-monitor DPI " + (renderPerMonitor ? "yes" : "no"));
 
                 long nextCreate = 0;
-                RenderConfig c0 = config;
-                TryCreateWindow(sw.ElapsedTicks, safeLog, c0 != null && c0.G != null && W33Opt.DComp(c0.G)); // v5.1 (W33)
+                TryCreateWindow(sw.ElapsedTicks, safeLog);
                 if (hwnd == IntPtr.Zero) nextCreate = sw.ElapsedTicks + freq;
 
                 MotionEngine eng = new MotionEngine();
@@ -587,7 +540,7 @@ namespace TarkovCrosshair
                         stall.Enter(PhaseStats.Pump);
                         if (hwnd == IntPtr.Zero && p0 >= nextCreate)
                         {
-                            if (!TryCreateWindow(p0, safeLog, g != null ? W33Opt.DComp(g) : (config != null && config.G != null && W33Opt.DComp(config.G)))) nextCreate = p0 + freq;
+                            if (!TryCreateWindow(p0, safeLog)) nextCreate = p0 + freq;
                         }
                         // pump our window's messages (PeekMessage never waits)
                         Native.MSG msg;
@@ -609,12 +562,6 @@ namespace TarkovCrosshair
                             g = cfg.G.Clone(false);
                             if (toggleSeq == int.MinValue) toggleSeq = cfg.ToggleAck;
                             if (cfg.ToggleAck == toggleSeq) localEnabled = cfg.G.Enabled;
-                        }
-                        // v5.1 (W33): 新的显示方式 switched on / off (or DirectComposition failed on the live window): new window
-                        if (hwnd != IntPtr.Zero && presentMode.NeedRecreate(W33Opt.DComp(g)))
-                        {
-                            DestroyWindowNow();
-                            if (!TryCreateWindow(p1, safeLog, W33Opt.DComp(g))) nextCreate = p1 + freq;
                         }
 
                         // v5.0.2 (Leo: minimum latency): the motion step ends when the keys are read, right before the push
@@ -709,7 +656,7 @@ namespace TarkovCrosshair
                             if (topmost.Need(fgTrack.Changed || shownNow || covered, p2, freq))
                                 Native.SetWindowPos(hwnd, Native.HWND_TOPMOST, 0, 0, 0, 0, Native.SWP_NOMOVE | Native.SWP_NOSIZE | Native.SWP_NOACTIVATE);
                         }
-                        int db = OverlayDiag.Pack(OverlayDiag.StateOf(hwnd != IntPtr.Zero, windowShow.Shown, visibility.Hidden), dcomp != null,
+                        int db = OverlayDiag.Pack(OverlayDiag.StateOf(hwnd != IntPtr.Zero, windowShow.Shown, visibility.Hidden),
                             localEnabled, eng.AdsActive, eng.GrenadeHidden, W33Opt.RealHide(g));
                         if (db != diagBits) diagBits = db;
                         long p3 = sw.ElapsedTicks;
@@ -779,7 +726,6 @@ namespace TarkovCrosshair
                 if (dib != null) { dib.Dispose(); dib = null; }
                 if (blank != null) { blank.Dispose(); blank = null; }
                 rasterChanged.Reset();
-                if (dcomp != null) { dcomp.Dispose(); dcomp = null; }
                 OverlayWindow.Destroy(hwnd);
                 hwnd = IntPtr.Zero;
                 if (timer != IntPtr.Zero) { try { Native.CloseHandle(timer); } catch (Exception) { } }
@@ -801,35 +747,11 @@ namespace TarkovCrosshair
                 blank = new Dib(S, S);
                 Marshal.Copy(new int[S * S], 0, blank.Bits, S * S); // all 0 (once per canvas size)
             }
-            bool ok = dcomp != null ? DCompPresent(blank.Bits, S, presentGate.LastX, presentGate.LastY, null)
-                : blank.Present(hwnd, presentGate.LastX, presentGate.LastY, presentGate.LastSca);
+            bool ok = blank.Present(hwnd, presentGate.LastX, presentGate.LastY, presentGate.LastSca);
             presentGate.Invalidate(); // the next visible frame uploads the crosshair again
             surfaceCurrent = false;
             return ok;
         }
-        /// <summary>v5.1 (W33): a DirectComposition present; a failure is logged once and the next frame rebuilds the window
-        /// on the layered path (PresentModeChoice latches until the option is switched off and on).</summary>
-        private bool DCompPresent(IntPtr bits, int s, int x, int y, Action<string> log)
-        {
-            if (dcomp.Present(bits, s, x, y)) return true;
-            DCompFailed(log);
-            return false;
-        }
-
-        private bool DCompMove(int x, int y, Action<string> log)
-        {
-            if (dcomp.Move(x, y)) return true;
-            DCompFailed(log);
-            return false;
-        }
-
-        private void DCompFailed(Action<string> log)
-        {
-            presentMode.RuntimeFailed();
-            Action<string> l = log ?? worker.Log;
-            l("overlay: DirectComposition present failed (" + dcomp.LastError + "), switching to the normal layered window");
-        }
-
         [DllImport("user32.dll")] private static extern IntPtr GetForegroundWindow();
         [DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);
         [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern int GetWindowText(IntPtr hWnd, System.Text.StringBuilder s, int max);
@@ -936,10 +858,8 @@ namespace TarkovCrosshair
             const byte sca = FrameVisibility.WindowSca;
             if (!presentGate.Need(winX, winY, sca, imageChanged)) return;
             // v5.0.2 (F7): only the position changed and the window already shows these pixels: move it, no bitmap upload
-            bool ok = dcomp != null ? (surfaceCurrent ? DCompMove(winX, winY, log) : DCompPresent(dib.Bits, S, winX, winY, log))
-                : (surfaceCurrent ? Dib.Move(hwnd, winX, winY, sca) : dib.Present(hwnd, winX, winY, sca));
+            bool ok = surfaceCurrent ? Dib.Move(hwnd, winX, winY, sca) : dib.Present(hwnd, winX, winY, sca);
             if (ok) { presentFails = 0; surfaceCurrent = true; return; }
-            if (dcomp != null) { presentGate.Invalidate(); surfaceCurrent = false; return; } // v5.1 (W33): layered window next frame
             presentGate.Invalidate(); // refused (e.g. display-mode switch): try again next frame, no exception, no 10 ms sleep
             surfaceCurrent = false;
             if (presentFails++ == 0 && log != null) log("render: UpdateLayeredWindow refused, Win32 error " + Marshal.GetLastWin32Error() + " (retrying each frame)");

@@ -740,6 +740,7 @@ namespace TarkovCrosshair.Tests
                     && again.ResGameW == sc[0] && again.ResGameH == sc[1] && Math.Abs(ResolutionDetect.ScaleFor(sc[1]) - want) < 1e-12;
                 // engine: every offset scales by s on both axes (D held, then Q lean, then recoil)
                 Profile p = g.Active; g.ShowFadeMs = 0; g.OnlyWhenGameFocused = false;
+                g.ResAspect = "auto"; g.ResStretched = null; // X18: the scale-by-height rule is checked at the native aspect (first run now 5:4 拉伸)
                 GlobalSettings g0 = g.Clone(false); g0.Profiles.Add(p); g0.ResGameW = 2160; g0.ResGameH = 1440;
                 double worst = 0;
                 foreach (string k in new string[] { "D", "W", "SA", "Q", "EL", "L" })
@@ -775,8 +776,8 @@ namespace TarkovCrosshair.Tests
             SettingsIO.ScreenProbe = null;
             System.IO.File.Delete(f2); System.IO.Directory.Delete(dir2);
             bool kept = loaded.ResGameW == 1920 && loaded.ResGameH == 1080;
-            bool fallback = fresh.ResGameW == 1920 && fresh.ResGameH == 1440 && m2 == null;
-            Check("V40-R2 detect fails (null / 0 / short / throws) = built-in 1920x1440 kept; sizes clamped 640..7680 x 480..4320; DetectGameResolution re-detects; an existing settings.json is never overwritten",
+            bool fallback = fresh.ResGameW == 1800 && fresh.ResGameH == 1440 && m2 == null; // Leo 21 Nov 2026 tuned default: his 1800×1440
+            Check("V40-R2 detect fails (null / 0 / short / throws) = built-in 1800x1440 (Leo 21 Nov 2026) kept; sizes clamped 640..7680 x 480..4320; DetectGameResolution re-detects; an existing settings.json is never overwritten",
                 none && clamp && redetect && kept && fallback, "none=" + none + " clamp=" + clamp + " redetect=" + redetect + " existing kept=" + kept + " fallback=" + fallback);
         }
 

@@ -136,9 +136,17 @@
     <Compile Include="TestsV511X7.cs" />
     <!-- v5.1.1 (X8): with the 站立 point on, lean / recoil count from the screen centre (Leo 21 Nov option A) -->
     <Compile Include="TestsV511X8.cs" />
+    <!-- v5.1.1 (X12, Leo 21 Nov 2026): recoil rises from the current point; W/S use the A/D tap / reversal logic -->
+    <Compile Include="TestsV511X12.cs" />
+    <Compile Include="TestsV511X13.cs" />
+    <!-- v5.1.1 (X14, Leo 21 Nov 2026): 站立侧身 (lean with no move key) StandLeanQ/E + 换手, 和移动时一样 default on -->
+    <Compile Include="TestsV511X14.cs" />
+    <!-- v5.1.1 (X16, Leo 21 Nov 2026): 跳跃 触发方式 按下时触发 (default, golden hashes) / 松开时触发 -->
+    <Compile Include="TestsV511X16Gold.cs" />
+    <Compile Include="TestsV511X16.cs" />
+    <Compile Include="TestsV511X18.cs" />
     <!-- v5.1 (W33): texture-drop diagnostics: 开镜/丢雷真隐藏, DirectComposition mode choice + fallback, GPU log (pure + graceful failure + source) -->
     <Compile Include="../../tarkov-crosshair-v4/src/OverlayDiag.cs" />
-    <Compile Include="../../tarkov-crosshair-v4/src/DCompPresenter.cs" />
     <Compile Include="../../tarkov-crosshair-v4/src/GpuDiag.cs" />
     <Compile Include="TestsV51W33.cs" />
     <!-- v5.1 (W21): motion engine (slow-start legs, 短按, A->D), 丢雷隐藏, 强化 toggle/hold, AmmoModel, ReadInput(g) -->

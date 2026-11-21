@@ -329,18 +329,14 @@ namespace TarkovCrosshair
             Section gNet = Group("联网", n);
             yield return null; // v5.1.1 (X5): one background-build chunk ends here (PageChunks)
 
-            // v5.1 (W33): 排查贴图变糊, all off by default
+            // v5.1 (W33): 排查贴图变糊, all off by default (v5.1.1 X17, Leo 21 Nov: the DirectComposition option is removed)
             TableLayoutPanel d = HeldGrid(1);
             CheckBox realHide = Check("开镜/丢雷时真正隐藏准星窗口", delegate { return G.AdsRealHide; }, delegate(bool v) { G.AdsRealHide = v; });
             Tip(realHide, "开镜或丢雷时把准星窗口整个关掉，而不是只变透明。用来排查“开着准星游戏贴图变糊”。关掉再打开窗口会多花一点点时间。");
-            CheckBox dcomp = Check("新的显示方式（DirectComposition）", delegate { return G.OverlayDCompMode; }, delegate(bool v) { G.OverlayDCompMode = v; });
-            Tip(dcomp, "用另一种方式把准星交给 Windows 显示，可能不会让游戏贴图变糊。如果你的电脑不支持，会自动换回原来的方式。");
             CheckBox gpuLog = Check("显存诊断日志", delegate { return G.GpuDiagLog; }, delegate(bool v) { G.GpuDiagLog = v; });
             Tip(gpuLog, "每秒把游戏用的显存写进 Data/crash.log，方便对比开 / 关准星时贴图是否掉档。不用时请关掉。");
             d.Controls.Add(realHide);
             d.Controls.Add(Note("开镜或丢雷时把准星窗口整个关掉，而不是只变透明。用来排查“开着准星游戏贴图变糊”。关掉再打开窗口会多花一点点时间。", 560));
-            d.Controls.Add(dcomp);
-            d.Controls.Add(Note("用另一种方式把准星交给 Windows 显示，可能不会让游戏贴图变糊。如果你的电脑不支持，会自动换回原来的方式。", 560));
             d.Controls.Add(gpuLog);
             d.Controls.Add(Note("每秒把游戏用的显存写进 Data/crash.log，方便对比开 / 关准星时贴图是否掉档。不用时请关掉。", 560));
             Control gDiag = AdvOnly(Fold("排查贴图变糊（高级）", d));

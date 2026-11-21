@@ -106,30 +106,37 @@ namespace TarkovCrosshair
 
         private Control BuildTapBox()
         {
-            TableLayoutPanel t = HeldGrid(2);
+            // X13 (Leo 21 Nov 2026): two columns, 左右（A/D）and 前后（W/S）; W/S defaults are a bit faster.
+            TableLayoutPanel t = HeldGrid(4);
+            Row(t, Lbl(""), Unit("左右（A/D）"), Unit("前后（W/S）"), Unit(""));
             Row(t, Line(Lbl("短按阈值"), HelpMark.For("tap", Font, delegate { return G; })),
-                Line(Num(GlobalSettings.TapThresholdMsMin, GlobalSettings.TapThresholdMsMax, 10, 0, delegate { return G.TapThresholdMs; }, delegate(double v) { G.TapThresholdMs = v; }),
-                    Unit("ms"), Hint("按住比这短算短按（默认 120）", 260)));
+                Line(Num(GlobalSettings.TapThresholdMsMin, GlobalSettings.TapThresholdMsMax, 10, 0, delegate { return G.TapThresholdMs; }, delegate(double v) { G.TapThresholdMs = v; }), Unit("ms")),
+                Line(Num(GlobalSettings.TapThresholdMsMin, GlobalSettings.TapThresholdMsMax, 10, 0, delegate { return G.WsTapThresholdMs; }, delegate(double v) { G.WsTapThresholdMs = v; }), Unit("ms")),
+                Hint("按住比这短算短按（默认 A/D 200、W/S 160）", 260));
             Row(t, Line(Lbl("换向最短时间"), HelpMark.For("taps", Font, delegate { return G; })),
-                Line(Num(GlobalSettings.ReverseMinMsMin, GlobalSettings.ReverseMinMsMax, 10, 0, delegate { return G.ReverseMinMs; }, delegate(double v) { G.ReverseMinMs = v; }),
-                    Unit("ms"), Hint("A 换 D：回中间再出去，最少这么久（默认 150）", 260)));
+                Line(Num(GlobalSettings.ReverseMinMsMin, GlobalSettings.ReverseMinMsMax, 10, 0, delegate { return G.ReverseMinMs; }, delegate(double v) { G.ReverseMinMs = v; }), Unit("ms")),
+                Line(Num(GlobalSettings.ReverseMinMsMin, GlobalSettings.ReverseMinMsMax, 10, 0, delegate { return G.WsReverseMinMs; }, delegate(double v) { G.WsReverseMinMs = v; }), Unit("ms")),
+                Hint("A 换 D、W 换 S：先回去再出去，最少这么久（默认 A/D 250、W/S 180）", 260));
             Row(t, Lbl("回程时间"),
-                Line(Num(GlobalSettings.ReturnTimePctMin, GlobalSettings.ReturnTimePctMax, 5, 0, delegate { return G.ReturnTimePct; }, delegate(double v) { G.ReturnTimePct = v; }),
-                    Unit("%"), Hint("回到中间用出去时间的多少（默认 100）", 260)));
+                Line(Num(GlobalSettings.ReturnTimePctMin, GlobalSettings.ReturnTimePctMax, 5, 0, delegate { return G.ReturnTimePct; }, delegate(double v) { G.ReturnTimePct = v; }), Unit("%")),
+                Line(Num(GlobalSettings.ReturnTimePctMin, GlobalSettings.ReturnTimePctMax, 5, 0, delegate { return G.WsReturnTimePct; }, delegate(double v) { G.WsReturnTimePct = v; }), Unit("%")),
+                Hint("回去用出去时间的多少（默认 A/D 100、W/S 80）", 260));
             Row(t, Lbl("换向停顿"),
-                Line(Num(GlobalSettings.ReversePauseMsMin, GlobalSettings.ReversePauseMsMax, 10, 0, delegate { return G.ReversePauseMs; }, delegate(double v) { G.ReversePauseMs = v; }),
-                    Unit("ms"), Hint("A 换 D 时在中间停多久（默认 0）", 260)));
+                Line(Num(GlobalSettings.ReversePauseMsMin, GlobalSettings.ReversePauseMsMax, 10, 0, delegate { return G.ReversePauseMs; }, delegate(double v) { G.ReversePauseMs = v; }), Unit("ms")),
+                Line(Num(GlobalSettings.ReversePauseMsMin, GlobalSettings.ReversePauseMsMax, 10, 0, delegate { return G.WsReversePauseMs; }, delegate(double v) { G.WsReversePauseMs = v; }), Unit("ms")),
+                Hint("换向时在中间停多久（默认 0）", 260));
             Button def = Btn("恢复默认", delegate
             {
                 GlobalSettings d = new GlobalSettings();
                 G.TapThresholdMs = d.TapThresholdMs; G.ReverseMinMs = d.ReverseMinMs; G.ReturnTimePct = d.ReturnTimePct; G.ReversePauseMs = d.ReversePauseMs;
+                G.WsTapThresholdMs = d.WsTapThresholdMs; G.WsReverseMinMs = d.WsReverseMinMs; G.WsReturnTimePct = d.WsReturnTimePct; G.WsReversePauseMs = d.WsReversePauseMs;
                 RefreshValues();
                 app.Changed();
             });
             TableLayoutPanel box = HeldGrid(1);
             Wide(box, t);
             Wide(box, def);
-            Wide(box, Note("改完马上生效，可以直接试：开着首页的面板（或进游戏），轻点一下 A，准星只动一点就回来；按住 A 再换 D，看换向快不快。", 480));
+            Wide(box, Note("改完马上生效，可以直接试：开着首页的面板（或进游戏），轻点一下 A 或 W，准星只动一点就回来；按住 A 再换 D（或 W 换 S），看换向快不快。W/S 默认比 A/D 快一点。", 480));
             return box;
         }
 
@@ -156,7 +163,7 @@ namespace TarkovCrosshair
             TableLayoutPanel box = HeldGrid(1);
             Wide(box, t);
             Wide(box, zero);
-            Wide(box, Note("0 = 站着不动时准星在屏幕中心（内置「Leo默认」是 → 3.40%  ↓ 3.50%）。填了以后，站立点就是新的零点，上面各方向的数值从站立点算起，会自动换算，屏幕上的位置不变。侧身和后坐力照旧从屏幕中心算起。", 480));
+            Wide(box, Note("0 = 站着不动时准星在屏幕中心（内置「Leo默认」是 → 3.40%  ↓ 3.50%）。填了以后，站立点就是新的零点，上面各方向的数值从站立点算起，会自动换算，屏幕上的位置不变。侧身照旧从屏幕中心算起；后坐力从准星当前的位置往上抬（站着就是从站立点往上）。", 480));
             return box;
         }
 

@@ -278,6 +278,7 @@ namespace TarkovCrosshair.Tests
             {
                 // 按住 侧身 Q held + 换手: the lean stays (held), the hand snaps to 正常手
                 GlobalSettings g = GlobalSettings.CreateDefault(); g.HandEnabled = true; g.HandMode = "toggle"; g.LeanMode = "hold";
+                g.Active.SetStandLeanSame(true); // X18: Leo's tuned default has 站立侧身 own targets; this checks the plain lean spot
                 int hk = g.Keys.Get(KeyBindings.ActionHandSwitch);
                 M41Rig x = new M41Rig(g);
                 x.Run(0.2); x.Press(M41Q); x.Tap(hk); x.Run(1.5);

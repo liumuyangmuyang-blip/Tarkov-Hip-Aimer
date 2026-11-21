@@ -83,9 +83,86 @@ namespace TarkovCrosshair
             Wide(box, Note("怎么调：站着不动，侧身开枪，把偏移调到准星差不多盖住弹孔就行。", 520));
             Wide(box, Note("侧身时再移动：侧身偏移和移动偏移直接相加，不用另外调。", 520));
             Section gb = Group("侧身偏移", box);
-            TableLayoutPanel root = HeldStack(gb, gm);
+            Section gs = BuildStandLean();
+            TableLayoutPanel root = HeldStack(gb, gs, gm);
             ReleaseHeldOnShow(root); // v5.1.1 (P3): held through the first fill, one layout pass on the first show
             return root;
+        }
+
+        /// <summary>X14 (Leo 21 Nov 2026) 「站立不动时的侧身（可选）」: 和移动时一样 (default on) or own Q/E numbers for leaning with no
+        /// move key, plus their 换手 rows (自动 = mirror, custom allowed). Counted from the screen centre like the lean.</summary>
+        private Section BuildStandLean()
+        {
+            CheckBox same = Check("和移动时一样", delegate { return Cur.StandLeanSame; },
+                delegate(bool v) { Cur.SetStandLeanSame(v); RefreshValues(); });
+            TableLayoutPanel g = HeldGrid(4);
+            Cells(g, Blank(), Lbl("左右"), Lbl("上下"), Blank());
+            Label lq = Lbl("左侧身"), le = Lbl("右侧身"), hq = Lbl("换手 左侧身"), he = Lbl("换手 右侧身");
+            refreshers.Add(delegate
+            {
+                string q = G.Keys.ComboOf(KeyBindings.ActionLeanLeft), e = G.Keys.ComboOf(KeyBindings.ActionLeanRight);
+                lq.Text = "站着 左侧身（" + q + "）"; le.Text = "站着 右侧身（" + e + "）";
+                hq.Text = "换手 站着 左侧身"; he.Text = "换手 站着 右侧身";
+            });
+            Row(g, lq,
+                Offset(OffsetAxis.X, OffsetKind.Toggle, 500, delegate { return Cur.StandLeanQX; }, delegate(double v) { Cur.StandLeanQX = v; }).Line,
+                Offset(OffsetAxis.Y, OffsetKind.Toggle, 500, delegate { return Cur.StandLeanQY; }, delegate(double v) { Cur.StandLeanQY = v; }).Line,
+                Blank());
+            Row(g, le,
+                Offset(OffsetAxis.X, OffsetKind.Toggle, 500, delegate { return Cur.StandLeanEX; }, delegate(double v) { Cur.StandLeanEX = v; }).Line,
+                Offset(OffsetAxis.Y, OffsetKind.Toggle, 500, delegate { return Cur.StandLeanEY; }, delegate(double v) { Cur.StandLeanEY = v; }).Line,
+                Blank());
+            AddStandLeanHandRow(g, hq, Profile.StandLeanHandQ);
+            AddStandLeanHandRow(g, he, Profile.StandLeanHandE);
+            Label note = Note("勾上＝站着不动侧身和移动时侧身用同一个位置（原来的做法）。不勾＝站着不动（没按 W S A D）侧身时准星去这里；"
+                + "一按移动键就按移动总时长慢慢过渡到上面的侧身偏移，松开再慢慢回来。从屏幕中心算起；开枪的后坐力从这个点往上。", 520);
+            Label hnote = Note("换手的灰色＝自动（左右镜像：X 取反、Q↔E 对调），改过的变白。", 520);
+            refreshers.Add(delegate { bool on = !Cur.StandLeanSame; g.Visible = on; hnote.Visible = on; });
+            TableLayoutPanel box = HeldGrid(1);
+            Wide(box, same);
+            Wide(box, g);
+            Wide(box, note);
+            Wide(box, hnote);
+            return Group("站立不动时的侧身（可选）", box);
+        }
+
+        private void AddStandLeanHandRow(TableLayoutPanel g, Label name, int item)
+        {
+            OffsetField fx = null, fy = null;
+            Button reset = null;
+            Label auto = Unit("自动");
+            Func<int, double> get = delegate(int axis)
+            {
+                double x, y;
+                Cur.StandLeanHandValue(item, out x, out y);
+                return axis == 0 ? x : y;
+            };
+            Action paint = delegate
+            {
+                Profile p = Cur;
+                if (p == null || fx == null || fy == null || reset == null) return;
+                bool custom = p.IsStandLeanHandCustom(item);
+                Color fore = custom ? Theme.ColText : Theme.ColMuted;
+                fx.Box.ForeColor = fore; if (fx.Arrow != null) fx.Arrow.ForeColor = fore;
+                fy.Box.ForeColor = fore; if (fy.Arrow != null) fy.Arrow.ForeColor = fore;
+                auto.Visible = !custom;
+                reset.Visible = custom;
+            };
+            fx = Offset(OffsetAxis.X, OffsetKind.Toggle, 500, delegate { return get(0); },
+                delegate(double v) { Cur.SetStandLeanHandCustom(item, v, get(1)); paint(); });
+            fy = Offset(OffsetAxis.Y, OffsetKind.Toggle, 500, delegate { return get(1); },
+                delegate(double v) { Cur.SetStandLeanHandCustom(item, get(0), v); paint(); });
+            fx.Switched = true; fy.Switched = true; // 换手 values -> the FOV sides swap (X5); from the centre (X8)
+            reset = Btn("恢复自动", delegate
+            {
+                Cur.SetStandLeanHandAuto(item);
+                RefreshValues();
+                app.Changed();
+            });
+            Tip(reset, "回到自动（站着侧身左右镜像）");
+            refreshers.Add(paint);
+            offsetRefreshers.Add(paint);
+            Row(g, name, fx.Line, fy.Line, Line(auto, reset));
         }
 
         // ---------------- 换手 page (v3.1 换手自定义) ----------------

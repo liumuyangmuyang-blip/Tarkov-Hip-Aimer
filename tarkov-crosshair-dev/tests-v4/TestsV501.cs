@@ -178,7 +178,7 @@ namespace TarkovCrosshair.Tests
                 string after = ctorEnd > 0 ? p.Substring(ctorEnd, Math.Min(4000, p.Length - ctorEnd)) : ""; // v5.1 (W34): AfterUiUp grew (W25 prebuild + W28 net start), 1500 -> 4000 chars
                 bool ok = body.Length > 0 && tray > 0 && ov > tray && fh > ov && !body.Contains("Filter.Start()") && !body.Contains("Filter.StartIfWanted()")
                     && body.Contains("Filter.StartKeys();") && body.Contains("invoker.BeginInvoke((Action)AfterUiUp)") && after.Contains("Filter.StartIfWanted()")
-                    && p.Contains("public const string Version = \"v5.1\";"); // v5.1 (W34: brief "Version string: v5.1"; was v5.0.2 / W17)
+                    && p.Contains("public const string Version = \"v5.2\";"); // v5.1 (W34: brief "Version string: v5.1"; was v5.0.2 / W17)
                 Check("V501-S7 Program.cs: tray, then overlay, then a deferred filter (hotkeys only); engine start only in AfterUiUp (first message of the loop + 1 s); v5.0.1",
                     ok, "tray=" + tray + " ov=" + ov + " fh=" + fh);
                 bool logq = p.Contains("logQueue.Enqueue(line)") && !p.Contains("lock (logLock)\r\n                {\r\n                    File.AppendAllText")

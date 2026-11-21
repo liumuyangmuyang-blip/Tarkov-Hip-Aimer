@@ -176,7 +176,7 @@ namespace TarkovCrosshair.Tests
             {
                 string t = GuideText.Text.Replace("\r", "");
                 string d = "";
-                string[] must = { "v5.1", "百分比偏移", "TarkovHipAimer.exe", // v5.1 (W25, decision 5): standing point = 站立静止偏移
+                string[] must = { "v5.2", "百分比偏移", "TarkovHipAimer.exe", // v5.1 (W25, decision 5): standing point = 站立静止偏移
                                   "FOV 75", "屏幕中心右下一点", "站立静止偏移", /* v5.1.1 (X5, Leo 21 Nov 2026): the built-in stands right-down */ "计划任务", "以管理员身份运行" }; // v5.0.2 (W17): autostart = scheduled task, the app asks for admin
                 foreach (string w in must) if (t.IndexOf(w, StringComparison.Ordinal) < 0) d += " missing「" + w + "」";
                 string[] never = { "Start-HipAimer", ".bat", "bat ", "px", "UAC", "封号", "风险", "BattlEye", "站着偏移", "站立偏移", "鼠标滞后", "鼠标 DPI", "灵敏度", "校准键", "转一圈", "F11" }; // v4.3 (W10): 鼠标滞后 removed // v4.2: F8 is the 滤镜 toggle (Leo 08:35 UTC: F8 allowed)

@@ -267,12 +267,13 @@ namespace TarkovCrosshair.Tests
             string msg3;
             GlobalSettings g3 = SettingsIO.Load(path, out msg3);
             bool renamed = Directory.GetFiles(dir, "settings.bad-*.json").Length == 1 && msg3 != null && msg3.Contains("默认设置")
-                && SettingsIO.Serialize(g3) == SettingsIO.Serialize(SfDefaultValidated());
+                && SettingsIO.Serialize(g3) == SettingsIO.Serialize(SfFreshValidated());
             Check("SF5 Load with a broken (not JSON) file: unchanged behaviour (renamed to settings.bad-*.json, defaults, message)", renamed, msg3);
             foreach (string f in Directory.GetFiles(dir)) File.Delete(f);
             Directory.Delete(dir);
         }
 
+        static GlobalSettings SfFreshValidated() { GlobalSettings d = GlobalSettings.CreateDefault(); d.ApplyLeoScreen(); d.Validate(); return d; } // X18 (Leo 21 Nov 2026)
         static GlobalSettings SfDefaultValidated() { GlobalSettings d = GlobalSettings.CreateDefault(); d.Validate(); return d; }
 
         // ------------------------------------------------------------------ PACKAGE: UserDirFor garbled names
